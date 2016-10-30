@@ -163,7 +163,8 @@ void decode_opcode();
 #define MASK_MODRM_RM(b) (BITS_567(b))
 
 #define RM_SIB 0x4
-#define DISP_ONLY 0x5
+#define DISP_ONLY 0x5 //possibly 0x5
+#define NO_INDEX 0x4
 #define MOD_INDIRECT_ADDRESS 0x0
 #define MOD_ONE_BYTE_DISPLACEMENT 0x1
 #define MOD_FOUR_BYTE_DISPLACEMENT 0x2
@@ -254,43 +255,59 @@ int decode_rm(unsigned char * cb, int size)
 	int sib = rm == RM_SIB;
 	offset += sib && (mod!=MOD_REG_ADDRESS);
 	decode_sib(*(cb+1), &index, &base, &scale);
-
+	int idx = index != NO_INDEX;
+	char * indexstr = registers[index].names[1+size];
+	char * basestr = registers[base].names[1+size];
+	char * rmstr = registers[rm].names[1+size];
+	char disp = *(cb+offset+1);
 	switch (mod) {
 		case MOD_INDIRECT_ADDRESS:
 			if (sib) {
+				
 				if (base == DISP_ONLY) {
-					printf("[%04x+%s*%d]", *(cb+offset+1), registers[index].names[1+size], scale);
+					printf("[%04x+%s*%d]", disp, indexstr, scale);
 				} else {
-					printf("[%s+%s*%d]", registers[base].names[1+size], registers[index].names[1+size], scale);
+					printf("[%s+%s*%d]", basestr, indexstr, scale);
 				}
 			} else {
 				if (rm == DISP_ONLY) {
-					printf("%04x", *(cb+offset+1));
+					printf("%04x", disp);
 				} else {
-					printf("[%s]", registers[rm].names[1+size]);
+					printf("%s", rmstr);
 				}
 			}
 			break;
 		case MOD_ONE_BYTE_DISPLACEMENT:
 			if (sib) {
-				printf("[%01x+%s+%s*%d]", *(cb+offset+1), registers[base].names[0], registers[index].names[1+size], scale);
+				if (*(cb + offset+1) == 0x00) {
+					if (idx) printf("dword [%s+%s*%c]", basestr, indexstr, scale == 1 ? '\b' : 0x30+scale);
+					else printf("dword [%s]", basestr);
+
+
+				} else {
+					printf("dword [");
+					print_hex(disp);
+					if (idx) printf("%s+%s*%d", basestr, indexstr, scale);
+					else  printf("%s", basestr);
+
+				}
 			} else {
-				printf("dword [%s", registers[rm].names[1+size]);
-				print_hex(*(cb+offset+1));
+				printf("dword [%s", rmstr);
+				print_hex(disp);
 				printf("]");
 			}
 			offset++;
 			break;
 		case MOD_FOUR_BYTE_DISPLACEMENT:
 			if (sib) {
-				printf("[disp+%s+%s*d]", registers[base].names[1+size], registers[index].names[1+size], scale);
+				printf("[disp+%s+%s*d]", basestr, indexstr, scale);
 			} else {
-				printf("dword [%s+disp32]", registers[rm].names[1+size]);
+				printf("dword [%s+disp32]", rmstr);
 			}
 			offset += 4;
 			break;
 		case MOD_REG_ADDRESS:
-			printf("%s", registers[rm].names[1+size]);
+			printf("%s", rmstr);
 			break;
 	}
 	return offset+1;
@@ -301,8 +318,7 @@ void decode_operands(unsigned char * cb, int dir, int size, int immediate)
 	unsigned char reg = MASK_MODRM_REG(*cb);
 	if(immediate) {
 		int o = 1;
-		if (dir) o = decode_rm(cb, size);
-		else printf("%s", registers[reg].names[1+size]);
+		o = decode_rm(cb, size);
 		printf(", ");
 		print_hex(*(cb+o));
 	} else {
@@ -318,18 +334,17 @@ void decode_operands(unsigned char * cb, int dir, int size, int immediate)
 			printf("%s", registers[reg].names[1+size]);
 		}
 	}
-	printf("\n");
-
 }
 
-opcode find_opcode(unsigned char v)
+opcode find_opcode(unsigned char v, unsigned char next)
 {
 	for (int i = 0; i < sizeof(opcodes)/sizeof(opcode); i++) {
-		if (!(opcodes[i].v^v)) { 
-			return opcodes[i];
+		if (!(opcodes[i].v^v)) {
+			if ((opcodes[i].e&&(opcodes[i].mor == MASK_MODRM_REG(next))) || !opcodes[i].e)
+				return opcodes[i];
 		}
 	}
-		opcode op  = {0xFF, 0, 0, NON, NON, NON, "non"};
+		opcode op  = {0xFF, 0x00, 0, 0, 0, NON, NON, NON, "non"};
 		return op;
 }
 void decode_instruction(unsigned char * cb, int maxsize)
@@ -356,11 +371,22 @@ void decode_instruction(unsigned char * cb, int maxsize)
 	idx++;
 	int dir, size, imm;
 	dir = ((cb[idx])&0x02);
-	size = ((cb[idx]&0x1);
+	size = ((cb[idx]&0x1));
 	imm = ((*cb)&0x80);
-	opcode op = find_opcode(cmd);
+	opcode op = find_opcode(cmd, cb[idx]);
 	printf("%s ", op.name);
-	decode_operands(cb+idx, 0, 1, 0);
+	int num = (op.arg1 != NON) + (op.arg2 != NON) + (op.arg3 != NON);
+	
+	if (num == 2 || op.v == 0xFF)  {
+		decode_operands(cb+idx, op.arg1 == REG, op.s || 1, op.arg2 == IMM);
+	} else if(num == 1) {
+		if (op.arg1 == RPC) {
+			printf("%s", registers[op.v - op.mor].names[1+op.s]);
+		} else if(op.arg1 == REL8) {
+			printf("%x", cb[idx]);	
+		}
+	}	
+	printf("\n");
 }
 void string_to_hex(char * str, unsigned char * out)
 {
@@ -370,7 +396,7 @@ void string_to_hex(char * str, unsigned char * out)
 		for (int i=0;i<s;i+=2) {
 			h = str[i] > '9' ? str[i] - 'A' + 10 : str[i] - '0';
 			l = str[i+1] > '9' ? str[i+1] - 'A' + 10 : str[i+1] - '0';
-			out[c] = (h << 4) | l; 
+			out[c] = (h << 4) | l&0x0F; 
 			c++;
 		}	
 	} else {
@@ -391,6 +417,7 @@ int main(int argc, char ** argv)
 	}
 	memset(buffer, 0x00, 255);
 	string_to_hex(argv[1], buffer);
+	printf("%x\n", buffer[0]);
 	//decode_operands(buffer + 1, 0, 1, 0);
 	decode_instruction(buffer, size);
 	return 0;
