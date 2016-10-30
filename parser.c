@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "opcodes.c"
 
 /*
  * Instruction Prefix: 0xF0 0xF2 0xF3 0xF3
@@ -231,7 +232,15 @@ void decode_sib(unsigned char b, unsigned char * index, unsigned char * base, in
 	*index = MASK_SIB_INDEX(b);
 	*base = MASK_SIB_BASE(b);
 }
-
+void print_hex(unsigned char v)
+{
+	//Vo=2^N-Vn
+	//-Vo+2^N=Vn
+	int p = !(v&0x40);
+	signed char vn = !p ? 256 - v : v; 
+	if (p) printf("+0x%x", vn);
+	else printf("-0x%x", vn);
+}
 //Decodes MOD and RM field plus SIB byte and Displacement, returns total bytes used
 int decode_rm(unsigned char * cb, int size)
 {
@@ -239,22 +248,24 @@ int decode_rm(unsigned char * cb, int size)
 	unsigned char mod, rm;
 	mod = MASK_MODRM_MOD(*cb);
 	rm = MASK_MODRM_RM(*cb);
+
 	unsigned char index, base;
 	int scale;
 	int sib = rm == RM_SIB;
-	offset += sib;
+	offset += sib && (mod!=MOD_REG_ADDRESS);
 	decode_sib(*(cb+1), &index, &base, &scale);
+
 	switch (mod) {
 		case MOD_INDIRECT_ADDRESS:
 			if (sib) {
 				if (base == DISP_ONLY) {
-					printf("[disp+%s*%d]", registers[index].names[1+size], scale);
+					printf("[%04x+%s*%d]", *(cb+offset+1), registers[index].names[1+size], scale);
 				} else {
 					printf("[%s+%s*%d]", registers[base].names[1+size], registers[index].names[1+size], scale);
 				}
 			} else {
 				if (rm == DISP_ONLY) {
-					printf("disp32");
+					printf("%04x", *(cb+offset+1));
 				} else {
 					printf("[%s]", registers[rm].names[1+size]);
 				}
@@ -262,9 +273,11 @@ int decode_rm(unsigned char * cb, int size)
 			break;
 		case MOD_ONE_BYTE_DISPLACEMENT:
 			if (sib) {
-				printf("[disp+%s+%s*%d]", registers[base].names[0], registers[index].names[1+size], scale);
+				printf("[%01x+%s+%s*%d]", *(cb+offset+1), registers[base].names[0], registers[index].names[1+size], scale);
 			} else {
-				printf("[%s+disp8]", registers[rm].names[1+size]);
+				printf("dword [%s", registers[rm].names[1+size]);
+				print_hex(*(cb+offset+1));
+				printf("]");
 			}
 			offset++;
 			break;
@@ -272,7 +285,7 @@ int decode_rm(unsigned char * cb, int size)
 			if (sib) {
 				printf("[disp+%s+%s*d]", registers[base].names[1+size], registers[index].names[1+size], scale);
 			} else {
-				printf("[%s+disp32]", registers[rm].names[1+size]);
+				printf("dword [%s+disp32]", registers[rm].names[1+size]);
 			}
 			offset += 4;
 			break;
@@ -287,9 +300,11 @@ void decode_operands(unsigned char * cb, int dir, int size, int immediate)
 {
 	unsigned char reg = MASK_MODRM_REG(*cb);
 	if(immediate) {
-		int o = decode_rm(cb, size);
+		int o = 1;
+		if (dir) o = decode_rm(cb, size);
+		else printf("%s", registers[reg].names[1+size]);
 		printf(", ");
-		printf("0x%x", *(cb+o));
+		print_hex(*(cb+o));
 	} else {
 		if (dir) {
 			//RM->REG so REG, RM
@@ -307,11 +322,84 @@ void decode_operands(unsigned char * cb, int dir, int size, int immediate)
 
 }
 
-
-int main()
+opcode find_opcode(unsigned char v)
 {
-	unsigned char cb[] = { 0xC1, 0x05 };
-	decode_operands(cb, 1, 1, 1);
+	for (int i = 0; i < sizeof(opcodes)/sizeof(opcode); i++) {
+		if (!(opcodes[i].v^v)) { 
+			return opcodes[i];
+		}
+	}
+		opcode op  = {0xFF, 0, 0, NON, NON, NON, "non"};
+		return op;
+}
+void decode_instruction(unsigned char * cb, int maxsize)
+{
+	int idx = 0;
+	unsigned char cmd;
+	if (is_prefix(cb[idx])) {
+		idx++;
+	}
+	if (is_address_size(cb[idx])) {
+		idx++;
+	}
+	int f32 = is_operand_size(cb[idx]);
+	if (f32) idx++;
+	int seg = is_seg_override(cb[idx]);
+	if (seg) {
+		idx++;
+	}
+	cmd = cb[idx];
+	if (cmd == 0x0f) {
+		idx++;
+		cmd = cb[idx];
+	}
+	idx++;
+	int dir, size, imm;
+	dir = ((cb[idx])&0x02);
+	size = ((cb[idx]&0x1);
+	imm = ((*cb)&0x80);
+	opcode op = find_opcode(cmd);
+	printf("%s ", op.name);
+	decode_operands(cb+idx, 0, 1, 0);
+}
+void string_to_hex(char * str, unsigned char * out)
+{
+	int s = strlen(str);
+	if (s % 2 == 0) {
+		unsigned int h, l, c=0;
+		for (int i=0;i<s;i+=2) {
+			h = str[i] > '9' ? str[i] - 'A' + 10 : str[i] - '0';
+			l = str[i+1] > '9' ? str[i+1] - 'A' + 10 : str[i+1] - '0';
+			out[c] = (h << 4) | l; 
+			c++;
+		}	
+	} else {
+		printf("ERROR INVALID STRING\n");
+		exit(1);
+	}
+}
+int main(int argc, char ** argv)
+{
+	if (argc < 2) {
+		printf("format: %s bytes\n", argv[0]);
+		return 1;
+	}
+	unsigned char buffer[256];
+	int size = strlen(argv[1]);
+	if (size > 255) {
+		printf("Input too long\n");
+	}
+	memset(buffer, 0x00, 255);
+	string_to_hex(argv[1], buffer);
+	//decode_operands(buffer + 1, 0, 1, 0);
+	decode_instruction(buffer, size);
+	return 0;
 
+	unsigned char cb[] = { 0x83, 0xC0, 0x01 };
+	int dir = ((*cb)&0x02) != 0;
+	int imm = ((*cb)&0x80) != 0;
+	printf("%d and %d\n", dir, imm);
+	decode_operands(cb+1, ((*cb)&0x02) != 0, 1, ((*cb)&0x80) != 0);
+	//decode_operands(cb+1, 0, 1, 1);
 	return 0;
 }
