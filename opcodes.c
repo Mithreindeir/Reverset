@@ -6,6 +6,7 @@ enum OPERAND_TYPE
 	IMM, //Immediate value
 	RPC, //Register Plus Command (For 1 byte instructions like 0x50 (push eax))
 	REL8, //Relative one byte offset from current instruction
+	REL1632, //Relative two-four byte offset from current instruction
 	NON //None
 };
 
@@ -48,7 +49,7 @@ const opcode opcodes[] = {
 	{0x88, 0x00, 0, 0, 0, MRM, REG, NON, "mov"},
 	{0x89, 0x00, 0, 1, 0, MRM, REG, NON, "mov"},
 	{0x8a, 0x00, 0, 0, 0, REG, REG, NON, "mov"},
-	{0x8b, 0x00, 1, 1, 0, MRM, REG, NON, "mov"},
+	{0x8b, 0x00, 1, 1, 0, REG, MRM, NON, "mov"},
 	{0xb8, 0x00, 0, 0, 0, MRM, IMM, NON, "mov"},
 	{0x74, 0x00, 0, 0, 0, REL8, NON, NON, "je"},
 	{0x75, 0x00, 0, 0, 0, REL8, NON, NON, "jnz"},
@@ -90,5 +91,41 @@ const opcode opcodes[] = {
 	{0xFF, 0x04, 0, 1, 1, MRM, NON, NON, "jmp"},
 	{0xFF, 0x05, 0, 1, 1, MRM, NON, NON, "jmpf"},
 	{0xFF, 0x06, 0, 1, 1, MRM, NON, NON, "push"},
-	
+	{0xC0, 0x00, 0, 0, 1, MRM, IMM, NON, "rol"},
+	{0xC0, 0x01, 0, 0, 1, MRM, IMM, NON, "ror"},
+	{0xC0, 0x02, 0, 0, 1, MRM, IMM, NON, "rcl"},
+	{0xC0, 0x03, 0, 0, 1, MRM, IMM, NON, "rcr"},
+	{0xC0, 0x04, 0, 0, 1, MRM, IMM, NON, "shl"},
+	{0xC0, 0x05, 0, 0, 1, MRM, IMM, NON, "shr"},
+	{0xC0, 0x06, 0, 0, 1, MRM, IMM, NON, "sal"},	
+	{0xC0, 0x07, 0, 0, 1, MRM, IMM, NON, "sar"},
+	{0xC1, 0x00, 0, 1, 1, MRM, IMM, NON, "rol"},
+	{0xC1, 0x01, 0, 1, 1, MRM, IMM, NON, "ror"},
+	{0xC1, 0x02, 0, 1, 1, MRM, IMM, NON, "rcl"},
+	{0xC1, 0x03, 0, 1, 1, MRM, IMM, NON, "rcr"},
+	{0xC1, 0x04, 0, 1, 1, MRM, IMM, NON, "shl"},
+	{0xC1, 0x05, 0, 1, 1, MRM, IMM, NON, "shr"},
+	{0xC1, 0x06, 0, 1, 1, MRM, IMM, NON, "sal"},	
+	{0xC1, 0x07, 0, 1, 1, MRM, IMM, NON, "sar"},
+	{0xC6, 0x00, 0, 0, 0, MRM, IMM, NON, "mov"},
+	{0xC7, 0x00, 0, 1, 0, MRM, IMM, NON, "mov"},
+	{0xC3, 0x00, 0, 0, 0, NON, NON, NON, "ret"},
+	{0xB0, 0xB0, 0, 0, 0, REG, IMM, NON, "mov"},
+	{0xB1, 0xB0, 0, 0, 0, REG, IMM, NON, "mov"},
+	{0xB2, 0xB0, 0, 0, 0, REG, IMM, NON, "mov"},
+	{0xB3, 0xB0, 0, 0, 0, REG, IMM, NON, "mov"},
+	{0xB4, 0xB0, 0, 0, 0, REG, IMM, NON, "mov"},
+	{0xB5, 0xB0, 0, 0, 0, REG, IMM, NON, "mov"},
+	{0xB6, 0xB0, 0, 0, 0, REG, IMM, NON, "mov"},
+	{0xB7, 0xB0, 0, 0, 0, REG, IMM, NON, "mov"},
+	{0xB8, 0xB8, 0, 1, 0, REG, IMM, NON, "mov"},
+	{0xB9, 0xB8, 0, 1, 0, REG, IMM, NON, "mov"},
+	{0xBA, 0xB8, 0, 1, 0, REG, IMM, NON, "mov"},
+	{0xBB, 0xB8, 0, 1, 0, REG, IMM, NON, "mov"},
+	{0xBC, 0xB8, 0, 1, 0, REG, IMM, NON, "mov"},
+	{0xBD, 0xB8, 0, 1, 0, REG, IMM, NON, "mov"},
+	{0xBF, 0xB8, 0, 1, 0, REG, IMM, NON, "mov"},
+	{0xE8, 0x00, 0, 1, 0, REL1632, NON, NON, "call"},
+	{0xE9, 0x00, 0, 1, 0, REL1632, NON, NON, "jmp"},
+	{0xEB, 0x00, 0, 0, 0, REL8, NON, NON, "jmp"}
 };

@@ -233,11 +233,28 @@ void decode_sib(unsigned char b, unsigned char * index, unsigned char * base, in
 	*index = MASK_SIB_INDEX(b);
 	*base = MASK_SIB_BASE(b);
 }
+void print_hex_long(unsigned char * v, int  sign)
+{
+	//Vo=2^N-Vn
+	//-Vo+2^N=Vn
+	unsigned long v1, v2, v3, v4;
+	v1 = v[0];
+	v2 = v[1];
+	v3 = v[2];
+	v4 = v[3];
+
+	unsigned long vo = (v1 << 24) + (v2 <<16) + (v3<<8) + (v4);
+	int p = vo < 0x80000000;
+	signed long vn = !p ? (2*2*2*2*2*2*2*2) - vo : vo; 
+	char b = sign ? (p ? '+' : '-' ) : ' '; 
+	if (p) printf("%c0x%08x", b, vn);
+	else printf("%c0x%08x", b, vn);
+}
 void print_hex(unsigned char v)
 {
 	//Vo=2^N-Vn
 	//-Vo+2^N=Vn
-	int p = !(v&0x40);
+	int p = v < 0x80;
 	signed char vn = !p ? 256 - v : v; 
 	if (p) printf("+0x%x", vn);
 	else printf("-0x%x", vn);
@@ -265,9 +282,10 @@ int decode_rm(unsigned char * cb, int size)
 			if (sib) {
 				
 				if (base == DISP_ONLY) {
-					printf("[%04x+%s*%d]", disp, indexstr, scale);
+					printf("dword [%04x+%s*%d]", disp, indexstr, scale);
 				} else {
-					printf("[%s+%s*%d]", basestr, indexstr, scale);
+					if (idx) printf("dword [%s+%s*%d]", basestr, indexstr, scale);
+					else printf("dword [%s]", basestr);
 				}
 			} else {
 				if (rm == DISP_ONLY) {
@@ -302,7 +320,9 @@ int decode_rm(unsigned char * cb, int size)
 			if (sib) {
 				printf("[disp+%s+%s*d]", basestr, indexstr, scale);
 			} else {
-				printf("dword [%s+disp32]", rmstr);
+				printf("dword [%s", rmstr);
+				print_hex_long(cb+offset+1, 1);
+				printf("]");
 			}
 			offset += 4;
 			break;
@@ -313,27 +333,31 @@ int decode_rm(unsigned char * cb, int size)
 	return offset+1;
 }
 
-void decode_operands(unsigned char * cb, int dir, int size, int immediate)
+int decode_operands(unsigned char * cb, int dir, int size, int immediate)
 {
+	int b = 0;
 	unsigned char reg = MASK_MODRM_REG(*cb);
 	if(immediate) {
 		int o = 1;
 		o = decode_rm(cb, size);
 		printf(", ");
 		print_hex(*(cb+o));
+		b += o;
+		b++;
 	} else {
 		if (dir) {
 			//RM->REG so REG, RM
 			printf("%s", registers[reg].names[1+size]);
 			printf(", ");
-			decode_rm(cb, size);
+			b += decode_rm(cb, size);
 		} else {
 			//REG->RM so RM, REG
-			decode_rm(cb, size);
+			b += decode_rm(cb, size);
 			printf(", ");
 			printf("%s", registers[reg].names[1+size]);
 		}
 	}
+	return b;
 }
 
 opcode find_opcode(unsigned char v, unsigned char next)
@@ -347,35 +371,47 @@ opcode find_opcode(unsigned char v, unsigned char next)
 		opcode op  = {0xFF, 0x00, 0, 0, 0, NON, NON, NON, "non"};
 		return op;
 }
-void decode_instruction(unsigned char * cb, int maxsize)
+int decode_instruction(unsigned char * cb, int maxsize)
 {
 	int idx = 0;
 	unsigned char cmd;
 	if (is_prefix(cb[idx])) {
+		printf("%2x", cb[idx]);
 		idx++;
 	}
 	if (is_address_size(cb[idx])) {
+		printf("%2x", cb[idx]);
 		idx++;
 	}
 	int f32 = is_operand_size(cb[idx]);
-	if (f32) idx++;
+	if (f32) {
+		printf("%2x", cb[idx]);
+	       	idx++;
+	}
 	int seg = is_seg_override(cb[idx]);
 	if (seg) {
+		printf("%2x", cb[idx]);
 		idx++;
 	}
 	cmd = cb[idx];
 	if (cmd == 0x0f) {
+		printf("%2x", cb[idx]);
 		idx++;
 		cmd = cb[idx];
 	}
+	printf("%2x", cb[idx]);
 	idx++;
 	int dir, size, imm;
 	dir = ((cb[idx])&0x02);
 	size = ((cb[idx]&0x1));
 	imm = ((*cb)&0x80);
 	opcode op = find_opcode(cmd, cb[idx]);
-	printf("%s ", op.name);
 	int num = (op.arg1 != NON) + (op.arg2 != NON) + (op.arg3 != NON);
+	if (op.arg1 == MRM || op.arg1 == REG) for (int i = 0; i < num; i++) printf("%x", cb[idx+i]);
+	else if (op.arg1 == REL8) printf("%x", cb[idx+1]);
+	else if (op.arg1 == REL1632) 
+	printf("\t");
+	printf("%s ", op.name);
 	
 	if (num == 2 || op.v == 0xFF)  {
 		decode_operands(cb+idx, op.arg1 == REG, op.s || 1, op.arg2 == IMM);
@@ -383,10 +419,15 @@ void decode_instruction(unsigned char * cb, int maxsize)
 		if (op.arg1 == RPC) {
 			printf("%s", registers[op.v - op.mor].names[1+op.s]);
 		} else if(op.arg1 == REL8) {
-			printf("%x", cb[idx]);	
+			printf("%x", cb[idx]);
+			idx++;
+		} else if(op.arg1 == REL1632) {
+			print_hex_long(cb+idx, 0);
+			idx += 3; //Should be 4, but - 1 for operand byte, since addr follow opcode
 		}
 	}	
 	printf("\n");
+	return idx + num;
 }
 void string_to_hex(char * str, unsigned char * out)
 {
@@ -417,16 +458,12 @@ int main(int argc, char ** argv)
 	}
 	memset(buffer, 0x00, 255);
 	string_to_hex(argv[1], buffer);
-	printf("%x\n", buffer[0]);
-	//decode_operands(buffer + 1, 0, 1, 0);
-	decode_instruction(buffer, size);
-	return 0;
-
-	unsigned char cb[] = { 0x83, 0xC0, 0x01 };
-	int dir = ((*cb)&0x02) != 0;
-	int imm = ((*cb)&0x80) != 0;
-	printf("%d and %d\n", dir, imm);
-	decode_operands(cb+1, ((*cb)&0x02) != 0, 1, ((*cb)&0x80) != 0);
-	//decode_operands(cb+1, 0, 1, 1);
+	int b = 0;
+	while(1) {
+		b += decode_instruction(buffer + b, size);
+		if (b >= size/2) {
+			break;
+		}
+	}
 	return 0;
 }
