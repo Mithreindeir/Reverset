@@ -4,6 +4,8 @@ Has plans two include a:
 
 disassembler
 
+assembler
+
 debugger
 
 decompiler
