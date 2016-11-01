@@ -1,4 +1,4 @@
-# Revvit
+# Reverset
 Currently working on disassembler, which just has operand decoding almost done.
 Has plans two include a:
 
