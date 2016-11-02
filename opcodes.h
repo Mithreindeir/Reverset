@@ -1,27 +1,24 @@
-
 enum OPERAND_TYPE
 {
-	REG,//Register, in the mr/m byte
-	MRM,//Mod + R/M and sib and displacement bits specified location
-	IMM, //Immediate value
-	RPC, //Register Plus Command (For 1 byte instructions like 0x50 (push eax))
-	REL8, //Relative one byte offset from current instruction
-	REL1632, //Relative two-four byte offset from current instruction
-	NON //None
+	REG,
+	MRM,
+	IMM,
+	RPC,
+	REL8,
+	REL1632,
+	NON
 };
-
 
 typedef struct opcode
 {
-	//Direction, size, immediate
-	unsigned char v; //Value of opcode
-	unsigned char mor;//Another byte for more info (base, or extended op)
-	int d, s, e;//Direction, size, extended
+	unsigned char v;
+	unsigned char mor;
+	int d, s, e;
 	int arg1, arg2, arg3;
 	char * name;
 } opcode;
 
-const opcode opcodes[] = {
+static const opcode opcodes[] = {
 	{0x00, 0x00, 0, 0, 0, MRM, REG, NON, "add"},
 	{0x01, 0x00, 1, 1, 0, MRM, MRM, NON, "add"},
 	{0x02, 0x00, 1, 0, 0, REG, MRM, NON, "add"},
