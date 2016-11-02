@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "opcodes.c"
+#include "colors.h"
 
 /*
  * Instruction Prefix: 0xF0 0xF2 0xF3 0xF3
@@ -44,6 +45,16 @@
  * AT https://pdos.csail.mit.edu/6.828/2008/readings/i386/s17_02.htm
  */
 //EAX = 000, ECX = 001, EDX = 010, EBX = 11, ESP = 100, EBP= 101, ESI = 110, EDI = 111
+
+//Higher level abstraction of an instruction
+typedef struct instruction
+{
+	opcode op;
+	char * instr;
+	char * op1, op2;
+	int ub;
+} instruction; 
+
 //8, 16, and 32  bit registers
 typedef struct reg {
 	char val;
@@ -259,6 +270,19 @@ void print_hex(unsigned char v)
 	if (p) printf("+0x%x", vn);
 	else printf("-0x%x", vn);
 }
+void printfhex(unsigned char v)
+{
+	unsigned char h, l;
+	h = (v & 0xF0) >> 4;
+	l = v & 0x0F;
+	if (h <= 9) h += '0';
+	else h = (h + 'a') - 10;
+	if (l <= 9) l += '0';
+	else l = (l + 'a') - 10;
+
+	printf("%c%c", h,l);
+}
+
 //Decodes MOD and RM field plus SIB byte and Displacement, returns total bytes used
 int decode_rm(unsigned char * cb, int size)
 {
@@ -291,7 +315,7 @@ int decode_rm(unsigned char * cb, int size)
 				if (rm == DISP_ONLY) {
 					printf("%04x", disp);
 				} else {
-					printf("%s", rmstr);
+					printf("dword [%s]", rmstr);
 				}
 			}
 			break;
@@ -373,33 +397,35 @@ opcode find_opcode(unsigned char v, unsigned char next)
 }
 int decode_instruction(unsigned char * cb, int maxsize)
 {
+	printf(RESET);
+	printf(CYN);
 	int idx = 0;
 	unsigned char cmd;
 	if (is_prefix(cb[idx])) {
-		printf("%2x", cb[idx]);
+		printfhex(cb[idx]);
 		idx++;
 	}
 	if (is_address_size(cb[idx])) {
-		printf("%2x", cb[idx]);
+		printfhex(cb[idx]);
 		idx++;
 	}
 	int f32 = is_operand_size(cb[idx]);
 	if (f32) {
-		printf("%2x", cb[idx]);
+		printfhex(cb[idx]);
 	       	idx++;
 	}
 	int seg = is_seg_override(cb[idx]);
 	if (seg) {
-		printf("%2x", cb[idx]);
+		printfhex(cb[idx]);
 		idx++;
 	}
 	cmd = cb[idx];
 	if (cmd == 0x0f) {
-		printf("%2x", cb[idx]);
+		printfhex( cb[idx]);
 		idx++;
 		cmd = cb[idx];
 	}
-	printf("%2x", cb[idx]);
+	printfhex(cb[idx]);
 	idx++;
 	int dir, size, imm;
 	dir = ((cb[idx])&0x02);
@@ -407,19 +433,22 @@ int decode_instruction(unsigned char * cb, int maxsize)
 	imm = ((*cb)&0x80);
 	opcode op = find_opcode(cmd, cb[idx]);
 	int num = (op.arg1 != NON) + (op.arg2 != NON) + (op.arg3 != NON);
-	if (op.arg1 == MRM || op.arg1 == REG) for (int i = 0; i < num; i++) printf("%x", cb[idx+i]);
-	else if (op.arg1 == REL8) printf("%x", cb[idx+1]);
+	if (op.arg1 == MRM || op.arg1 == REG) for (int i = 0; i < num; i++) printfhex(cb[idx+i]);
+	else if (op.arg1 == REL8) printfhex(cb[idx+1]);
 	else if (op.arg1 == REL1632) print_hex_long(cb+idx, 0); 
 	printf("\t");
+	printf(RESET);
+	printf(GRN);
 	printf("%s ", op.name);
-	
+	printf(RESET);
+	printf(RED);
 	if (num == 2 || op.v == 0xFF)  {
 		idx += decode_operands(cb+idx, op.arg1 == REG, op.s || 1, op.arg2 == IMM);	
 	} else if(num == 1) {
 		if (op.arg1 == RPC) {
 			printf("%s", registers[op.v - op.mor].names[1+op.s]);
 		} else if(op.arg1 == REL8) {
-			printf("%x", cb[idx]);
+			printfhex(cb[idx]);
 			idx++;
 		} else if(op.arg1 == REL1632) {
 			print_hex_long(cb+idx, 0);
@@ -464,6 +493,8 @@ int main(int argc, char ** argv)
 		if (b >= size/2) {
 			break;
 		}
+		printf(RESET);
 	}
+	printf(RESET);
 	return 0;
 }
