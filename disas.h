@@ -51,13 +51,80 @@ typedef struct opcode
 	char * name;
 } opcode;
 */
+
+typedef struct sib_byte
+{
+	int scale;
+	unsigned char base;
+	unsigned char index;
+} sib_byte;
+
+enum mrm_types
+{
+	indir_disponly,
+	indir,
+	regm,
+	disp8,
+	disp32
+};
+
+typedef struct mrm_byte
+{
+	enum mrm_types mt;
+	int is_sib;
+	//Scale index base
+	sib_byte sib;
+	//Register for displacement or reg mode
+	char regr;
+
+	union {
+		//Indirect
+		//One byte displacement
+		unsigned char disp8;
+		//Four byte displacement
+		unsigned char disp32[4];
+	};
+
+} mrm_byte;
+
+
+
+
+enum opr_t
+{
+	regr,
+	mrm,
+	imm,
+	rel8,
+	rel1632,
+	rpc
+};
+
+typedef struct operand
+{
+	enum opr_t operand_t;
+	int size;
+	union {
+		char regr;
+		mrm_byte mrm;
+		unsigned char rel8;
+		unsigned char rel1632[4];
+		unsigned char rpc;
+		unsigned char imm8;
+		unsigned char imm32[4];
+	};
+} operand;
+
 //Higher level abstraction of an instruction
 typedef struct instruction
 {
+	int num_ops;
+	operand op1, op2;
 	opcode op;
 	char * instr;
-	char * op1, op2;
+	char * op1b, op2b;
 	int ub;
+	unsigned char b[16];
 } instruction;
 
 //8, 16, and 32 bit registers
@@ -96,11 +163,15 @@ void print_hex_long(unsigned char * v, int sign);
 void print_hex(unsigned char v);
 void printfhex(unsigned char v);
 
-int decode_rm(unsigned char * cb, int size);
-int decode_operands(unsigned char * cb, int dir, int size, int immediate);
+int decode_rm(operand * opr, unsigned char * cb, int size);
+int decode_operands(instruction * instr, unsigned char * cb, int dir, int size, int immediate);
 
 opcode find_opcode(unsigned char v, unsigned char next);
-int decode_instruction(unsigned char * cb, int maxsize);
+int decode_instruction(instruction * instr, unsigned char * cb, int maxsize);
+
+
+void print_operand(operand  opr);
+void print_instruction(instruction instr);
 
 
 #endif

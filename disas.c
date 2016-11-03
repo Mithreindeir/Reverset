@@ -113,7 +113,7 @@ void printfhex(unsigned char v)
 }
 
 //Decodes MOD and RM field plus SIB byte and Displacement, returns total bytes used
-int decode_rm(unsigned char * cb, int size)
+int decode_rm(operand * opr, unsigned char * cb, int size)
 {
 	int offset = 0;
 	unsigned char mod, rm;
@@ -130,26 +130,43 @@ int decode_rm(unsigned char * cb, int size)
 	char * basestr = registers[base].names[1+size];
 	char * rmstr = registers[rm].names[1+size];
 	char disp = *(cb+offset+1);
+	opr->operand_t = mrm;
+	opr->mrm.is_sib = sib;
 	switch (mod) {
 		case MOD_INDIRECT_ADDRESS:
+			
 			if (sib) {
 				
 				if (base == DISP_ONLY) {
+					opr->mrm.mt = indir_disponly;
+					opr->mrm.sib.index = index;
+					opr->mrm.sib.scale = scale;
+					opr->mrm.disp8 = disp;
 					printf("dword [%04x+%s*%d]", disp, indexstr, scale);
 				} else {
+					opr->mrm.mt = indir;
 					if (idx) printf("dword [%s+%s*%d]", basestr, indexstr, scale);
 					else printf("dword [%s]", basestr);
 				}
 			} else {
 				if (rm == DISP_ONLY) {
+					opr->mrm.mt = indir_disponly;
+					opr->mrm.disp8 = disp;
 					printf("%04x", disp);
 				} else {
+					opr->mrm.regr = rm;
+					opr->mrm.mt = indir;
 					printf("dword [%s]", rmstr);
 				}
 			}
 			break;
 		case MOD_ONE_BYTE_DISPLACEMENT:
+			opr->mrm.mt = disp8;
 			if (sib) {
+				opr->mrm.sib.scale = scale;
+				opr->mrm.sib.index = index;
+				opr->mrm.sib.base = base;
+
 				if (*(cb + offset+1) == 0x00) {
 					if (idx) printf("dword [%s+%s*%c]", basestr, indexstr, scale == 1 ? '\b' : 0x30+scale);
 					else printf("dword [%s]", basestr);
@@ -163,6 +180,8 @@ int decode_rm(unsigned char * cb, int size)
 
 				}
 			} else {
+				opr->mrm.regr = rm;
+				opr->mrm.disp8 = disp;	
 				printf("dword [%s", rmstr);
 				print_hex(disp);
 				printf("]");
@@ -170,9 +189,15 @@ int decode_rm(unsigned char * cb, int size)
 			offset++;
 			break;
 		case MOD_FOUR_BYTE_DISPLACEMENT:
+			opr->mrm.mt = disp32;
 			if (sib) {
+				opr->mrm.sib.scale = scale;
+				opr->mrm.sib.index = index;
+				opr->mrm.sib.base = base;
 				printf("[disp+%s+%s*%d]", basestr, indexstr, scale);
 			} else {
+				opr->mrm.regr = rm;
+				memcpy(opr->mrm.disp32, cb+offset+1, 4);
 				printf("dword [%s", rmstr);
 				print_hex_long(cb+offset+1, 1);
 				printf("]");
@@ -180,19 +205,21 @@ int decode_rm(unsigned char * cb, int size)
 			offset += 4;
 			break;
 		case MOD_REG_ADDRESS:
+			opr->mrm.mt = regm;
+			opr->mrm.regr = rm;
 			printf("%s", rmstr);
 			break;
 	}
 	return offset+1;
 }
 
-int decode_operands(unsigned char * cb, int dir, int size, int immediate)
+int decode_operands(instruction * instr, unsigned char * cb, int dir, int size, int immediate)
 {
 	int b = 0;
 	unsigned char reg = MASK_MODRM_REG(*cb);
 	if(immediate) {
 		int o = 1;
-		o = decode_rm(cb, size);
+		o = decode_rm(&instr->op1, cb, size);
 		printf(", ");
 		print_hex(*(cb+o));
 		b += o;
@@ -200,13 +227,15 @@ int decode_operands(unsigned char * cb, int dir, int size, int immediate)
 	} else {
 		if (dir) {
 			//RM->REG so REG, RM
+			instr->op1.regr = reg;
 			printf("%s", registers[reg].names[1+size]);
 			printf(", ");
-			b += decode_rm(cb, size);
+			b += decode_rm(&instr->op2, cb, size);
 		} else {
 			//REG->RM so RM, REG
-			b += decode_rm(cb, size);
+			b += decode_rm(&instr->op1, cb, size);
 			printf(", ");
+			instr->op1.regr = reg;
 			printf("%s", registers[reg].names[1+size]);
 		}
 	}
@@ -224,7 +253,8 @@ opcode find_opcode(unsigned char v, unsigned char next)
 		opcode op  = {0xFF, 0x00, 0, 0, 0, NON, NON, NON, "non"};
 		return op;
 }
-int decode_instruction(unsigned char * cb, int maxsize)
+
+int decode_instruction(instruction * instr, unsigned char * cb, int maxsize)
 {
 	printf(RESET);
 	printf(CYN);
@@ -268,18 +298,25 @@ int decode_instruction(unsigned char * cb, int maxsize)
 	printf("\t");
 	printf(RESET);
 	printf(GRN);
+	instr->instr = op.name;
+	instr->op1.operand_t = op.arg1;
+	instr->op2.operand_t = op.arg2;
+	intsr->num_ops = num;
 	printf("%s ", op.name);
 	printf(RESET);
 	printf(RED);
 	if (num == 2 || op.v == 0xFF)  {
-		idx += decode_operands(cb+idx, op.arg1 == REG, op.s || 1, op.arg2 == IMM);	
+		idx += decode_operands(instr, cb+idx, op.arg1 == REG, op.s || 1, op.arg2 == IMM);	
 	} else if(num == 1) {
 		if (op.arg1 == RPC) {
+			instr->op1.rpc = op.v - op.mor;
 			printf("%s", registers[op.v - op.mor].names[1+op.s]);
 		} else if(op.arg1 == REL8) {
+			instr->op1.imm8 = cb[idx];
 			printfhex(cb[idx]);
 			idx++;
 		} else if(op.arg1 == REL1632) {
+			memcpy(instr->op1.rel1632, cb+idx, 4);
 			print_hex_long(cb+idx, 0);
 			idx += 3; //Should be 4, but - 1 for operand byte, since addr follow opcode
 		}
@@ -303,6 +340,78 @@ void string_to_hex(char * str, unsigned char * out)
 		exit(1);
 	}
 }
+
+void print_operand(operand opr)
+{
+	switch (operand_t) {
+		case regr:
+			printf("%s", registers[opr.regr]);
+			break;
+		case mrm:
+			mrm_byte m = opr->mrm;
+			switch (m.mt) {
+				case indir_disponly:
+					if (sib) {
+
+					} else {
+
+					}
+					break;
+				case indir:
+					if (sib) {
+
+					} else {
+
+					}
+					break;
+				case regm:
+					printf("%s", registers[m.regr].name[1 + size]);
+					break;
+				case disp8:
+					if (sib) {
+
+					} else {
+
+					}
+					break;
+				case disp32:
+					if (sib) {
+
+					} else {
+
+					}
+					break;
+			}
+			break;
+		case imm:
+			if (size) {
+				print_hex_long(opr.imm32, 0)
+			} else {
+				printfhex(opr.imm8);
+			}
+			break;
+		case rel8:
+			printfhex(rel8);
+			break;
+		case rel1632:
+
+			break;
+		case rpc:
+
+			break;
+
+	}
+}
+
+void print_instruction(instruction instr)
+{
+	printf("%s ", instr.op.name);
+	if (num > 0) {
+
+	}
+}
+
+
 int main(int argc, char ** argv)
 {
 	if (argc < 2) {
@@ -317,8 +426,10 @@ int main(int argc, char ** argv)
 	memset(buffer, 0x00, 255);
 	string_to_hex(argv[1], buffer);
 	int b = 0;
+	instruction ci;
 	while(1) {
-		b += decode_instruction(buffer + b, size);
+		
+		b += decode_instruction(&ci, buffer + b, size);
 		if (b >= size/2) {
 			break;
 		}
