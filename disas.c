@@ -301,7 +301,7 @@ int decode_instruction(instruction * instr, unsigned char * cb, int maxsize)
 	instr->instr = op.name;
 	instr->op1.operand_t = op.arg1;
 	instr->op2.operand_t = op.arg2;
-	intsr->num_ops = num;
+	instr->num_ops = num;
 	printf("%s ", op.name);
 	printf(RESET);
 	printf(RED);
@@ -343,39 +343,40 @@ void string_to_hex(char * str, unsigned char * out)
 
 void print_operand(operand opr)
 {
-	switch (operand_t) {
+	switch (opr.operand_t) {
 		case regr:
 			printf("%s", registers[opr.regr]);
 			break;
 		case mrm:
-			mrm_byte m = opr->mrm;
+			;//Empty statement for weird gcc error (no declarations after labels)
+			mrm_byte m = opr.mrm;
 			switch (m.mt) {
 				case indir_disponly:
-					if (sib) {
+					if (m.is_sib) {
 
 					} else {
 
 					}
 					break;
 				case indir:
-					if (sib) {
+					if (m.is_sib) {
 
 					} else {
 
 					}
 					break;
 				case regm:
-					printf("%s", registers[m.regr].name[1 + size]);
+					printf("%s", registers[m.regr].names[1 + opr.size]);
 					break;
 				case disp8:
-					if (sib) {
+					if (m.is_sib) {
 
 					} else {
 
 					}
 					break;
 				case disp32:
-					if (sib) {
+					if (m.is_sib) {
 
 					} else {
 
@@ -384,8 +385,8 @@ void print_operand(operand opr)
 			}
 			break;
 		case imm:
-			if (size) {
-				print_hex_long(opr.imm32, 0)
+			if (opr.size) {
+				print_hex_long(opr.imm32, 0);
 			} else {
 				printfhex(opr.imm8);
 			}
@@ -406,7 +407,7 @@ void print_operand(operand opr)
 void print_instruction(instruction instr)
 {
 	printf("%s ", instr.op.name);
-	if (num > 0) {
+	if (instr.num_ops > 0) {
 
 	}
 }

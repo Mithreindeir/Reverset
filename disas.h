@@ -87,9 +87,6 @@ typedef struct mrm_byte
 
 } mrm_byte;
 
-
-
-
 enum opr_t
 {
 	regr,
