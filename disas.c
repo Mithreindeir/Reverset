@@ -353,9 +353,9 @@ void print_operand(operand opr)
 			switch (m.mt) {
 				case indir_disponly:
 					if (m.is_sib) {
-
+						printf("dword [%04x+%s*%d]", disp, indexstr, scale);
 					} else {
-
+						
 					}
 					break;
 				case indir:
