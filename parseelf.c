@@ -68,7 +68,7 @@ int main (int argc, char ** argv)
 		printf("NOT AN ELF!\n");
 		return 1;
 	}
-	char c = fgetc(f);
+	unsigned char c = fgetc(f);
 	ef.bits = c;
 	if (c == 0x01) {
 		printf("32 Bit\n");
@@ -99,7 +99,100 @@ int main (int argc, char ** argv)
 	ef.abiv = c;
 	printf("ABI VERSION: %d\n", c);
 	
+	//cycle through padding bytes
+	for (int i = 0; i < 6;i++) c = fgetc(f);
+	
 	c = fgetc(f);
+	c = fgetc(f);//Two bytes
+	ef.type = c;
+	switch (c) {
+		case 1:
+			printf("REL\n");
+			break;
+		case 2:
+			printf("EXEC\n");
+			break;
+		case 3:
+			printf("DYN\n");
+			break;
+		case 4:
+			printf("CORE\n");
+			break;
+	}
+	
+	c = fgetc(f);
+	c = fgetc(f);	//Two bytes
+	ef.machine = c;
+	switch (c) {
+		case 0:
+			printf("No specific instr set\n");
+			break;
+		case 2:
+			printf("SPARC\n");
+			break;
+		case 3:
+			printf("x86\n");
+			break;
+		case 8:
+			printf("MIPS\n");
+			break;
+		case 0x14:
+			printf("PowerPC\n");
+			break;
+		case 0x28:
+			printf("ARM\n");
+			break;
+		case 0x2a:
+			printf("SuperH\n");
+			break;
+		case 0x32:
+			printf("IA-64\n");
+			break;
+		case 0x3e:
+			printf("x86-64\n");
+			break;
+		case 0xb7:
+			printf("AArch64\n");
+			break;
+	}
+	//duplicate of version...
+	c = fgetc(f);
+	c = fgetc(f);
+	c = fgetc(f);
+	c = fgetc(f);
+
+	//Entry point
+	if (ef.bits == 1) {
+		unsigned int th, lh, tl, hl;
+		if (ef.endian == 0x01) {
+			hl = fgetc(f);
+			tl = fgetc(f);
+			lh = fgetc(f);
+			th = fgetc(f);
+		} else if (ef.endian == 0x02) {
+			th = fgetc(f);
+			lh = fgetc(f);
+			tl = fgetc(f);
+			hl = fgetc(f);
+		}
+		unsigned int addr = (th << 24) + (lh << 16) + (tl << 8) + hl;
+		ef.entry = addr;
+		printf("Entry point: %04x\n", addr);
+
+	} else {
+		unsigned long addr = 0;
+		for (int i = 0; i < 8; i++) {
+			c = fgetc(f);
+			addr += (c << 8*(8-i+1));
+		}
+		ef.entry = addr;
+		unsigned int a, b;
+		a = addr & 0xFFFFFFFF00000000;
+		b = addr & 0x00000000FFFFFFFF;
+		printf("Entry point: %04x%04x\n", a, b);
+	}
+
+
 	fclose(f);
 	return 0;
 }
