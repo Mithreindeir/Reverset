@@ -390,7 +390,7 @@ void print_operand(operand opr)
 						printf("dword [%s", rmstr);
 						print_hex(m.disp8);
 						printf("]");
-c					}
+					}
 					break;
 				case disp32:
 					if (m.is_sib) {
