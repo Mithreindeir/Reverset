@@ -366,8 +366,9 @@ void print_operand(operand opr)
 				case indir:
 					if (m.is_sib) {
 						if (idx) printf("dword[%s+%s*%d]", disp, indexstr, scale);
+						else printf("dword [%s]", basestr);
 					} else {
-
+						printf("dword [%s]", rmstr);
 					}
 					break;
 				case regm:
@@ -375,16 +376,29 @@ void print_operand(operand opr)
 					break;
 				case disp8:
 					if (m.is_sib) {
+						if (m.disp8 == 0) {
+							if (idx) printf("dword [%s+%s*%c]", basestr, indexstr, scale == 1 ? '\b' : 0x30+scale);
+							else printf("dword [%s]", basestr);
+						} else {
+							printf("dword [");
+							print_hex(m.disp8);
+							if (idx) printf("%s+%s*%d", basestr, indexstr, scale);
+							else  printf("%s", basestr);	
+						}
 
 					} else {
-
-					}
+						printf("dword [%s", rmstr);
+						print_hex(m.disp8);
+						printf("]");
+c					}
 					break;
 				case disp32:
 					if (m.is_sib) {
-
+						printf("[disp+%s+%s*%d]", basestr, indexstr, scale);
 					} else {
-
+						printf("dword [%s", rmstr);
+						print_hex_long(m.disp32, 1);
+						printf("]");
 					}
 					break;
 			}
