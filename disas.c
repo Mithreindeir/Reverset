@@ -365,7 +365,7 @@ void print_operand(operand opr)
 					break;
 				case indir:
 					if (m.is_sib) {
-						if (idx) printf("dword[%s+%s*%d]", disp, indexstr, scale);
+						if (idx) printf("dword[%s+%s*%d]", m.disp8, indexstr, scale);
 						else printf("dword [%s]", basestr);
 					} else {
 						printf("dword [%s]", rmstr);
