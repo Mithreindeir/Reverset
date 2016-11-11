@@ -350,17 +350,22 @@ void print_operand(operand opr)
 		case mrm:
 			;//Empty statement for weird gcc error (no declarations after labels)
 			mrm_byte m = opr.mrm;
+			int idx = m.sib.index != NO_INDEX;
+			char * indexstr = registers[index].names[2];;
+			char * basestr = registers[m.sib.base].names[2];
+			char * rmstr = registers[m.rm].names[2];
+			int scale = m.sib.scale;
 			switch (m.mt) {
 				case indir_disponly:
 					if (m.is_sib) {
-						//printf("dword [%04x+%s*%d]", disp, indexstr, scale);
+						printf("dword [%04x+%s*%d]", disp, indexstr, scale);
 					} else {
-						
+						printf("%04x", m.disp8);		
 					}
 					break;
 				case indir:
 					if (m.is_sib) {
-
+						if (idx) printf("dword[%s+%s*%d]", disp, indexstr, scale);
 					} else {
 
 					}
