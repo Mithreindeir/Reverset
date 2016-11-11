@@ -222,6 +222,7 @@ int decode_operands(instruction * instr, unsigned char * cb, int dir, int size, 
 		o = decode_rm(&instr->op1, cb, size);
 		printf(", ");
 		print_hex(*(cb+o));
+		instr->op2.imm8 = *(cb+o);
 		b += o;
 		b++;
 	} else {
@@ -235,7 +236,7 @@ int decode_operands(instruction * instr, unsigned char * cb, int dir, int size, 
 			//REG->RM so RM, REG
 			b += decode_rm(&instr->op1, cb, size);
 			printf(", ");
-			instr->op1.regr = reg;
+			instr->op2.regr = reg;
 			printf("%s", registers[reg].names[1+size]);
 		}
 	}
@@ -309,6 +310,7 @@ int decode_instruction(instruction * instr, unsigned char * cb, int maxsize)
 		idx += decode_operands(instr, cb+idx, op.arg1 == REG, op.s || 1, op.arg2 == IMM);	
 	} else if(num == 1) {
 		if (op.arg1 == RPC) {
+			
 			instr->op1.rpc = op.v - op.mor;
 			printf("%s", registers[op.v - op.mor].names[1+op.s]);
 		} else if(op.arg1 == REL8) {
@@ -345,7 +347,7 @@ void print_operand(operand opr)
 {
 	switch (opr.operand_t) {
 		case regr:
-			printf("%s", registers[opr.regr]);
+			printf("%s", registers[opr.regr].names[2]);
 			break;
 		case mrm:
 			;//Empty statement for weird gcc error (no declarations after labels)
@@ -404,10 +406,10 @@ void print_operand(operand opr)
 			}
 			break;
 		case imm:
-			if (opr.size) {
+			if (0 && opr.size) {
 				print_hex_long(opr.imm32, 0);
 			} else {
-				printfhex(opr.imm8);
+				print_hex(opr.imm8);
 			}
 			break;
 		case rel8:
@@ -417,7 +419,7 @@ void print_operand(operand opr)
 
 			break;
 		case rpc:
-
+			printf("%s", registers[opr.rpc].names[2]);
 			break;
 
 	}
@@ -425,9 +427,13 @@ void print_operand(operand opr)
 
 void print_instruction(instruction instr)
 {
-	printf("%s ", instr.op.name);
-	if (instr.num_ops > 0) {
-
+	printf("%s ", instr.instr);
+	if (instr.num_ops == 1) {
+		print_operand(instr.op1);
+	} else if (instr.num_ops == 2) {
+		print_operand(instr.op1);
+		printf(", ");
+		print_operand(instr.op2);
 	}
 }
 
@@ -450,6 +456,8 @@ int main(int argc, char ** argv)
 	while(1) {
 		
 		b += decode_instruction(&ci, buffer + b, size);
+		print_instruction(ci);
+		printf("\n");
 		if (b >= size/2) {
 			break;
 		}

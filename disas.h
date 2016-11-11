@@ -92,9 +92,10 @@ enum opr_t
 	regr,
 	mrm,
 	imm,
+	rpc,
 	rel8,
 	rel1632,
-	rpc
+	non
 };
 
 typedef struct operand
