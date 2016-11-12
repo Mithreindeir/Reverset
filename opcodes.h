@@ -9,6 +9,39 @@ enum OPERAND_TYPE
 	NON
 };
 
+enum OPCODE_ACTION
+{
+	ASN,	//Assigment (mov, lea...)
+	OPR,	//Operation (add, sub, mul, div...)
+	FLW,	//Program Flow (jmp, call...)
+	MEM,	//Memory (push, pop...)
+	OTR	//Other
+};
+typedef struct action
+{
+	enum OPCODE_ACTION op_action;
+	char * symbol;
+	char * name;
+} action;
+
+static const action actions[] = {
+	{ASN, "=", "mov"},
+	{OPR, "+=", "add"},
+	{OPR, "-=", "sub"},
+	{OPR, "&", "and"},
+	{OPR, "|", "or"},
+	{OPR, "!", "not"},
+	{FLW, "", "jmp"},
+	{FLW, "= &", "lea"},
+	{OPR, "<<", "shl"},
+	{OPR, ">>", "shr"},
+	{FLW, "()", "call"},
+	{FLW, "return", "ret"},
+	{MEM, "", "push"},
+	{MEM, "", "pop"},
+	{OTR, "", "non"}
+};
+
 typedef struct opcode
 {
 	unsigned char v;
@@ -16,6 +49,7 @@ typedef struct opcode
 	int d, s, e;
 	int arg1, arg2, arg3;
 	char * name;
+	int action;
 } opcode;
 
 static const opcode opcodes[] = {

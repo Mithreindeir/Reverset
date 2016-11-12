@@ -142,21 +142,16 @@ int decode_rm(operand * opr, unsigned char * cb, int size)
 					opr->mrm.sib.index = index;
 					opr->mrm.sib.scale = scale;
 					opr->mrm.disp8 = disp;
-					printf("dword [%04x+%s*%d]", disp, indexstr, scale);
 				} else {
 					opr->mrm.mt = indir;
-					if (idx) printf("dword [%s+%s*%d]", basestr, indexstr, scale);
-					else printf("dword [%s]", basestr);
 				}
 			} else {
 				if (rm == DISP_ONLY) {
 					opr->mrm.mt = indir_disponly;
 					opr->mrm.disp8 = disp;
-					printf("%04x", disp);
 				} else {
 					opr->mrm.regr = rm;
 					opr->mrm.mt = indir;
-					printf("dword [%s]", rmstr);
 				}
 			}
 			break;
@@ -167,24 +162,9 @@ int decode_rm(operand * opr, unsigned char * cb, int size)
 				opr->mrm.sib.index = index;
 				opr->mrm.sib.base = base;
 
-				if (*(cb + offset+1) == 0x00) {
-					if (idx) printf("dword [%s+%s*%c]", basestr, indexstr, scale == 1 ? '\b' : 0x30+scale);
-					else printf("dword [%s]", basestr);
-
-
-				} else {
-					printf("dword [");
-					print_hex(disp);
-					if (idx) printf("%s+%s*%d", basestr, indexstr, scale);
-					else  printf("%s", basestr);
-
-				}
 			} else {
 				opr->mrm.regr = rm;
 				opr->mrm.disp8 = disp;	
-				printf("dword [%s", rmstr);
-				print_hex(disp);
-				printf("]");
 			}
 			offset++;
 			break;
@@ -194,20 +174,15 @@ int decode_rm(operand * opr, unsigned char * cb, int size)
 				opr->mrm.sib.scale = scale;
 				opr->mrm.sib.index = index;
 				opr->mrm.sib.base = base;
-				printf("[disp+%s+%s*%d]", basestr, indexstr, scale);
 			} else {
 				opr->mrm.regr = rm;
 				memcpy(opr->mrm.disp32, cb+offset+1, 4);
-				printf("dword [%s", rmstr);
-				print_hex_long(cb+offset+1, 1);
-				printf("]");
 			}
 			offset += 4;
 			break;
 		case MOD_REG_ADDRESS:
 			opr->mrm.mt = regm;
 			opr->mrm.regr = rm;
-			printf("%s", rmstr);
 			break;
 	}
 	return offset+1;
@@ -220,8 +195,6 @@ int decode_operands(instruction * instr, unsigned char * cb, int dir, int size, 
 	if(immediate) {
 		int o = 1;
 		o = decode_rm(&instr->op1, cb, size);
-		printf(", ");
-		print_hex(*(cb+o));
 		instr->op2.imm8 = *(cb+o);
 		b += o;
 		b++;
@@ -229,15 +202,11 @@ int decode_operands(instruction * instr, unsigned char * cb, int dir, int size, 
 		if (dir) {
 			//RM->REG so REG, RM
 			instr->op1.regr = reg;
-			printf("%s", registers[reg].names[1+size]);
-			printf(", ");
 			b += decode_rm(&instr->op2, cb, size);
 		} else {
 			//REG->RM so RM, REG
 			b += decode_rm(&instr->op1, cb, size);
-			printf(", ");
 			instr->op2.regr = reg;
-			printf("%s", registers[reg].names[1+size]);
 		}
 	}
 	return b;
@@ -296,34 +265,25 @@ int decode_instruction(instruction * instr, unsigned char * cb, int maxsize)
 	if (op.arg1 == MRM || op.arg1 == REG) for (int i = 0; i < num; i++) printfhex(cb[idx+i]);
 	else if (op.arg1 == REL8) printfhex(cb[idx+1]);
 	else if (op.arg1 == REL1632) print_hex_long(cb+idx, 0); 
-	printf("\t");
 	printf(RESET);
-	printf(GRN);
+	printf("\t");
 	instr->instr = op.name;
 	instr->op1.operand_t = op.arg1;
 	instr->op2.operand_t = op.arg2;
 	instr->num_ops = num;
-	printf("%s ", op.name);
-	printf(RESET);
-	printf(RED);
 	if (num == 2 || op.v == 0xFF)  {
 		idx += decode_operands(instr, cb+idx, op.arg1 == REG, op.s || 1, op.arg2 == IMM);	
 	} else if(num == 1) {
 		if (op.arg1 == RPC) {
-			
 			instr->op1.rpc = op.v - op.mor;
-			printf("%s", registers[op.v - op.mor].names[1+op.s]);
 		} else if(op.arg1 == REL8) {
 			instr->op1.imm8 = cb[idx];
-			printfhex(cb[idx]);
 			idx++;
 		} else if(op.arg1 == REL1632) {
 			memcpy(instr->op1.rel1632, cb+idx, 4);
-			print_hex_long(cb+idx, 0);
 			idx += 3; //Should be 4, but - 1 for operand byte, since addr follow opcode
 		}
 	}	
-	printf("\n");
 	return idx;
 }
 void string_to_hex(char * str, unsigned char * out)
@@ -370,11 +330,11 @@ void print_operand(operand opr)
 						if (idx) printf("dword[%s+%s*%d]", m.disp8, indexstr, scale);
 						else printf("dword [%s]", basestr);
 					} else {
-						printf("dword [%s]", rmstr);
+						printf("%s", rmstr);
 					}
 					break;
 				case regm:
-					printf("%s", registers[m.regr].names[1 + opr.size]);
+					printf("%s", registers[m.regr].names[2]);
 					break;
 				case disp8:
 					if (m.is_sib) {
@@ -425,14 +385,37 @@ void print_operand(operand opr)
 	}
 }
 
+action find_action(char * name)
+{
+	int i = 0;
+	for (i = 0; i < (sizeof(actions)/sizeof(action)); i++) {
+		if (!strcmp(name, actions[i].name)) return actions[i];
+	}
+	return actions[i];
+}
+
 void print_instruction(instruction instr)
 {
+	printf(RESET);
+	printf(RED);
 	printf("%s ", instr.instr);
+	printf(RESET);
+	printf(GRN);
 	if (instr.num_ops == 1) {
 		print_operand(instr.op1);
 	} else if (instr.num_ops == 2) {
 		print_operand(instr.op1);
 		printf(", ");
+		print_operand(instr.op2);
+	}
+	printf(RESET);
+	printf(MAG);	
+	printf("; ");
+	if (instr.num_ops == 2) {
+		print_operand(instr.op1);
+		action a;
+		a = find_action(instr.instr);
+		printf(" %s ", a.symbol);
 		print_operand(instr.op2);
 	}
 }
