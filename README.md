@@ -1,5 +1,7 @@
 # Reverset
-Currently working on disassembler and elf parser, which just has operand decoding almost done.
+Reverset is a reverse engineering, and binary analysis tool.
+
+Currently working on disassembler and elf parser:
 Has plans two include a:
 
 disassembler
@@ -16,4 +18,4 @@ flow graphs
 
 and more
 
-Currently working on disassembler
+Currently, only have plans to support analysis of x86 binaries, but may include x86-64, and ARM eventually.
