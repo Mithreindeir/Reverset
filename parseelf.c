@@ -167,12 +167,18 @@ int main (int argc, char ** argv)
 	c = fgetc(f);
 	//Entry point
 	if (ef.bits == 1) {
-		unsigned int th, lh, tl, hl;
+		unsigned char a, b, c, d;
+		
+		a = fgetc(f);
+		b = fgetc(f);
+		c = fgetc(f);
+		d = fgetc(f);
+
 		unsigned int addr = 0;
 		if (ef.endian == 0x01) {
-			addr = TO_INT(fgetc(f), fgetc(f), fgetc(f), fgetc(f));
+			addr = TO_LITTLE_ENDIAN(a, b, c, d);
 		} else if (ef.endian == 0x02) {
-			addr = TO_LITTLE_ENDIAN(fgetc(f), fgetc(f), fgetc(f), fgetc(f));
+			addr = TO_INT(fgetc(f), fgetc(f), fgetc(f), fgetc(f));
 		}
 		ef.entry = addr;
 		printf("Entry point: %04x\n", addr);
@@ -191,7 +197,23 @@ int main (int argc, char ** argv)
 	}
 	
 	//Program header table
+	if (ef.bits == 0x01) {
+		unsigned int addr = 0;
+		unsigned char a, b, c, d;
+	
+		a = fgetc(f);
+		b = fgetc(f);
+		c = fgetc(f);
+		d = fgetc(f);	
 
+		if (ef.endian == 0x01) addr = TO_LITTLE_ENDIAN(a, b, c, d);
+		else if (ef.endian == 0x02) addr = TO_INT(a, b, c, d);
+		
+		ef.phead = addr;
+		printf("Program Header: %d (bytes into file)\n", addr);
+	} else if (ef.bits == 0x02) {
+
+	}
 	fclose(f);
 	return 0;
 }
