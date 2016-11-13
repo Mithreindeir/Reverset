@@ -22,6 +22,7 @@ struct elf_data
 	int hsize;	//Size of header
 	int phsize;	//Program header size
 	int phnum;	//Number of entries in prog header
+	int shsize;	//Section header size
 	int shnum;	//Number of entries in section header
 	int hndx;	//Index of of section names in sec header table 
 	
@@ -77,7 +78,8 @@ int main (int argc, char ** argv)
 	if (c == 0x01) {
 		printf("32 Bit\n");
 	} else if (c == 0x02) {
-		printf("64 Bit\n");
+		printf("64 Bit Not Supported\n");
+		return 1;
 	}
 	c = fgetc(f);
 	ef.endian = c;
@@ -214,6 +216,94 @@ int main (int argc, char ** argv)
 	} else if (ef.bits == 0x02) {
 
 	}
+	if (ef.bits == 0x01) {
+		unsigned int addr = 0;
+		unsigned char a, b, c, d;
+	
+		a = fgetc(f);
+		b = fgetc(f);
+		c = fgetc(f);
+		d = fgetc(f);	
+
+		if (ef.endian == 0x01) addr = TO_LITTLE_ENDIAN(a, b, c, d);
+		else if (ef.endian == 0x02) addr = TO_INT(a, b, c, d);
+		
+		ef.phead = addr;
+		printf("Section Header: %d (bytes into file)\n", addr);
+
+	}
+
+	if (ef.bits == 0x01) {
+		unsigned int flags = 0;
+		unsigned char a, b, c, d;
+	
+		a = fgetc(f);
+		b = fgetc(f);
+		c = fgetc(f);
+		d = fgetc(f);	
+
+		if (ef.endian == 0x01) flags = TO_LITTLE_ENDIAN(a, b, c, d);
+		else if (ef.endian == 0x02) flags = TO_INT(a, b, c, d);
+		
+		ef.flag = flags;
+		printf("Flags: %x\n", flags);
+	}
+	if (ef.bits == 0x01) {
+		unsigned int a, b;
+		a = fgetc(f);
+		b = fgetc(f);
+		unsigned int hsize = (b << 8) + a;
+		ef.hsize = hsize;
+		printf("Header Size: %d\n", hsize);
+	}
+
+	if (ef.bits == 0x01) {
+		unsigned int a, b;
+		a = fgetc(f);
+		b = fgetc(f);
+		unsigned int phsize = (b << 8) + a;
+		ef.phsize = phsize;
+		printf("Program Header Size: %d\n", phsize);
+	}
+
+	if (ef.bits == 0x01) {
+		unsigned int a, b;
+		a = fgetc(f);
+		b = fgetc(f);
+		unsigned int phnum = (b << 8) + a;
+		ef.phnum = phnum;
+		printf("Entries in Program Header: %d\n", phnum);
+	}
+	
+	if (ef.bits == 0x01) {
+		unsigned int a, b;
+		a = fgetc(f);
+		b = fgetc(f);
+		unsigned int shsize = (b << 8) + a;
+		ef.shsize = shsize;
+		printf("Section Header size: %d (bytes)\n", shsize);
+	}
+
+	if (ef.bits == 0x01) {
+		unsigned int a, b;
+		a = fgetc(f);
+		b = fgetc(f);
+		unsigned int shnum = (b << 8) + a;
+		ef.shnum = shnum;
+		printf("Entries in Section Header: %d\n", shnum);
+	}
+
+	if (ef.bits == 0x01) {
+		unsigned int a, b;
+		a = fgetc(f);
+		b = fgetc(f);
+		unsigned int hndx = (b << 8) + a;
+		ef.hndx = hndx;
+		printf("Section names index: %d\n", hndx);
+	}
+	
+	//Program header
+	rewind(f);
 	fclose(f);
 	return 0;
 }
