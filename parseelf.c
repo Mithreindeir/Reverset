@@ -160,7 +160,7 @@ int main (int argc, char ** argv)
 	c = fgetc(f);
 	c = fgetc(f);
 	c = fgetc(f);
-
+	c = fgetc(f);
 	//Entry point
 	if (ef.bits == 1) {
 		unsigned int th, lh, tl, hl;
@@ -191,7 +191,8 @@ int main (int argc, char ** argv)
 		b = addr & 0x00000000FFFFFFFF;
 		printf("Entry point: %04x%04x\n", a, b);
 	}
-
+	
+	//Program header table
 
 	fclose(f);
 	return 0;
