@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
+#define TO_INT(a, b, c, d) ((a << 24) + (b << 16) + (c << 8) + d)
+#define TO_LITTLE_ENDIAN(a, b, c, d) (TO_INT(d,c,b,a))
+
 struct elf_data
 {
 	int bits;  	// 32 or 64
@@ -164,18 +168,12 @@ int main (int argc, char ** argv)
 	//Entry point
 	if (ef.bits == 1) {
 		unsigned int th, lh, tl, hl;
+		unsigned int addr = 0;
 		if (ef.endian == 0x01) {
-			hl = fgetc(f);
-			tl = fgetc(f);
-			lh = fgetc(f);
-			th = fgetc(f);
+			addr = TO_INT(fgetc(f), fgetc(f), fgetc(f), fgetc(f));
 		} else if (ef.endian == 0x02) {
-			th = fgetc(f);
-			lh = fgetc(f);
-			tl = fgetc(f);
-			hl = fgetc(f);
+			addr = TO_LITTLE_ENDIAN(fgetc(f), fgetc(f), fgetc(f), fgetc(f));
 		}
-		unsigned int addr = (th << 24) + (lh << 16) + (tl << 8) + hl;
 		ef.entry = addr;
 		printf("Entry point: %04x\n", addr);
 
