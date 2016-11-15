@@ -367,9 +367,11 @@ void print_operand(operand opr)
 			break;
 		case imm:
 			if (0 && opr.size) {
-				print_hex_long(opr.imm32, 0);
+				//print_hex_long(opr.imm32, 0);
+				printf("%d", opr.imm32);
 			} else {
-				print_hex(opr.imm8);
+				printf("%d", opr.imm8);
+				//print_hex(opr.imm8);
 			}
 			break;
 		case rel8:
@@ -394,31 +396,129 @@ action find_action(char * name)
 	return actions[i];
 }
 
-void print_instruction(instruction instr)
+void print_instruction(instruction * instr)
 {
 	printf(RESET);
 	printf(RED);
-	printf("%s ", instr.instr);
+	printf("%s ", instr->instr);
 	printf(RESET);
 	printf(GRN);
-	if (instr.num_ops == 1) {
-		print_operand(instr.op1);
-	} else if (instr.num_ops == 2) {
-		print_operand(instr.op1);
+	if (instr->num_ops == 1) {
+		print_operand(instr->op1);
+	} else if (instr->num_ops == 2) {
+		print_operand(instr->op1);
 		printf(", ");
-		print_operand(instr.op2);
+		print_operand(instr->op2);
 	}
+	instr->inst_action = find_action(instr->instr);
+	return;
 	printf(RESET);
 	printf(MAG);	
-	printf("; ");
-	if (instr.num_ops == 2) {
-		print_operand(instr.op1);
+	printf("\r\t\t\t\t\t; ");
+	if (instr->num_ops == 2) {
+		print_operand(instr->op1);
 		action a;
-		a = find_action(instr.instr);
+		a = find_action(instr->instr);
+		instr->inst_action = a;
 		printf(" %s ", a.symbol);
-		print_operand(instr.op2);
+		print_operand(instr->op2);
+	
 	}
 }
+
+void decompile(instruction * instructions, int num_instructions)
+{
+	//S0 Operation decoding (done)
+	//S1 Operand Aliasing
+	//S2 Type inference, and variable replacing
+	//S3 redundancy removal
+	
+	for (int i = 0; i < num_instructions; i++) {
+		instruction instr = instructions[i];
+		printf(RESET);
+		printf(MAG);	
+		printf("; ");
+			
+		if (instr.num_ops == 2) {
+			print_operand(instr.op1);
+			printf(" %s ", instr.inst_action.symbol);
+			print_operand(instr.op2);
+		}
+		printf("\n");
+	}
+	printf("\n");
+	//At this point it becomes invalid assembly (technically)
+
+	//S2
+	//Find creation of a variable
+	//Trace all instances of it backwards
+	//Places where a register is set to it, it is an indirect reference
+	//example: Tracing variable "var1", instruction = "mov eax, dword [ebp-4]"
+	//This may be used for something like "var2 = var1 + 5;"
+	//However, if the register is transfered back to the variable, it is directly being used
+	//"mov dword [ebp-4], eax"
+	//Find transfer from reg->var for direct
+	//Find transfer from var->reg for indirect
+	
+	//Stack first
+	//First replace all instructions with displacements to ebp
+	//with variable
+	char * var = "local0";
+	for (int i = 0; i < num_instructions; i++) {
+		//var->reg first
+		instruction * ci = &instructions[i];
+		if (ci->num_ops != 2) continue;
+
+		if (ci->op1.operand_t == mrm) {
+			if (ci->op1.mrm.regr == 5 && ci->op1.mrm.mt == 3) {
+				//This is a stack variable
+				//Rename it with its replacement
+				int size = strlen(var);
+				ci->op1b = malloc(size);
+				strcpy(ci->op1b, var);
+				ci->op1b[size-1] += TWO_COMPLEMENT(ci->op1.mrm.disp8);
+				ci->op1b[size] = 0;
+
+				printf("%s", ci->op1b);
+			}
+			else {
+				print_operand(ci->op1);
+
+			}
+		}
+		else {
+			print_operand(ci->op1);
+		}
+
+		printf(" %s ", ci->inst_action.symbol);
+
+		if (ci->op2.operand_t == mrm) {
+			if (ci->op2.mrm.regr == 5 && ci->op2.mrm.mt == 3) {
+				//This is a stack variable
+				//Rename it with its replacement
+				int size = strlen(var);
+				ci->op2b = malloc(size);
+				strcpy(ci->op2b, var);
+				ci->op2b[size-1] += TWO_COMPLEMENT(ci->op2.mrm.disp8);
+				ci->op2b[size] = 0;
+
+				printf("%s", ci->op2b);
+			}
+			else {
+				print_operand(ci->op2);
+
+			}
+		}
+		else {
+			print_operand(ci->op2);
+		}
+
+		printf("\n");
+	}
+	
+		
+}
+	
 
 
 int main(int argc, char ** argv)
@@ -435,17 +535,25 @@ int main(int argc, char ** argv)
 	memset(buffer, 0x00, 255);
 	string_to_hex(argv[1], buffer);
 	int b = 0;
+	instruction * instructions = malloc(sizeof(instruction));
+	int num_instructions = 1;
 	instruction ci;
 	while(1) {
 		
 		b += decode_instruction(&ci, buffer + b, size);
-		print_instruction(ci);
+		print_instruction(&ci);
 		printf("\n");
+		
+		instructions[num_instructions-1] = ci;
+		num_instructions++;
+		instructions = realloc(instructions, num_instructions * sizeof(instruction));
 		if (b >= size/2) {
 			break;
 		}
 		printf(RESET);
 	}
+	decompile(instructions, num_instructions);
+	printf("\n");
 	printf(RESET);
 	return 0;
 }

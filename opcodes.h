@@ -156,6 +156,7 @@ static const opcode opcodes[] = {
 	{0xBC, 0xB8, 0, 1, 0, REG, IMM, NON, "mov"},
 	{0xBD, 0xB8, 0, 1, 0, REG, IMM, NON, "mov"},
 	{0xBF, 0xB8, 0, 1, 0, REG, IMM, NON, "mov"},
+	{0x8D, 0x00, 0, 1, 0, REG, IMM, NON, "lea"},
 	{0xE8, 0x00, 0, 1, 0, REL1632, NON, NON, "call"},
 	{0xE9, 0x00, 0, 1, 0, REL1632, NON, NON, "jm"},
 	{0xEB, 0x00, 0, 0, 0, REL8, NON, NON, "jmp"},

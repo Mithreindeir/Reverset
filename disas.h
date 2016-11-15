@@ -4,6 +4,7 @@
 #include <stdio.h>
 //#include "opcodes.c"
 
+#define TWO_COMPLEMENT(a) ((256-a))
 #define BITS_01(b) ((b&0xC0) >> 6)
 #define BITS_234(b) (((b&0x38) >> 3))
 #define BITS_567(b) (b&0x7)
@@ -116,11 +117,13 @@ typedef struct operand
 //Higher level abstraction of an instruction
 typedef struct instruction
 {
+	action inst_action;
 	int num_ops;
 	operand op1, op2;
 	opcode op;
 	char * instr;
-	char * op1b, op2b;
+	char * op1b;
+       	char * op2b;
 	int ub;
 	unsigned char b[16];
 } instruction;
@@ -169,7 +172,7 @@ int decode_instruction(instruction * instr, unsigned char * cb, int maxsize);
 
 
 void print_operand(operand  opr);
-void print_instruction(instruction instr);
+void print_instruction(instruction * instr);
 
 
 #endif
