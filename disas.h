@@ -142,6 +142,47 @@ typedef struct reg {
 
 } reg;
 
+
+//Decompilation structures
+//Type info
+struct dec_local
+{
+	int offset;
+	int type;
+};
+
+struct dec_undetermined
+{
+	operand opr;//Use previous levels deciphering
+};
+
+struct dec_operand
+{
+	char * str;	//Printable string
+	int is_reg;	//If it is a register
+	int type; //local(0) or undeter(1)
+	union {
+		struct dec_local local;
+		struct dec_undetermined undeter;
+	};
+};
+
+struct dec_operation
+{
+	int num_ops;
+	action dact;
+	struct dec_operand dopr1;
+	struct dec_operand dopr2;
+};
+
+typedef struct dec_instruction
+{
+	int exclusive;	//If this is the only operation on the line
+	int first;	//If this is the only operation on the line
+	instruction instr;
+	struct dec_operation doprn;
+} dec_instruction;
+
 //Segment registers
 enum segment_regs
 {
@@ -150,7 +191,7 @@ enum segment_regs
 	DS,
 	ES,
 	FS,
-	GS
+	GS 
 };
 
 int is_prefix(char b);

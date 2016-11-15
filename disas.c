@@ -463,23 +463,34 @@ void decompile(instruction * instructions, int num_instructions)
 	//Stack first
 	//First replace all instructions with displacements to ebp
 	//with variable
+	dec_instruction * d_instrs = malloc(num_instructions * sizeof(dec_instruction));
+	dec_instruction d_ci;
+	int num_dinstr = num_instructions;
+
 	char * var = "local0";
 	for (int i = 0; i < num_instructions; i++) {
+		
 		//var->reg first
 		instruction * ci = &instructions[i];
+		d_ci.instr = *ci;
+		d_ci.doprn.dact = ci->inst_action;
+		d_ci.first = 1;
+		d_ci.exclusive = 1;
+
 		if (ci->num_ops != 2) continue;
+
+		d_ci.doprn.num_ops = 2;
+		d_ci.doprn.dopr1.type = 1;
+		d_ci.doprn.dopr1.undeter.opr = ci->op1;
+
+		d_ci.doprn.dopr2.type = 1;
+		d_ci.doprn.dopr2.undeter.opr = ci->op2;
 
 		if (ci->op1.operand_t == mrm) {
 			if (ci->op1.mrm.regr == 5 && ci->op1.mrm.mt == 3) {
-				//This is a stack variable
-				//Rename it with its replacement
-				int size = strlen(var);
-				ci->op1b = malloc(size);
-				strcpy(ci->op1b, var);
-				ci->op1b[size-1] += TWO_COMPLEMENT(ci->op1.mrm.disp8);
-				ci->op1b[size] = 0;
-
-				printf("%s", ci->op1b);
+				d_ci.doprn.dopr1.type = 0;
+				d_ci.doprn.dopr1.local.offset = TWO_COMPLEMENT(ci->op1.mrm.disp8);
+				printf("local%d", d_ci.doprn.dopr1.local.offset);
 			}
 			else {
 				print_operand(ci->op1);
@@ -494,15 +505,9 @@ void decompile(instruction * instructions, int num_instructions)
 
 		if (ci->op2.operand_t == mrm) {
 			if (ci->op2.mrm.regr == 5 && ci->op2.mrm.mt == 3) {
-				//This is a stack variable
-				//Rename it with its replacement
-				int size = strlen(var);
-				ci->op2b = malloc(size);
-				strcpy(ci->op2b, var);
-				ci->op2b[size-1] += TWO_COMPLEMENT(ci->op2.mrm.disp8);
-				ci->op2b[size] = 0;
-
-				printf("%s", ci->op2b);
+				d_ci.doprn.dopr2.type = 0;
+				d_ci.doprn.dopr2.local.offset = TWO_COMPLEMENT(ci->op2.mrm.disp8);
+				printf("local%d", d_ci.doprn.dopr2.local.offset);
 			}
 			else {
 				print_operand(ci->op2);
@@ -512,10 +517,30 @@ void decompile(instruction * instructions, int num_instructions)
 		else {
 			print_operand(ci->op2);
 		}
-
+		d_instrs[i] = d_ci;
 		printf("\n");
 	}
-	
+	printf("\n");
+	for (int i = 0; i < num_dinstr; i++) {
+		d_ci = d_instrs[i];
+		
+		if (d_ci.instr.num_ops == 2) {
+			if (d_ci.doprn.dopr1.type) {
+				print_operand(d_ci.doprn.dopr1.undeter.opr);
+			} else {
+				printf("local%d", d_ci.doprn.dopr1.local.offset);
+			}
+			
+			printf(" %s ", d_ci.doprn.dact.symbol);
+				
+			if (d_ci.doprn.dopr2.type) {
+				print_operand(d_ci.doprn.dopr2.undeter.opr);
+			} else {
+				printf("local%d", d_ci.doprn.dopr2.local.offset);
+			}
+		}
+		printf("\n");
+	}
 		
 }
 	
