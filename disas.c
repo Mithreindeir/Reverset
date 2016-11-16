@@ -541,7 +541,75 @@ void decompile(instruction * instructions, int num_instructions)
 		}
 		printf("\n");
 	}
+	//Find assignment to register
+	//Then find when register is not the 
+	//first operand, and work backwards to find
+	//usage of it
+	/*
+	 * local4 = 5
+	 * eax = local4
+	 * eax += 2
+	 * local8 = eax
+	 * Then it goes to
+	 * local 4 = 5
+	 * local8 = local4 + 2
+	 */
+	
+	int creg = -1; //current register
+	int coff = -1; //current offset var
+	int last_instr = 0;
+	for (int i = 0; i < num_dinstr; i++) {
+		d_ci = d_instrs[i];
 		
+		if (d_ci.instr.num_ops == 2) {
+			if (coff == -1) {
+				int t1, t2;
+				t1 = d_ci.doprn.dopr1.type;
+				t2 = d_ci.doprn.dopr2.type;
+				if (t1^t2) {
+					last_instr = i;
+					if (t1) {
+						coff = t1;
+					} else {
+						coff = t2;
+					}
+				} else {
+					continue;
+				}
+			} else {
+				//Find which operand is coff
+				int op; //0 or 1
+				if (!d_ci.doprn.dopr1.type&& d_ci.doprn.dopr1.local.offset == coff) {
+					op = 0;
+				} else if (!d_ci.doprn.dopr2.type&& d_ci.doprn.dopr2.local.offset == coff) {
+					op = 1;
+				} else {
+					continue;
+				}
+
+
+				if (creg == -1) {
+					if (op) {
+						if (d_ci.doprn.dopr1.type) {
+							if (d_ci.doprn.dopr1.undeter.opr.operand_t == regr || d_ci.doprn.dopr1.undeter.opr.mrm.mt == regm) {
+									creg = d_ci.doprn.dopr1.undeter.opr.regr;
+							}
+						}		
+					} else {
+						if (d_ci.doprn.dopr2.type) {
+							if (d_ci.doprn.dopr2.undeter.opr.operand_t == regr || d_ci.doprn.dopr2.undeter.opr.mrm.mt == regm) {
+									creg = d_ci.doprn.dopr2.undeter.opr.regr;
+							}
+						}		
+					}
+
+					if (creg == -1) continue
+				}
+			}
+
+
+		}
+	}
 }
 	
 

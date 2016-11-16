@@ -21,25 +21,26 @@ typedef struct action
 {
 	enum OPCODE_ACTION op_action;
 	char * symbol;
+	char * symbol_indir;
 	char * name;
 } action;
 
 static const action actions[] = {
-	{ASN, "=", "mov"},
-	{OPR, "+=", "add"},
-	{OPR, "-=", "sub"},
-	{OPR, "&", "and"},
-	{OPR, "|", "or"},
-	{OPR, "!", "not"},
-	{FLW, "", "jmp"},
-	{FLW, "= &", "lea"},
-	{OPR, "<<", "shl"},
-	{OPR, ">>", "shr"},
-	{FLW, "()", "call"},
-	{FLW, "return", "ret"},
-	{MEM, "", "push"},
-	{MEM, "", "pop"},
-	{OTR, "", "non"}
+	{ASN, "=", "", "mov"},
+	{OPR, "+=", "+", "add"},
+	{OPR, "-=", "-",  "sub"},
+	{OPR, "&=", "&", "and"},
+	{OPR, "|=", "|", "or"},
+	{OPR, "!=", "!", "not"},
+	{FLW, "", "", "jmp"},
+	{FLW, "= &", "&", "lea"},
+	{OPR, "<<=", "<<", "shl"},
+	{OPR, ">>=", ">>", "shr"},
+	{FLW, "()", "()", "call"},
+	{FLW, "return", "", "ret"},
+	{MEM, "", "", "push"},
+	{MEM, "", "", "pop"},
+	{OTR, "", "", "non"}
 };
 
 typedef struct opcode
