@@ -158,8 +158,8 @@ struct dec_undetermined
 
 struct dec_operand
 {
-	char * str;	//Printable string
-	int is_reg;	//If it is a register
+	//char * str;	//Printable string
+	//int is_reg;	//If it is a register
 	int type; //local(0) or undeter(1)
 	union {
 		struct dec_local local;

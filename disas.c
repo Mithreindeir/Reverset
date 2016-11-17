@@ -426,6 +426,77 @@ void print_instruction(instruction * instr)
 	}
 }
 
+void init_dec_instructions(dec_instruction * d_instrs, int num_dinstrs, instruction * instructions)
+{
+	dec_instruction d_ci;
+	char * var = "local0";
+	for (int i = 0; i < num_dinstrs; i++) {
+		
+		//var->reg first
+		instruction * ci = &instructions[i];
+		d_ci.instr = *ci;
+		d_ci.doprn.dact = ci->inst_action;
+		d_ci.first = 1;
+		d_ci.exclusive = 1;
+
+		if (ci->num_ops != 2) continue;
+
+		d_ci.doprn.num_ops = 2;
+		d_ci.doprn.dopr1.type = 1;
+		d_ci.doprn.dopr1.undeter.opr = ci->op1;
+
+		d_ci.doprn.dopr2.type = 1;
+		d_ci.doprn.dopr2.undeter.opr = ci->op2;
+
+		if (ci->op1.operand_t == mrm) {
+			if (ci->op1.mrm.regr == 5 && ci->op1.mrm.mt == 3) {
+				d_ci.doprn.dopr1.type = 0;
+				d_ci.doprn.dopr1.local.offset = TWO_COMPLEMENT(ci->op1.mrm.disp8);
+			}
+		}
+		if (ci->op2.operand_t == mrm) {
+			if (ci->op2.mrm.regr == 5 && ci->op2.mrm.mt == 3) {
+				d_ci.doprn.dopr2.type = 0;
+				d_ci.doprn.dopr2.local.offset = TWO_COMPLEMENT(ci->op2.mrm.disp8);
+			}
+		}
+		d_instrs[i] = d_ci;
+	}
+
+}
+
+int dec_operands_equal(dec_operand d1, dec_operand d2)
+{
+	if (d1.type != d2.type) return 0;
+	if (d1.type == 0 && d2.local == d1.local)
+		return 1;
+	else if (d1.type == 1 && d2.undeter == d1.undeter)
+		return 1;
+	return 0;
+}
+
+int find_usage_assignment_op1(dec_instruction * d_instrs, int num_dinstrs, int idx, dec_operand d_op)
+{
+	for (int i = idx; i < num_dinstrs; i++) {
+		dec_instruction c_dci == d_instrs[i];
+		if (c_dci.doprn.num_ops == 2) {
+			if (dec_operands_equal(c_dci.doprn.dopr1, d_op))
+				return i;
+		}
+	}
+}
+
+int find_usage_assignment_op2(dec_instruction * d_instrs, int num_dinstrs, int idx, dec_operand d_op)
+{
+	for (int i = idx; i < num_dinstrs; i++) {
+		dec_instruction c_dci == d_instrs[i];
+		if (c_dci.doprn.num_ops == 2) {
+			if (dec_operands_equal(c_dci.doprn.dopr2, d_op))
+				return i;
+		}
+	}
+}
+
 void decompile(instruction * instructions, int num_instructions)
 {
 	//S0 Operation decoding (done)
@@ -467,59 +538,8 @@ void decompile(instruction * instructions, int num_instructions)
 	dec_instruction d_ci;
 	int num_dinstr = num_instructions;
 
-	char * var = "local0";
-	for (int i = 0; i < num_instructions; i++) {
-		
-		//var->reg first
-		instruction * ci = &instructions[i];
-		d_ci.instr = *ci;
-		d_ci.doprn.dact = ci->inst_action;
-		d_ci.first = 1;
-		d_ci.exclusive = 1;
-
-		if (ci->num_ops != 2) continue;
-
-		d_ci.doprn.num_ops = 2;
-		d_ci.doprn.dopr1.type = 1;
-		d_ci.doprn.dopr1.undeter.opr = ci->op1;
-
-		d_ci.doprn.dopr2.type = 1;
-		d_ci.doprn.dopr2.undeter.opr = ci->op2;
-
-		if (ci->op1.operand_t == mrm) {
-			if (ci->op1.mrm.regr == 5 && ci->op1.mrm.mt == 3) {
-				d_ci.doprn.dopr1.type = 0;
-				d_ci.doprn.dopr1.local.offset = TWO_COMPLEMENT(ci->op1.mrm.disp8);
-				printf("local%d", d_ci.doprn.dopr1.local.offset);
-			}
-			else {
-				print_operand(ci->op1);
-
-			}
-		}
-		else {
-			print_operand(ci->op1);
-		}
-
-		printf(" %s ", ci->inst_action.symbol);
-
-		if (ci->op2.operand_t == mrm) {
-			if (ci->op2.mrm.regr == 5 && ci->op2.mrm.mt == 3) {
-				d_ci.doprn.dopr2.type = 0;
-				d_ci.doprn.dopr2.local.offset = TWO_COMPLEMENT(ci->op2.mrm.disp8);
-				printf("local%d", d_ci.doprn.dopr2.local.offset);
-			}
-			else {
-				print_operand(ci->op2);
-
-			}
-		}
-		else {
-			print_operand(ci->op2);
-		}
-		d_instrs[i] = d_ci;
-		printf("\n");
-	}
+	init_dec_instructions(d_instrs, num_dinstr, instructions);
+	
 	printf("\n");
 	for (int i = 0; i < num_dinstr; i++) {
 		d_ci = d_instrs[i];
@@ -603,8 +623,16 @@ void decompile(instruction * instructions, int num_instructions)
 						}		
 					}
 
-					if (creg == -1) continue
+					if (creg == -1) continue;
 				}
+				for (int j = i; j < num_dinstr; j++) {
+					dec_instruction d_ci2 = d_instrs[j];
+					
+					
+
+
+				}
+
 			}
 
 
