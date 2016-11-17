@@ -1,7 +1,7 @@
 # Reverset
 Reverset is a reverse engineering, and binary analysis tool.
+It currently includes an x86 disassembler, a partial elf parser, and the beginning of a decompiler.
 
-Currently working on disassembler and elf parser:
 Has plans two include a:
 
 disassembler
