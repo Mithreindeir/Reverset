@@ -156,7 +156,7 @@ struct dec_undetermined
 	operand opr;//Use previous levels deciphering
 };
 
-struct dec_operand
+typedef struct dec_operand
 {
 	//char * str;	//Printable string
 	//int is_reg;	//If it is a register
@@ -165,7 +165,7 @@ struct dec_operand
 		struct dec_local local;
 		struct dec_undetermined undeter;
 	};
-};
+} dec_operand;
 
 struct dec_operation
 {
@@ -215,5 +215,9 @@ int decode_instruction(instruction * instr, unsigned char * cb, int maxsize);
 void print_operand(operand  opr);
 void print_instruction(instruction * instr);
 
+int dec_operands_equal(dec_operand d1, dec_operand d2);
+int find_usage_assignment_op1(dec_instruction * d_instrs, int num_dinstrs, int idx, dec_operand d_op);
+int find_usage_assignment_op2(dec_instruction * d_instrs, int num_dinstrs, int idx, dec_operand d_op);
+void decompile(instruction * instructions, int num_instructions);
 
 #endif

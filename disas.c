@@ -465,20 +465,41 @@ void init_dec_instructions(dec_instruction * d_instrs, int num_dinstrs, instruct
 
 }
 
+int operands_equal(operand op1, operand op2)
+{
+	return 0;
+}
+
+
 int dec_operands_equal(dec_operand d1, dec_operand d2)
 {
+	//In context, you only need to compare the undeter if its a register
 	if (d1.type != d2.type) return 0;
-	if (d1.type == 0 && d2.local == d1.local)
+	if (d1.type == 0 && d2.local.offset == d1.local.offset)
 		return 1;
-	else if (d1.type == 1 && d2.undeter == d1.undeter)
-		return 1;
+	else if (d1.type == 1) {
+		int d1reg = d1.undeter.opr.operand_t == regr;
+	       	int d1mrm = d1.undeter.opr.mrm.mt == regm;
+
+		int d2reg = d2.undeter.opr.operand_t == regr;
+	       	int d2mrm = d2.undeter.opr.mrm.mt == regm;
+		
+		if (d1reg && d2reg) {
+			if (d2.undeter.opr.regr == d1.undeter.opr.regr)
+				return 1;
+		} else if (d1mrm && d2mrm) {
+			if (d2.undeter.opr.mrm.regr == d1.undeter.opr.mrm.regr)
+				return 1;
+		}
+		return 0;
+	}
 	return 0;
 }
 
 int find_usage_assignment_op1(dec_instruction * d_instrs, int num_dinstrs, int idx, dec_operand d_op)
 {
 	for (int i = idx; i < num_dinstrs; i++) {
-		dec_instruction c_dci == d_instrs[i];
+		dec_instruction c_dci = d_instrs[i];
 		if (c_dci.doprn.num_ops == 2) {
 			if (dec_operands_equal(c_dci.doprn.dopr1, d_op))
 				return i;
@@ -489,7 +510,7 @@ int find_usage_assignment_op1(dec_instruction * d_instrs, int num_dinstrs, int i
 int find_usage_assignment_op2(dec_instruction * d_instrs, int num_dinstrs, int idx, dec_operand d_op)
 {
 	for (int i = idx; i < num_dinstrs; i++) {
-		dec_instruction c_dci == d_instrs[i];
+		dec_instruction c_dci = d_instrs[i];
 		if (c_dci.doprn.num_ops == 2) {
 			if (dec_operands_equal(c_dci.doprn.dopr2, d_op))
 				return i;
@@ -575,23 +596,28 @@ void decompile(instruction * instructions, int num_instructions)
 	 * local8 = local4 + 2
 	 */
 	
-	int creg = -1; //current register
-	int coff = -1; //current offset var
+	int using_local = 0; //current register
+	int using_reg = 0; //current offset var
+
+	dec_operand current_local;
+	dec_operand current_reg;
+	
 	int last_instr = 0;
 	for (int i = 0; i < num_dinstr; i++) {
 		d_ci = d_instrs[i];
 		
 		if (d_ci.instr.num_ops == 2) {
-			if (coff == -1) {
+			if (!using_local) {
 				int t1, t2;
 				t1 = d_ci.doprn.dopr1.type;
 				t2 = d_ci.doprn.dopr2.type;
 				if (t1^t2) {
 					last_instr = i;
+					using_local = 1;
 					if (t1) {
-						coff = t1;
+						current_local = d_ci.doprn.dopr1;
 					} else {
-						coff = t2;
+						current_local = d_ci.doprn.dopr2;
 					}
 				} else {
 					continue;
@@ -599,32 +625,36 @@ void decompile(instruction * instructions, int num_instructions)
 			} else {
 				//Find which operand is coff
 				int op; //0 or 1
-				if (!d_ci.doprn.dopr1.type&& d_ci.doprn.dopr1.local.offset == coff) {
+				if (dec_operands_equal(d_ci.doprn.dopr1, current_local)) {
 					op = 0;
-				} else if (!d_ci.doprn.dopr2.type&& d_ci.doprn.dopr2.local.offset == coff) {
+				} else if (dec_operands_equal(d_ci.doprn.dopr2, current_local)) {
 					op = 1;
 				} else {
 					continue;
 				}
 
 
-				if (creg == -1) {
+				if (!using_reg) {
 					if (op) {
 						if (d_ci.doprn.dopr1.type) {
+
 							if (d_ci.doprn.dopr1.undeter.opr.operand_t == regr || d_ci.doprn.dopr1.undeter.opr.mrm.mt == regm) {
-									creg = d_ci.doprn.dopr1.undeter.opr.regr;
+								current_reg = d_ci.doprn.dopr1;
 							}
 						}		
 					} else {
 						if (d_ci.doprn.dopr2.type) {
+
 							if (d_ci.doprn.dopr2.undeter.opr.operand_t == regr || d_ci.doprn.dopr2.undeter.opr.mrm.mt == regm) {
-									creg = d_ci.doprn.dopr2.undeter.opr.regr;
+							
+								current_reg = d_ci.doprn.dopr2;
 							}
 						}		
 					}
 
-					if (creg == -1) continue;
+					if (!using_reg) continue;
 				}
+				//int next_assn = find_dec_
 				for (int j = i; j < num_dinstr; j++) {
 					dec_instruction d_ci2 = d_instrs[j];
 					
