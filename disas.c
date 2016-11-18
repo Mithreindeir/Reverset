@@ -305,6 +305,7 @@ void string_to_hex(char * str, unsigned char * out)
 
 void print_operand(operand opr)
 {
+
 	switch (opr.operand_t) {
 		case regr:
 			printf("%s", registers[opr.regr].names[2]);
@@ -505,6 +506,7 @@ int find_usage_assignment_op1(dec_instruction * d_instrs, int num_dinstrs, int i
 				return i;
 		}
 	}
+	return -1;
 }
 
 int find_usage_assignment_op2(dec_instruction * d_instrs, int num_dinstrs, int idx, dec_operand d_op)
@@ -516,6 +518,7 @@ int find_usage_assignment_op2(dec_instruction * d_instrs, int num_dinstrs, int i
 				return i;
 		}
 	}
+	return -1;
 }
 
 void decompile(instruction * instructions, int num_instructions)
@@ -601,7 +604,7 @@ void decompile(instruction * instructions, int num_instructions)
 
 	dec_operand current_local;
 	dec_operand current_reg;
-	
+
 	int last_instr = 0;
 	for (int i = 0; i < num_dinstr; i++) {
 		d_ci = d_instrs[i];
@@ -614,7 +617,7 @@ void decompile(instruction * instructions, int num_instructions)
 				if (t1^t2) {
 					last_instr = i;
 					using_local = 1;
-					if (t1) {
+					if (!t1) {
 						current_local = d_ci.doprn.dopr1;
 					} else {
 						current_local = d_ci.doprn.dopr2;
@@ -632,13 +635,13 @@ void decompile(instruction * instructions, int num_instructions)
 				} else {
 					continue;
 				}
-
-
 				if (!using_reg) {
+					
 					if (op) {
 						if (d_ci.doprn.dopr1.type) {
 
 							if (d_ci.doprn.dopr1.undeter.opr.operand_t == regr || d_ci.doprn.dopr1.undeter.opr.mrm.mt == regm) {
+								using_reg = 1;
 								current_reg = d_ci.doprn.dopr1;
 							}
 						}		
@@ -646,7 +649,7 @@ void decompile(instruction * instructions, int num_instructions)
 						if (d_ci.doprn.dopr2.type) {
 
 							if (d_ci.doprn.dopr2.undeter.opr.operand_t == regr || d_ci.doprn.dopr2.undeter.opr.mrm.mt == regm) {
-							
+								using_reg = 1;
 								current_reg = d_ci.doprn.dopr2;
 							}
 						}		
@@ -654,15 +657,23 @@ void decompile(instruction * instructions, int num_instructions)
 
 					if (!using_reg) continue;
 				}
-				//int next_assn = find_dec_
-				for (int j = i; j < num_dinstr; j++) {
-					dec_instruction d_ci2 = d_instrs[j];
+				
+				int nidx = i;
+				while (nidx < num_dinstr) {
+					int first_assn = find_usage_assignment_op2(d_instrs, num_dinstr, nidx, current_reg);
 					
-					
-
-
+					if (first_assn == -1)
+						break;
+					int j = 0;
+					for (j = nidx; j < first_assn; j++) {
+						dec_instruction d_ci2 = d_instrs[j];
+						
+					}
+					nidx = j+1;
+				
 				}
-
+				using_local = 0;
+				using_reg = 0;
 			}
 
 
