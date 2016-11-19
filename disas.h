@@ -156,7 +156,9 @@ struct dec_undetermined
 	operand opr;//Use previous levels deciphering
 };
 
-typedef struct dec_operand
+typedef struct dec_operand dec_operand;
+
+struct dec_operand
 {
 	//char * str;	//Printable string
 	//int is_reg;	//If it is a register
@@ -165,7 +167,18 @@ typedef struct dec_operand
 		struct dec_local local;
 		struct dec_undetermined undeter;
 	};
-} dec_operand;
+	//for chained operands
+	/*
+	 *Single =
+	 *eax = 5
+	 *Chain = 
+	 *eax = local4 + 2
+	 *
+	 */
+	int first;
+	action opr_action;
+	dec_operand * next;
+};
 
 struct dec_operation
 {
@@ -181,6 +194,7 @@ typedef struct dec_instruction
 	int first;	//If this is the only operation on the line
 	instruction instr;
 	struct dec_operation doprn;
+	//dec_instruction * next; // Compound statement
 } dec_instruction;
 
 //Segment registers

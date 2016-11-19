@@ -474,8 +474,10 @@ int operands_equal(operand op1, operand op2)
 
 int dec_operands_equal(dec_operand d1, dec_operand d2)
 {
+
 	//In context, you only need to compare the undeter if its a register
 	if (d1.type != d2.type) return 0;
+	
 	if (d1.type == 0 && d2.local.offset == d1.local.offset)
 		return 1;
 	else if (d1.type == 1) {
@@ -490,6 +492,12 @@ int dec_operands_equal(dec_operand d1, dec_operand d2)
 				return 1;
 		} else if (d1mrm && d2mrm) {
 			if (d2.undeter.opr.mrm.regr == d1.undeter.opr.mrm.regr)
+				return 1;
+		} else if (d1reg && d2mrm) {
+			if (d1.undeter.opr.regr == d2.undeter.opr.mrm.regr)
+				return 1;
+		} else if (d1mrm && d2reg) {
+			if (d1.undeter.opr.mrm.regr == d2.undeter.opr.regr) 
 				return 1;
 		}
 		return 0;
@@ -520,6 +528,8 @@ int find_usage_assignment_op2(dec_instruction * d_instrs, int num_dinstrs, int i
 	}
 	return -1;
 }
+
+
 
 void decompile(instruction * instructions, int num_instructions)
 {
@@ -665,13 +675,31 @@ void decompile(instruction * instructions, int num_instructions)
 					if (first_assn == -1)
 						break;
 					int j = 0;
-					for (j = nidx; j < first_assn; j++) {
+
+					print_operand(current_reg.undeter.opr);
+					printf(" = ");
+					printf("local%d", current_local.local.offset);
+					for (j = nidx+1; j < first_assn; j++) {
 						dec_instruction d_ci2 = d_instrs[j];
-						
+
+						if (!dec_operands_equal(current_reg, d_ci2.doprn.dopr1)) {
+							continue;	
+						}
+
+						printf(" %s ", d_ci2.doprn.dact.symbol_indir);
+			
+						if (d_ci2.doprn.dopr2.type) {
+							print_operand(d_ci2.doprn.dopr2.undeter.opr);
+						} else {
+							printf("local%d", d_ci2.doprn.dopr2.local.offset);
+						}
+
+
 					}
+					printf(" ");
 					nidx = j+1;
-				
 				}
+				printf("\n");
 				using_local = 0;
 				using_reg = 0;
 			}
