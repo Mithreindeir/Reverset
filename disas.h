@@ -232,6 +232,9 @@ void print_instruction(instruction * instr);
 int dec_operands_equal(dec_operand d1, dec_operand d2);
 int find_usage_assignment_op1(dec_instruction * d_instrs, int num_dinstrs, int idx, dec_operand d_op);
 int find_usage_assignment_op2(dec_instruction * d_instrs, int num_dinstrs, int idx, dec_operand d_op);
+
+void init_dec_instructions(dec_instruction * d_instrs, int num_dinstr, instruction * instructions);
+void print_dec_instructions(dec_instruction * d_instrs, int num_dinstrs);
 void decompile(instruction * instructions, int num_instructions);
 
 #endif
