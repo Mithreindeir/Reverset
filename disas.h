@@ -173,7 +173,6 @@ struct dec_operand
 	 *eax = 5
 	 *Chain = 
 	 *eax = local4 + 2
-	 *
 	 */
 	int first;
 	action opr_action;
@@ -195,6 +194,7 @@ typedef struct dec_instruction
 	instruction instr;
 	struct dec_operation doprn;
 	//dec_instruction * next; // Compound statement
+	int invalid;
 } dec_instruction;
 
 //Segment registers

@@ -439,15 +439,18 @@ void init_dec_instructions(dec_instruction * d_instrs, int num_dinstrs, instruct
 		d_ci.doprn.dact = ci->inst_action;
 		d_ci.first = 1;
 		d_ci.exclusive = 1;
+		d_ci.invalid = 0;
 
 		if (ci->num_ops != 2) continue;
 
 		d_ci.doprn.num_ops = 2;
 		d_ci.doprn.dopr1.type = 1;
 		d_ci.doprn.dopr1.undeter.opr = ci->op1;
+		d_ci.doprn.dopr1.next = NULL;
 
 		d_ci.doprn.dopr2.type = 1;
 		d_ci.doprn.dopr2.undeter.opr = ci->op2;
+		d_ci.doprn.dopr2.next = NULL;
 
 		if (ci->op1.operand_t == mrm) {
 			if (ci->op1.mrm.regr == 5 && ci->op1.mrm.mt == 3) {
@@ -529,7 +532,58 @@ int find_usage_assignment_op2(dec_instruction * d_instrs, int num_dinstrs, int i
 	return -1;
 }
 
-
+void print_dec_instructions(dec_instruction * d_instrs, int num_dinstr)
+{
+	printf(RESET);
+	printf(MAG);	
+	printf("\n");
+	dec_instruction d_ci;
+	for (int i = 0; i < num_dinstr; i++) {
+		d_ci = d_instrs[i];
+		
+		if (d_ci.instr.num_ops == 2) {
+			printf(RESET);
+			printf(MAG);
+			if (d_ci.invalid) {
+				printf(RESET);
+				printf(CYN);
+				printf("//");
+			}
+			
+			if (d_ci.doprn.dopr1.type) {
+				print_operand(d_ci.doprn.dopr1.undeter.opr);
+			} else {
+				printf("local%d", d_ci.doprn.dopr1.local.offset);
+			}
+			
+			printf(" %s ", d_ci.doprn.dact.symbol);
+				
+			if (d_ci.doprn.dopr2.type) {
+				print_operand(d_ci.doprn.dopr2.undeter.opr);
+			} else {
+				printf("local%d", d_ci.doprn.dopr2.local.offset);
+			}
+			int i = 5;
+			
+			dec_operand d_n = d_ci.doprn.dopr2;
+			if (d_ci.doprn.dopr2.next) {
+				while (d_n.next) {
+					printf(" %s ", d_n.opr_action.symbol_indir);
+					
+					if (d_n.next->type) {
+						print_operand(d_n.next->undeter.opr);
+					} else {
+						printf("local%d", d_n.next->local.offset);
+					}
+					
+					d_n = *d_n.next;
+				}
+			}
+		}
+		printf("\n");
+	}
+	printf(RESET);
+}
 
 void decompile(instruction * instructions, int num_instructions)
 {
@@ -538,6 +592,8 @@ void decompile(instruction * instructions, int num_instructions)
 	//S2 Type inference, and variable replacing
 	//S3 redundancy removal
 	
+	
+	/*	
 	for (int i = 0; i < num_instructions; i++) {
 		instruction instr = instructions[i];
 		printf(RESET);
@@ -551,6 +607,9 @@ void decompile(instruction * instructions, int num_instructions)
 		}
 		printf("\n");
 	}
+	*/
+
+
 	printf("\n");
 	//At this point it becomes invalid assembly (technically)
 
@@ -573,28 +632,7 @@ void decompile(instruction * instructions, int num_instructions)
 	int num_dinstr = num_instructions;
 
 	init_dec_instructions(d_instrs, num_dinstr, instructions);
-	
-	printf("\n");
-	for (int i = 0; i < num_dinstr; i++) {
-		d_ci = d_instrs[i];
-		
-		if (d_ci.instr.num_ops == 2) {
-			if (d_ci.doprn.dopr1.type) {
-				print_operand(d_ci.doprn.dopr1.undeter.opr);
-			} else {
-				printf("local%d", d_ci.doprn.dopr1.local.offset);
-			}
-			
-			printf(" %s ", d_ci.doprn.dact.symbol);
-				
-			if (d_ci.doprn.dopr2.type) {
-				print_operand(d_ci.doprn.dopr2.undeter.opr);
-			} else {
-				printf("local%d", d_ci.doprn.dopr2.local.offset);
-			}
-		}
-		printf("\n");
-	}
+	print_dec_instructions(d_instrs, num_dinstr);
 	//Find assignment to register
 	//Then find when register is not the 
 	//first operand, and work backwards to find
@@ -671,31 +709,30 @@ void decompile(instruction * instructions, int num_instructions)
 				int nidx = i;
 				while (nidx < num_dinstr) {
 					int first_assn = find_usage_assignment_op2(d_instrs, num_dinstr, nidx, current_reg);
-					
+					dec_instruction * d_cng = &d_instrs[first_assn];
 					if (first_assn == -1)
 						break;
 					int j = 0;
 
-					print_operand(current_reg.undeter.opr);
-					printf(" = ");
-					printf("local%d", current_local.local.offset);
+					d_cng->doprn.dopr2 = current_local;
+					d_cng->doprn.dopr2.first = 1;
+					d_cng->doprn.dopr2.next = NULL;					
+					dec_operand * c_op = &d_cng->doprn.dopr2;
+					
+					d_instrs[nidx].invalid = 1;
 					for (j = nidx+1; j < first_assn; j++) {
 						dec_instruction d_ci2 = d_instrs[j];
 
 						if (!dec_operands_equal(current_reg, d_ci2.doprn.dopr1)) {
 							continue;	
 						}
+						d_instrs[j].invalid = 1;
 
-						printf(" %s ", d_ci2.doprn.dact.symbol_indir);
-			
-						if (d_ci2.doprn.dopr2.type) {
-							print_operand(d_ci2.doprn.dopr2.undeter.opr);
-						} else {
-							printf("local%d", d_ci2.doprn.dopr2.local.offset);
-						}
-
-
+						c_op->next = &d_instrs[j].doprn.dopr2;
+						c_op->opr_action = d_ci2.doprn.dact;
+						c_op = c_op->next;
 					}
+	
 					printf(" ");
 					nidx = j+1;
 				}
@@ -707,6 +744,8 @@ void decompile(instruction * instructions, int num_instructions)
 
 		}
 	}
+
+	print_dec_instructions(d_instrs, num_dinstr);
 }
 	
 
