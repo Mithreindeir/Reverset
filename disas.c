@@ -188,24 +188,34 @@ int decode_rm(operand * opr, unsigned char * cb, int size)
 	return offset+1;
 }
 
-int decode_operands(instruction * instr, unsigned char * cb, int dir, int size, int immediate)
+int decode_operands(instruction * instr, unsigned char * cb, int dir, int size, int immediate, int rpc)
 {
 	int b = 0;
 	unsigned char reg = MASK_MODRM_REG(*cb);
 	if(immediate) {
 		int o = 1;
-		o = decode_rm(&instr->op1, cb, size);
-		instr->op2.imm8 = *(cb+o);
+		if (!rpc) o = decode_rm(&instr->op1, cb, size);
+		else o = 0;
+		if (instr->op2.operand_t == imm32) {
+			//Assumes little endian
+			instr->op2.imm32[3] = *(cb+o);
+			instr->op2.imm32[2] = *(cb+o+1);
+			instr->op2.imm32[1] = *(cb+o+2);
+			instr->op2.imm32[0] = *(cb+o+3);
+			b += 3;
+		} else {
+			instr->op2.imm8 = *(cb+o);
+		}
 		b += o;
 		b++;
 	} else {
 		if (dir) {
 			//RM->REG so REG, RM
-			instr->op1.regr = reg;
+			if (!rpc) instr->op1.regr = reg;
 			b += decode_rm(&instr->op2, cb, size);
 		} else {
 			//REG->RM so RM, REG
-			b += decode_rm(&instr->op1, cb, size);
+			if (!rpc) b += decode_rm(&instr->op1, cb, size);
 			instr->op2.regr = reg;
 		}
 	}
@@ -272,7 +282,10 @@ int decode_instruction(instruction * instr, unsigned char * cb, int maxsize)
 	instr->op2.operand_t = op.arg2;
 	instr->num_ops = num;
 	if (num == 2 || op.v == 0xFF)  {
-		idx += decode_operands(instr, cb+idx, op.arg1 == REG, op.s || 1, op.arg2 == IMM);	
+		idx += decode_operands(instr, cb+idx, op.arg1 == REG, op.s || 1, (op.arg2 == IMM8 || op.arg2 == IMM32), op.arg1 == RPC);
+		if (op.arg1 == RPC) {
+			instr->op1.rpc = op.v - op.mor;
+		}
 	} else if(num == 1) {
 		if (op.arg1 == RPC) {
 			instr->op1.rpc = op.v - op.mor;
@@ -366,13 +379,16 @@ void print_operand(operand opr)
 					break;
 			}
 			break;
-		case imm:
-			if (0 && opr.size) {
-				//print_hex_long(opr.imm32, 0);
-				printf("%d", opr.imm32);
-			} else {
-				printf("%d", opr.imm8);
-				//print_hex(opr.imm8);
+		case imm8:
+			printf("%d", opr.imm8);
+			break;
+		case imm32:
+			printf("0x");
+			int front = 1;
+			for (int i = 0; i < 4; i++) {
+				if (opr.imm32[i] == 0 && front && i < 3) continue;
+				printf("%02x", opr.imm32[i]);
+				front = 0;
 			}
 			break;
 		case rel8:
@@ -512,7 +528,7 @@ int find_usage_assignment_op1(dec_instruction * d_instrs, int num_dinstrs, int i
 {
 	for (int i = idx; i < num_dinstrs; i++) {
 		dec_instruction c_dci = d_instrs[i];
-		if (c_dci.doprn.num_ops == 2) {
+		if (c_dci.doprn.num_ops == 2 && (c_dci.instr.inst_action.op_action == ASN)) {
 			if (dec_operands_equal(c_dci.doprn.dopr1, d_op))
 				return i;
 		}
@@ -524,7 +540,7 @@ int find_usage_assignment_op2(dec_instruction * d_instrs, int num_dinstrs, int i
 {
 	for (int i = idx; i < num_dinstrs; i++) {
 		dec_instruction c_dci = d_instrs[i];
-		if (c_dci.doprn.num_ops == 2) {
+		if (c_dci.doprn.num_ops == 2 && (c_dci.instr.inst_action.op_action == ASN)) {
 			if (dec_operands_equal(c_dci.doprn.dopr2, d_op))
 				return i;
 		}
@@ -545,9 +561,7 @@ void print_dec_instructions(dec_instruction * d_instrs, int num_dinstr)
 			printf(RESET);
 			printf(MAG);
 			if (d_ci.invalid) {
-				printf(RESET);
-				printf(CYN);
-				printf("//");
+				continue;
 			}
 			
 			if (d_ci.doprn.dopr1.type) {
@@ -705,7 +719,8 @@ void decompile(instruction * instructions, int num_instructions)
 
 					if (!using_reg) continue;
 				}
-				
+				if (d_ci.instr.inst_action.op_action != ASN && dec_operands_equal(d_ci.doprn.dopr1, current_reg))
+					continue;
 				int nidx = i;
 				while (nidx < num_dinstr) {
 					int first_assn = find_usage_assignment_op2(d_instrs, num_dinstr, nidx, current_reg);
@@ -727,16 +742,17 @@ void decompile(instruction * instructions, int num_instructions)
 							continue;	
 						}
 						d_instrs[j].invalid = 1;
-
+						if (dec_operands_equal(current_reg, d_ci2.doprn.dopr2)) {
+							d_instrs[j].doprn.dopr2 = current_local;									}
 						c_op->next = &d_instrs[j].doprn.dopr2;
 						c_op->opr_action = d_ci2.doprn.dact;
 						c_op = c_op->next;
+						
+							
 					}
 	
-					printf(" ");
 					nidx = j+1;
 				}
-				printf("\n");
 				using_local = 0;
 				using_reg = 0;
 			}

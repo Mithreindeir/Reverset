@@ -92,7 +92,8 @@ enum opr_t
 {
 	regr,
 	mrm,
-	imm,
+	imm8,
+	imm32,
 	rpc,
 	rel8,
 	rel1632,
@@ -220,7 +221,7 @@ void print_hex(unsigned char v);
 void printfhex(unsigned char v);
 
 int decode_rm(operand * opr, unsigned char * cb, int size);
-int decode_operands(instruction * instr, unsigned char * cb, int dir, int size, int immediate);
+int decode_operands(instruction * instr, unsigned char * cb, int dir, int size, int immediate, int rpc);
 
 opcode find_opcode(unsigned char v, unsigned char next);
 int decode_instruction(instruction * instr, unsigned char * cb, int maxsize);
