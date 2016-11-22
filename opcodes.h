@@ -16,7 +16,24 @@ enum OPCODE_ACTION
 	OPR,	//Operation (add, sub, mul, div...)
 	FLW,	//Program Flow (jmp, call...)
 	MEM,	//Memory (push, pop...)
+	CMP,
+	COND,
 	OTR	//Other
+};
+
+typedef struct condition
+{
+	char * symbol;		//Opposite symbol, because jump "skips" over things, so conditions are to not skip it
+	char * name;		//Jump instruction attributes to it
+} condition;
+
+static const condition conditions[] = {
+	{">=", "jl"},
+	{">", "jle"},
+	{"<=", "jg"},
+	{"<", "jge"},
+	{"==", "jne"},
+	{"!=", "je"}
 };
 typedef struct action
 {
@@ -34,7 +51,14 @@ static const action actions[] = {
 	{OPR, "|=", "|", "or"},
 	{OPR, "!=", "!", "not"},
 	{OPR, "^=", "^", "xor"},
-	{FLW, "", "", "jmp"},
+	{FLW, "jump", "jump", "jmp"},
+	{FLW, "jump less than or equal to", "jump less than or equal to", "jle"},
+	{FLW, "jump equal", "jump equal", "je"},
+	{FLW, "jump not equal", "jump not equal", "jne"},
+	{FLW, "jump greater than or equal to", "jump greater than or equal to", "jge"},
+	{FLW, "jump greater than", "jump greater than", "jg"},
+	{FLW, "jump not signed", "jump not signed", "jns"},
+	{FLW, "jump signed", "jump signed", "js"},
 	{FLW, "= &", "&", "lea"},
 	{OPR, "<<=", "<<", "shl"},
 	{OPR, ">>=", ">>", "shr"},
@@ -43,6 +67,14 @@ static const action actions[] = {
 	{FLW, "return", "", "ret"},
 	{MEM, "", "", "push"},
 	{MEM, "", "", "pop"},
+	{CMP, "cmp", "cmp", "cmp"},
+	//Include conditions
+	{COND, ">=", ">=", "l"},
+	{COND, ">", ">", "le"},
+	{COND, "<=", "<=", "g"},
+	{COND, "<", "<", "ge"},
+	{COND,"==", "==", "ne"},
+	{COND, "!=", "!=", "e"},
 	{OTR, "", "", "non"}
 };
 
@@ -87,7 +119,7 @@ static const opcode opcodes[] = {
 	{0x8b, 0x00, 1, 1, 0, REG, MRM, NON, "mov"},
 	//{0xb8, 0x00, 0, 0, 0, MRM, IMM, NON, "mov"},
 	{0x74, 0x00, 0, 0, 0, REL8, NON, NON, "je"},
-	{0x75, 0x00, 0, 0, 0, REL8, NON, NON, "jnz"},
+	{0x75, 0x00, 0, 0, 0, REL8, NON, NON, "jne"},
 	{0x76, 0x00, 0, 0, 0, REL8, NON, NON, "jbe"},
 	{0x77, 0x00, 0, 0, 0, REL8, NON, NON, "jnbe"},
 	{0x78, 0x00, 0, 0, 0, REL8, NON, NON, "js"},

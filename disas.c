@@ -273,7 +273,7 @@ int decode_instruction(instruction * instr, unsigned char * cb, int maxsize)
 	opcode op = find_opcode(cmd, cb[idx]);
 	int num = (op.arg1 != NON) + (op.arg2 != NON) + (op.arg3 != NON);
 	if (op.arg1 == MRM || op.arg1 == REG) for (int i = 0; i < num; i++) printfhex(cb[idx+i]);
-	else if (op.arg1 == REL8) printfhex(cb[idx+1]);
+	else if (op.arg1 == REL8) printfhex(cb[idx]);
 	else if (op.arg1 == REL1632) print_hex_long(cb+idx, 0); 
 	printf(RESET);
 	printf("\t");
@@ -290,7 +290,7 @@ int decode_instruction(instruction * instr, unsigned char * cb, int maxsize)
 		if (op.arg1 == RPC) {
 			instr->op1.rpc = op.v - op.mor;
 		} else if(op.arg1 == REL8) {
-			instr->op1.imm8 = cb[idx];
+			instr->op1.rel8 = cb[idx];
 			idx++;
 		} else if(op.arg1 == REL1632) {
 			memcpy(instr->op1.rel1632, cb+idx, 4);
@@ -380,7 +380,7 @@ void print_operand(operand opr)
 			}
 			break;
 		case imm8:
-			printf("%d", opr.imm8);
+			printf("0x%x", opr.imm8);
 			break;
 		case imm32:
 			printf("0x");
@@ -392,7 +392,7 @@ void print_operand(operand opr)
 			}
 			break;
 		case rel8:
-			printfhex(rel8);
+			printfhex(opr.rel8);
 			break;
 		case rel1632:
 
@@ -593,60 +593,25 @@ void print_dec_instructions(dec_instruction * d_instrs, int num_dinstr)
 					d_n = *d_n.next;
 				}
 			}
+		} else {
+			printf("THIS");
+			printf(RESET);
+			printf(MAG);
+			if (d_ci.invalid) {
+				continue;
+			}
+
+			printf("%s", d_ci.instr.inst_action.symbol);
+
 		}
 		printf("\n");
 	}
 	printf(RESET);
 }
 
-void decompile(instruction * instructions, int num_instructions)
+void dec_part1(dec_instruction * d_instrs, int num_dinstr)
 {
-	//S0 Operation decoding (done)
-	//S1 Operand Aliasing
-	//S2 Type inference, and variable replacing
-	//S3 redundancy removal
-	
-	
-	/*	
-	for (int i = 0; i < num_instructions; i++) {
-		instruction instr = instructions[i];
-		printf(RESET);
-		printf(MAG);	
-		printf("; ");
-			
-		if (instr.num_ops == 2) {
-			print_operand(instr.op1);
-			printf(" %s ", instr.inst_action.symbol);
-			print_operand(instr.op2);
-		}
-		printf("\n");
-	}
-	*/
-
-
-	printf("\n");
-	//At this point it becomes invalid assembly (technically)
-
-	//S2
-	//Find creation of a variable
-	//Trace all instances of it backwards
-	//Places where a register is set to it, it is an indirect reference
-	//example: Tracing variable "var1", instruction = "mov eax, dword [ebp-4]"
-	//This may be used for something like "var2 = var1 + 5;"
-	//However, if the register is transfered back to the variable, it is directly being used
-	//"mov dword [ebp-4], eax"
-	//Find transfer from reg->var for direct
-	//Find transfer from var->reg for indirect
-	
-	//Stack first
-	//First replace all instructions with displacements to ebp
-	//with variable
-	dec_instruction * d_instrs = malloc(num_instructions * sizeof(dec_instruction));
 	dec_instruction d_ci;
-	int num_dinstr = num_instructions;
-
-	init_dec_instructions(d_instrs, num_dinstr, instructions);
-	print_dec_instructions(d_instrs, num_dinstr);
 	//Find assignment to register
 	//Then find when register is not the 
 	//first operand, and work backwards to find
@@ -761,9 +726,65 @@ void decompile(instruction * instructions, int num_instructions)
 		}
 	}
 
+
+}	
+
+
+void decompile(instruction * instructions, int num_instructions)
+{
+	//S0 Operation decoding (done)
+	//S1 Operand Aliasing
+	//S2 Type inference, and variable replacing
+	//S3 redundancy removal
+	//S4 Loop creation
+	//S5 Language Validation	
+	
+	/*	
+	for (int i = 0; i < num_instructions; i++) {
+		instruction instr = instructions[i];
+		printf(RESET);
+		printf(MAG);	
+		printf("; ");
+			
+		if (instr.num_ops == 2) {
+			print_operand(instr.op1);
+			printf(" %s ", instr.inst_action.symbol);
+			print_operand(instr.op2);
+		}
+		printf("\n");
+	}
+	*/
+
+
+	printf("\n");
+	//At this point it becomes invalid assembly (technically)
+
+	//S2
+	//Find creation of a variable
+	//Trace all instances of it backwards
+	//Places where a register is set to it, it is an indirect reference
+	//example: Tracing variable "var1", instruction = "mov eax, dword [ebp-4]"
+	//This may be used for something like "var2 = var1 + 5;"
+	//However, if the register is transfered back to the variable, it is directly being used
+	//"mov dword [ebp-4], eax"
+	//Find transfer from reg->var for direct
+	//Find transfer from var->reg for indirect
+	
+	//Stack first
+	//First replace all instructions with displacements to ebp
+	//with variable
+	dec_instruction * d_instrs = malloc(num_instructions * sizeof(dec_instruction));
+	int num_dinstr = num_instructions;
+
+	init_dec_instructions(d_instrs, num_dinstr, instructions);
+	print_dec_instructions(d_instrs, num_dinstr);
+
+	//Steps 1-4
+	dec_part1(d_instrs, num_dinstr);
+
 	print_dec_instructions(d_instrs, num_dinstr);
 }
-	
+
 
 
 int main(int argc, char ** argv)

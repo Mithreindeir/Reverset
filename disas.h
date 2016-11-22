@@ -188,6 +188,14 @@ struct dec_operation
 	struct dec_operand dopr2;
 };
 
+typedef struct dec_condition
+{
+	int num_ops;
+	struct dec_operand dopr1;
+	struct dec_operand dopr2;
+	condition cond;
+} dec_condition;
+
 typedef struct dec_instruction
 {
 	int exclusive;	//If this is the only operation on the line
@@ -237,5 +245,6 @@ int find_usage_assignment_op2(dec_instruction * d_instrs, int num_dinstrs, int i
 void init_dec_instructions(dec_instruction * d_instrs, int num_dinstr, instruction * instructions);
 void print_dec_instructions(dec_instruction * d_instrs, int num_dinstrs);
 void decompile(instruction * instructions, int num_instructions);
+void dec_part1(dec_instruction * d_instrs, int num_dinstr);
 
 #endif
