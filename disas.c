@@ -296,7 +296,8 @@ int decode_instruction(instruction * instr, unsigned char * cb, int maxsize)
 			memcpy(instr->op1.rel1632, cb+idx, 4);
 			idx += 3; //Should be 4, but - 1 for operand byte, since addr follow opcode
 		}
-	}	
+	}
+	instr->ub = idx;	
 	return idx;
 }
 void string_to_hex(char * str, unsigned char * out)
@@ -410,7 +411,7 @@ action find_action(char * name)
 	for (i = 0; i < (sizeof(actions)/sizeof(action)); i++) {
 		if (!strcmp(name, actions[i].name)) return actions[i];
 	}
-	return actions[i];
+	return actions[i-1];
 }
 
 void print_instruction(instruction * instr)
@@ -457,28 +458,44 @@ void init_dec_instructions(dec_instruction * d_instrs, int num_dinstrs, instruct
 		d_ci.exclusive = 1;
 		d_ci.invalid = 0;
 
-		if (ci->num_ops != 2) continue;
-
-		d_ci.doprn.num_ops = 2;
-		d_ci.doprn.dopr1.type = 1;
-		d_ci.doprn.dopr1.undeter.opr = ci->op1;
-		d_ci.doprn.dopr1.next = NULL;
-
-		d_ci.doprn.dopr2.type = 1;
-		d_ci.doprn.dopr2.undeter.opr = ci->op2;
-		d_ci.doprn.dopr2.next = NULL;
-
-		if (ci->op1.operand_t == mrm) {
-			if (ci->op1.mrm.regr == 5 && ci->op1.mrm.mt == 3) {
-				d_ci.doprn.dopr1.type = 0;
-				d_ci.doprn.dopr1.local.offset = TWO_COMPLEMENT(ci->op1.mrm.disp8);
+		if (ci->num_ops == 2) {
+	
+			d_ci.doprn.num_ops = 2;
+			d_ci.doprn.dopr1.type = 1;
+			d_ci.doprn.dopr1.undeter.opr = ci->op1;
+			d_ci.doprn.dopr1.next = NULL;
+	
+			d_ci.doprn.dopr2.type = 1;
+			d_ci.doprn.dopr2.undeter.opr = ci->op2;
+			d_ci.doprn.dopr2.next = NULL;
+	
+			if (ci->op1.operand_t == mrm) {
+				if (ci->op1.mrm.regr == 5 && ci->op1.mrm.mt == 3) {
+					d_ci.doprn.dopr1.type = 0;
+					d_ci.doprn.dopr1.local.offset = TWO_COMPLEMENT(ci->op1.mrm.disp8);
+				}
 			}
-		}
-		if (ci->op2.operand_t == mrm) {
-			if (ci->op2.mrm.regr == 5 && ci->op2.mrm.mt == 3) {
-				d_ci.doprn.dopr2.type = 0;
-				d_ci.doprn.dopr2.local.offset = TWO_COMPLEMENT(ci->op2.mrm.disp8);
+			if (ci->op2.operand_t == mrm) {
+				if (ci->op2.mrm.regr == 5 && ci->op2.mrm.mt == 3) {
+					d_ci.doprn.dopr2.type = 0;
+					d_ci.doprn.dopr2.local.offset = TWO_COMPLEMENT(ci->op2.mrm.disp8);
+				}
 			}
+		} else if (ci->num_ops == 1) {
+			d_ci.doprn.num_ops = 2;
+			d_ci.doprn.dopr1.type = 1;
+			d_ci.doprn.dopr1.undeter.opr = ci->op1;
+			d_ci.doprn.dopr1.next = NULL;
+
+			if (ci->op1.operand_t == mrm) {
+				if (ci->op1.mrm.regr == 5 && ci->op1.mrm.mt == 3) {
+					d_ci.doprn.dopr1.type = 0;
+					d_ci.doprn.dopr1.local.offset = TWO_COMPLEMENT(ci->op1.mrm.disp8);
+				}
+			}
+
+		} else {
+			continue;
 		}
 		d_instrs[i] = d_ci;
 	}
@@ -554,9 +571,15 @@ void print_dec_instructions(dec_instruction * d_instrs, int num_dinstr)
 	printf(MAG);	
 	printf("\n");
 	dec_instruction d_ci;
+	int c = 0;
 	for (int i = 0; i < num_dinstr; i++) {
 		d_ci = d_instrs[i];
 		
+		if (d_ci.instr.num_ops > 0 && !d_ci.invalid && strcmp(d_ci.doprn.dact.name, "non")) {
+			printf("%d: ", c);
+			c++;
+		}
+
 		if (d_ci.instr.num_ops == 2) {
 			printf(RESET);
 			printf(MAG);
@@ -593,8 +616,35 @@ void print_dec_instructions(dec_instruction * d_instrs, int num_dinstr)
 					d_n = *d_n.next;
 				}
 			}
+		} else if (d_ci.instr.num_ops == 1) {
+
+			if (!strcmp(d_ci.doprn.dact.name, "non")) {
+				continue;
+			}
+			printf("%s ", d_ci.doprn.dact.symbol);
+			
+			if (d_ci.doprn.dopr1.type) {
+				print_operand(d_ci.doprn.dopr1.undeter.opr);
+			} else {
+				printf("local%d", d_ci.doprn.dopr1.local.offset);
+			}
+
+			dec_operand d_n = d_ci.doprn.dopr1;
+			if (d_ci.doprn.dopr1.next) {
+				while (d_n.next) {
+					printf(" %s ", d_n.opr_action.symbol_indir);
+					
+					if (d_n.next->type) {
+						print_operand(d_n.next->undeter.opr);
+					} else {
+						printf("local%d", d_n.next->local.offset);
+					}
+					
+					d_n = *d_n.next;
+				}
+			}
 		} else {
-			printf("THIS");
+			continue;
 			printf(RESET);
 			printf(MAG);
 			if (d_ci.invalid) {
@@ -730,6 +780,53 @@ void dec_part1(dec_instruction * d_instrs, int num_dinstr)
 }	
 
 
+void dec_part2(dec_instruction * d_instrs, int num_dinstr)
+{
+	//First change jumps from bytes to instruction indexes
+	dec_instruction  d_ci;	
+
+	for (int i = 0; i < num_dinstr; i++) {
+		d_ci = d_instrs[i];
+		if (d_ci.instr.inst_action.op_action == FLW && d_ci.instr.num_ops > 0) {
+			signed char dist = d_ci.doprn.dopr1.undeter.opr.rel8;
+			int j = 0, c = 0;
+			if (dist > 0) {
+				for (j = i+1; j < num_dinstr; j++) {
+					
+					dist -= d_instrs[j].instr.ub;
+					if (dist <= 0) {
+						j++;
+						break;
+					}
+				}
+				for (int k = 0; k < j; k++) {
+
+					if (d_instrs[k].instr.num_ops <= 0 || d_instrs[k].invalid || !strcmp(d_instrs[k].doprn.dact.name, "non")) 
+						c++;
+				}
+
+				d_instrs[i].doprn.dopr1.undeter.opr.rel8 = j-c;
+
+		       	} else {
+				for (j = i-1; j >= 0; j--) {
+					dist += d_instrs[j].instr.ub;
+					if (dist >= 0) {
+						j--;
+						break;
+					}
+				}
+				for (int k = 0; k < j; k++) {
+
+					if (d_instrs[k].instr.num_ops <= 0 || d_instrs[k].invalid || !strcmp(d_instrs[k].doprn.dact.name, "non")) 
+						c++;
+				}
+				d_instrs[i].doprn.dopr1.undeter.opr.rel8 = j + c;
+
+		       	}	       
+		}
+	}
+}
+
 void decompile(instruction * instructions, int num_instructions)
 {
 	//S0 Operation decoding (done)
@@ -781,7 +878,8 @@ void decompile(instruction * instructions, int num_instructions)
 
 	//Steps 1-4
 	dec_part1(d_instrs, num_dinstr);
-
+	dec_part2(d_instrs, num_dinstr);
+	
 	print_dec_instructions(d_instrs, num_dinstr);
 }
 

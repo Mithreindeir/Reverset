@@ -26,6 +26,10 @@
 #define MOD_FOUR_BYTE_DISPLACEMENT 0x02
 #define MOD_REG_ADDRESS 0x03
 
+const char * symbols[] = {
+	"{",
+	"}"
+};
 /*
 //Types of operands 
 enum OPERAND_TYPE
@@ -198,12 +202,18 @@ typedef struct dec_condition
 
 typedef struct dec_instruction
 {
-	int exclusive;	//If this is the only operation on the line
-	int first;	//If this is the only operation on the line
-	instruction instr;
-	struct dec_operation doprn;
-	//dec_instruction * next; // Compound statement
-	int invalid;
+	union {
+		struct {
+			int exclusive;	//If this is the only operation on the line
+			int first;	//If this is the only operation on the line
+			instruction instr;
+			struct dec_operation doprn;
+			//dec_instruction * next; // Compound statement
+			int invalid;
+		};
+		char * symbol;
+	};
+	int type; //0 is instr, 1 is symbol
 } dec_instruction;
 
 //Segment registers

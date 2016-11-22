@@ -14,7 +14,7 @@ enum OPCODE_ACTION
 {
 	ASN,	//Assigment (mov, lea...)
 	OPR,	//Operation (add, sub, mul, div...)
-	FLW,	//Program Flow (jmp, call...)
+	FLW,	//Program Flow 
 	MEM,	//Memory (push, pop...)
 	CMP,
 	COND,
@@ -63,10 +63,10 @@ static const action actions[] = {
 	{OPR, "<<=", "<<", "shl"},
 	{OPR, ">>=", ">>", "shr"},
 	{OPR, ">>=", ">>", "sar"},
-	{FLW, "()", "()", "call"},
+	//{FLW, "()", "()", "call"},
 	{FLW, "return", "", "ret"},
-	{MEM, "", "", "push"},
-	{MEM, "", "", "pop"},
+	//{MEM, "", "", "push"},
+	//{MEM, "", "", "pop"},
 	{CMP, "cmp", "cmp", "cmp"},
 	//Include conditions
 	{COND, ">=", ">=", "l"},
