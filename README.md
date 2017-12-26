@@ -1,4 +1,7 @@
 # Reverset
-Reverset is a reverse engineering, and binary analysis tool.
-It currently includes an x86 disassembler, a partial elf parser, and the beginning of a decompiler. 
-Abandoned
+Reverset is a reverse engineering, and binary analysis tool. Currently includes elf parser and partial x86 disassembler.
+Currently the disassembler supports around 200 x86 instructions, but still a work in development.
+##Building
+gcc -o reverset *.c
+##Usage
+./reverset file
