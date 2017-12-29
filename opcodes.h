@@ -244,7 +244,7 @@ static const x86_opcode x86_opcodes[] = {
 	{0x00, 0xBF, 0xB8, 0, 1, 0, RPC, IMM32, NON, "mov"},
 	{0x00, 0x8D, 0x00, 1, 1, 0, REG, MRM, NON, "lea"},//
 	{0x00, 0xE8, 0x00, 0, 1, 0, REL1632, NON, NON, "call"},
-	{0x00, 0xE9, 0x00, 0, 1, 0, REL1632, NON, NON, "jm"},
+	{0x00, 0xE9, 0x00, 0, 1, 0, REL1632, NON, NON, "jmp"},
 	{0x00, 0xEB, 0x00, 0, 0, 0, REL8, NON, NON, "jmp"},
 	{0x00, 0x4f, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
 	{0x00, 0xf4, 0x00, 0, 0, 0, NON, NON, NON, "hlt"},

@@ -393,7 +393,8 @@ int main(int argc, char ** argv)
 		int max_bytes = 3*8;
 		for (int i = 0; i < ci->used_bytes; i++) {
 			if ((max_bytes - 3) <= 0) {
-				printf(".");
+				printf(".  ");
+				max_bytes -= 3;
 				break;
 			}
 			printf("%02x ", buffer[addr-ci->used_bytes+i]);
