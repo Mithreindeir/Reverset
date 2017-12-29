@@ -11,6 +11,7 @@ int is_seg_override(char b)
 	return 0;
 		
 }
+
 void print_hex(unsigned char v)
 {
 	//Vo=2^N-Vn
@@ -46,11 +47,10 @@ x86_instruction * x86_decode_instruction(unsigned char * raw_bytes, int len)
 	unsigned char inst_byte;
 	unsigned char two_byte = 0;
 
-	x86_sreg seg_override;
-	seg_override.map = 0;
+	instruction->seg_override.map = 0;
 	int segment = is_seg_override(raw_bytes[idx]);
 	if (segment) {
-		seg_override = x86_segment_registers[segment];
+		instruction->seg_override = x86_segment_registers[segment];
 		idx++;
 	} 
 
@@ -98,54 +98,19 @@ x86_instruction * x86_decode_instruction(unsigned char * raw_bytes, int len)
 	if (operand_number == 2 || op.opcode == 0xFF) {
 		x86_decode_operands(instruction, op, raw_bytes+idx);
 		idx += instruction->used_bytes;
-		if (op.arg1 == RPC) {
-			//Subtract "base" opcode 
-			instruction->op1.rpc = x86_registers[op.opcode - op.multi_byte];
-		}
-		//Set the operands when opcodes have a set first operand
-		if (op.arg2 == ONE) {
-			instruction->op2.type = IMM8;
-			instruction->op2.imm8 = 1;
-		}
-		if (op.arg1 == EAX) {
-			instruction->op1.type = REG;
-			instruction->op1.reg = x86_registers[0];
-		}
-		if (op.arg2 == MOFF) {
-			seg_override = x86_segment_registers[DS];
-			instruction->op2.type = REL1632;
-			x86_load_disp32(&instruction->op2.rel1632, raw_bytes+idx);
-			idx += 4;
-		}
 	} else if (operand_number == 1) {
-		instruction->op1.size_override = 0;
-		if (op.arg1 == RPC) {
-			//Subtract "base" opcode
-			instruction->op1.rpc = x86_registers[op.opcode - op.multi_byte];
-		} else if (op.arg1 == REL8) {
-			instruction->op1.rel8 = raw_bytes[idx++];
-		} else if (op.arg1 == REL1632) {
-			memcpy(&instruction->op1.rel1632, raw_bytes+idx, 4);
-			idx += 4;
-		} else if (op.arg1 == IMM8) {
-			instruction->op1.imm8 = raw_bytes[idx++];
-		} else if (op.arg1 == IMM32) {
-			memcpy(&instruction->op1.imm32, raw_bytes+idx, 4);
-			idx += 4;
-		} else if (op.arg1 == MRM) {
-			memset(&instruction->op1, sizeof(x86_operand), 0);
-			instruction->op1 = x86_decode_rm(raw_bytes+idx, op.size || 1, op.extended);
-			instruction->op1.override.map = 0;
-			instruction->op1.size_override = 0;
-			idx += instruction->op1.used_bytes;
-		}
+		x86_decode_operand(instruction, op, raw_bytes+idx);
+		idx += instruction->used_bytes;
 	}
+	instruction->op1.operand_size = 0;
+	instruction->op2.operand_size = 0;
+
 	//Set segment register override
-	if (seg_override.map != 0x0) {
+	if (instruction->seg_override.map != 0x0) {
 		if (op.arg1 == REG && operand_number == 2 || op.arg2 == MOFF) {
-			instruction->op2.override = seg_override;
+			instruction->op2.override = instruction->seg_override;
 		} else {
-			instruction->op1.override = seg_override;
+			instruction->op1.override = instruction->seg_override;
 		}
 	}
 	//Set operand override
@@ -186,17 +151,45 @@ void string_to_hex(char * str, unsigned char * out)
 	}
 }
 
+void x86_decode_operand(x86_instruction * instr, x86_opcode opcode, unsigned char * raw_bytes)
+{
+	int used_bytes = 0;
+	instr->op1.size_override = 0;
+	if (opcode.arg1 == RPC) {
+		//Subtract "base" opcode
+		instr->op1.rpc = x86_registers[opcode.opcode - opcode.multi_byte];
+	} else if (opcode.arg1 == REL8) {
+		instr->op1.rel8 = raw_bytes[used_bytes++];
+	} else if (opcode.arg1 == REL1632) {
+		memcpy(&instr->op1.rel1632, raw_bytes+used_bytes, 4);
+		used_bytes += 4;
+	} else if (opcode.arg1 == IMM8) {
+		instr->op1.imm8 = raw_bytes[used_bytes++];
+	} else if (opcode.arg1 == IMM32) {
+		memcpy(&instr->op1.imm32, raw_bytes+used_bytes, 4);
+		used_bytes += 4;
+	} else if (opcode.arg1 == MRM) {
+		memset(&instr->op1, sizeof(x86_operand), 0);
+		instr->op1 = x86_decode_rm(raw_bytes+used_bytes, opcode.size || 1, opcode.extended);
+		instr->op1.override.map = 0;
+		instr->op1.size_override = 0;
+		used_bytes += instr->op1.used_bytes;
+	}
+	instr->used_bytes += used_bytes;
+}
+
 void x86_decode_operands(x86_instruction * instr, x86_opcode opcode, unsigned char * raw_bytes)
 {
 	//Operand info
 	int dir = opcode.arg1 == REG;
 	int size = opcode.size || 1;
 	int immediate = (opcode.arg2 == IMM8) || (opcode.arg2 == IMM32);
-	int rpc = opcode.arg1 == RPC;
+	int rpc1 = opcode.arg1 == RPC;
+	int rpc2 = opcode.arg2 == RPC;
 	int extended = opcode.extended;
 	int one = opcode.arg2 == ONE;
 	int eax = opcode.arg1 == EAX;
-	
+
 	int used_bytes = 0;
 	//Get register value
 	x86_reg reg = x86_registers[MASK_MODRM_REG(raw_bytes[0])];
@@ -204,15 +197,20 @@ void x86_decode_operands(x86_instruction * instr, x86_opcode opcode, unsigned ch
 	//Clear the operands
 	memset(&instr->op1, sizeof(x86_operand), 0);
 	memset(&instr->op2, sizeof(x86_operand), 0);
-
 	//If immediate value
 	if (immediate) {
 		int offset = 1;
-		if (!rpc && !eax) {
+		if (!rpc1 && !eax) {
 			instr->op1 = x86_decode_rm(raw_bytes, size, extended);
 			offset = instr->op1.used_bytes;
 		} else {
 			offset = 0;
+			if (rpc1) {
+				instr->op1.rpc = x86_registers[opcode.opcode - opcode.multi_byte];
+			} else if (eax) {
+				instr->op1.type = REG;
+				instr->op1.rpc = x86_registers[0];
+			}
 		}
 		if (instr->op2.type == IMM32) {
 			//Copy immediate value bytes into integer in operand
@@ -234,21 +232,45 @@ void x86_decode_operands(x86_instruction * instr, x86_opcode opcode, unsigned ch
 	} else {
 		//If not immediate value then both operands are encoded with modrm
 		if (dir) {
-			if (!rpc && !eax) {
+			if (!rpc1 && !eax) {
 				instr->op1.reg = reg;
+			} else if (rpc1) {
+				instr->op1.rpc = x86_registers[opcode.opcode - opcode.multi_byte];
+			} else if (eax) {
+				instr->op1.type = REG;
+				instr->op1.rpc = x86_registers[0];
 			}
 			if (!one) {
 				instr->op2 = x86_decode_rm(raw_bytes, size, extended);
 				used_bytes += instr->op2.used_bytes;
+			} else {
+				instr->op2.type = IMM8;
+				instr->op2.imm8 = 1;
 			}
 		} else {
 			//Swap the order of operands
 			if (!one) instr->op2.reg = reg;
-			if (!rpc && !eax) {
+			else {
+				instr->op2.type = IMM8;
+				instr->op2.imm8 = 1;
+			}
+			if (!rpc1 && !eax) {
 				instr->op1 = x86_decode_rm(raw_bytes, size, extended);
 				used_bytes += instr->op1.used_bytes;
+			} else if (rpc1) {
+				instr->op1.rpc = x86_registers[opcode.opcode - opcode.multi_byte];
+			} else if (eax) {
+				instr->op1.type = REG;
+				instr->op1.rpc = x86_registers[0];
 			}
 		}
+	}
+
+	if (opcode.arg2 == MOFF) {
+		instr->seg_override = x86_segment_registers[DS];
+		instr->op2.type = REL1632;
+		x86_load_disp32(&instr->op2.rel1632, raw_bytes+used_bytes);
+		used_bytes += 4;
 	}
 	//Sign extend immediate to match other operand
 	if (size) {
@@ -276,9 +298,6 @@ void x86_decode_operands(x86_instruction * instr, x86_opcode opcode, unsigned ch
 
 void print_instruction(x86_instruction * instr)
 {
-	printf(RESET);
-	printf(RED);
-	
 	switch (instr->prefix) {
 		case LOCK:
 			printf("lock ");
@@ -293,13 +312,18 @@ void print_instruction(x86_instruction * instr)
 	}
 
 	printf("%s ", instr->mnemonic);
-	printf(RESET);
-	printf(GRN);
+
 	if (instr->operand_number == 1) {
 		x86_print_operand(instr->op1);
 	} else if (instr->operand_number == 2) {
 		x86_print_operand(instr->op1);
 		printf(", ");
 		x86_print_operand(instr->op2);
+	} else if (instr->operand_number == 3) {
+		x86_print_operand(instr->op1);
+		printf(", ");
+		x86_print_operand(instr->op2);
+		printf(", ");
+		x86_print_operand(instr->op3);
 	}
 }

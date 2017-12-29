@@ -86,45 +86,45 @@ typedef enum VISIBILITY
 typedef struct elf_section
 {
 	//Entry point of the program
-	unsigned int entry_point;
+	u_int32_t entry_point;
 	//Address of the program header table
-	unsigned int phead;
+	u_int32_t phead;
 	//Address of section header table
-	unsigned int shead;
+	u_int32_t shead;
 	//Depends on target architecture
-	unsigned int flags;
+	u_int32_t flags;
 	//Size of header
-	unsigned int hsize;
+	u_int32_t hsize;
 	//Number of entries in program header
-	unsigned int phnum;
+	u_int32_t phnum;
 	//Size of section headers
-	unsigned int shsize;
+	u_int32_t shsize;
 	//Size of program header
-	unsigned int phsize;
+	u_int32_t phsize;
 	//Number of entries in section header
-	unsigned int shnum;
+	u_int32_t shnum;
 	//Index of section names in section header
-	unsigned int sec_names;
+	u_int32_t sec_names;
 } elf_section;
 
 typedef struct elf_section_data
 {
 	char * name;
 	char * data;
-	unsigned int size;
-	unsigned int type;
-	unsigned int flags;
-	unsigned int offset;
+	u_int32_t size;
+	u_int32_t type;
+	u_int32_t flags;
+	u_int32_t offset;
 } elf_section_data;
 
 typedef struct elf_symbol
 {
 	//Index to object files symbol string table that holds name for this symbol
-	unsigned int name;
+	u_int32_t name;
 	//Abolute value or address. Holds virtual address if executable or shared object
-	unsigned int value;
+	u_int32_t value;
 	//Number of bytes contained by symbol
-	unsigned int size;
+	u_int32_t size;
 	//Binding (eg local, global)
 	unsigned char binding;
 	//Visibility
@@ -139,7 +139,7 @@ typedef struct elf_file
 	elf_symbol * symbols;
 	int num_symbols; 
 
-	unsigned int entry_point;
+	u_int32_t entry_point;
 } elf_file;
 
 typedef struct elf_section_header
@@ -147,13 +147,13 @@ typedef struct elf_section_header
 	char * sh_name;
 	char * sh_type;
 	char * sh_flags;
-	unsigned int addr;
-	unsigned int offset;
-	unsigned int size;
+	u_int32_t addr;
+	u_int32_t offset;
+	u_int32_t size;
 	char * link;
 	char * info;
-	unsigned int addr_align;
-	unsigned int entsize;
+	u_int32_t addr_align;
+	u_int32_t entsize;
 } elf_section_header;
 
 typedef struct elf_data
@@ -175,10 +175,10 @@ typedef struct elf_data
 
 //.ELF
 static const char elfmagic[] = {0x7f, 0x45, 0x4c, 0x46};
-void little_endian_copy(unsigned int * dst, unsigned char * src);
+void little_endian_copy(u_int32_t * dst, unsigned char * src);
 void read_bytes(FILE * fp, unsigned char * dst, int num_bytes);
-void read_int(unsigned int * dst, FILE * fp, ELF_ENDIAN endian);
-void read_half_int(unsigned int * dst, FILE * fp);
+void read_int(u_int32_t * dst, FILE * fp, ELF_ENDIAN endian);
+void read_half_int(u_int32_t * dst, FILE * fp);
 
 void read_elf_symbols(elf_file * elf);
 void read_elf_sections(elf_file * elf, elf_data * ef, FILE * fp);

@@ -14,13 +14,13 @@ int check_elf(FILE * fp)
 	return 1;
 }
 
-void little_endian_copy(unsigned int * dst, unsigned char * src)
+void little_endian_copy(u_int32_t * dst, unsigned char * src)
 {
-	char buf[sizeof(unsigned int)];
-	for (int i = 0; i < sizeof(unsigned int); i++) {
-		buf[sizeof(unsigned int)-i] = src[i];
+	char buf[sizeof(u_int32_t)];
+	for (int i = 0; i < sizeof(u_int32_t); i++) {
+		buf[sizeof(u_int32_t)-i] = src[i];
 	}
-	*dst = *((unsigned int*)buf);
+	*dst = *((u_int32_t*)buf);
 }
 
 void read_bytes(FILE * fp, unsigned char * dst, int num_bytes)
@@ -34,7 +34,7 @@ void read_bytes(FILE * fp, unsigned char * dst, int num_bytes)
 	}
 }
 
-void read_int(unsigned int * dst, FILE * fp, ELF_ENDIAN endian)
+void read_int(u_int32_t * dst, FILE * fp, ELF_ENDIAN endian)
 {
 	char buf[4];
 	read_bytes(fp, buf, 4);
@@ -42,16 +42,16 @@ void read_int(unsigned int * dst, FILE * fp, ELF_ENDIAN endian)
 	if (endian == ELF_LITTLE_ENDIAN) {
 		little_endian_copy(dst, buf);
 	} else if (endian == ELF_BIG_ENDIAN) {
-		*dst = *((unsigned int *)buf);
+		*dst = *((u_int32_t *)buf);
 	}
 }
 
-void read_half_int(unsigned int * dst, FILE * fp)
+void read_half_int(u_int32_t * dst, FILE * fp)
 {
-	unsigned int a, b;
+	u_int32_t a, b;
 	a = fgetc(fp);
 	b = fgetc(fp);
-	unsigned int hint = (b << 8) + a;
+	u_int32_t hint = (b << 8) + a;
 	*dst = hint;
 }
 
@@ -114,7 +114,7 @@ void x86_read_elf_sections(elf_file * elf, elf_data * ef, FILE * fp)
 	elf_section_header elf_hdr;
 	int s = sizeof(elf_section_header);
 	fread(&elf_hdr, s, 1, fp);
-	unsigned int names_addr = elf_hdr.offset;
+	u_int32_t names_addr = elf_hdr.offset;
 	//printf("names_addr %x\n", names_addr);
 
 	elf->sections = malloc(sizeof(elf_section_data*) * ef->section_info.shnum);
@@ -129,7 +129,7 @@ void x86_read_elf_sections(elf_file * elf, elf_data * ef, FILE * fp)
 		fread(&elf_hdr, s, 1, fp);
 		//printf("%x %x %x %x\n", elf_hdr.sh_name, elf_hdr.sh_type, elf_hdr.addr, elf_hdr.offset);
 		char * name = NULL;
-		unsigned int t=0;
+		u_int32_t t=0;
 		fseek(fp, elf_hdr.sh_name+names_addr, SEEK_SET);
 		//read_int(&t, fp, ef->endian);	
 		//printf("[%d] ", i);
@@ -137,6 +137,7 @@ void x86_read_elf_sections(elf_file * elf, elf_data * ef, FILE * fp)
 		char buf[256];
 		memset(buf, 256, 0);
 		int size = 0;
+		
 		char c = fgetc(fp);
 		while (c && (i < 255)) {
 			//printf("%c", c);

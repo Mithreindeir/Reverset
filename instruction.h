@@ -15,8 +15,9 @@ typedef enum INSTR_PREFIX
 typedef struct x86_instruction
 {
 	int operand_number;
-	x86_operand op1, op2;
+	x86_operand op1, op2, op3;
 	x86_opcode op;
+	x86_sreg seg_override;
 	INSTR_PREFIX prefix;
 
 	char * mnemonic;

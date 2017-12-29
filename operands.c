@@ -222,7 +222,8 @@ void print_modrm_byte(x86_modrm_byte modrm, x86_sreg seg, int size)
 void x86_print_operand(x86_operand opr)
 {	
 	x86_modrm_byte modrm;
-	int size = opr.size_override;
+	int size = opr.size_override + opr.operand_size;
+
 	switch (opr.type) {
 		case REG:
 			printf("%s", opr.reg.regs[2-size]);

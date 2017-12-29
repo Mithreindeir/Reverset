@@ -35,20 +35,87 @@ typedef struct x86_opcode
 
 static const x86_opcode x86_opcodes[] = {
 	{0x00, 0x00, 0x00, 0, 0, 0, MRM, REG, NON, "add"},
-	{0x00, 0x01, 0x00, 1, 1, 0, MRM, REG, NON, "add"},
+	{0x00, 0x01, 0x00, 0, 1, 0, MRM, REG, NON, "add"},
 	{0x00, 0x02, 0x00, 1, 0, 0, REG, MRM, NON, "add"},
 	{0x00, 0x03, 0x00, 1, 0, 0, REG, REG, NON, "add"},
+	{0x00, 0x04, 0x00, 0, 0, 0, EAX, IMM8, NON, "add"},
 	{0x00, 0x05, 0x00, 0, 1, 0, EAX, IMM32, NON, "add"},
+	//06 is push es
+	//07 is pop es
+	{0x00, 0x08, 0x00, 0, 0, 0, MRM, REG, NON, "or"},
+	{0x00, 0x09, 0x00, 0, 1, 0, MRM, REG, NON, "or"},
+	{0x00, 0x0A, 0x00, 1, 0, 0, REG, MRM, NON, "or"},
+	{0x00, 0x0B, 0x00, 1, 1, 0, REG, MRM, NON, "or"},
+	{0x00, 0x0D, 0x00, 0, 0, 0, EAX, IMM8, NON, "or"},
+	{0x00, 0x0C, 0x00, 0, 0, 0, EAX, IMM8, NON, "or"},
+	{0x00, 0x0D, 0x00, 0, 1, 0, EAX, IMM32, NON, "or"},
+	//0E is push cs
+	//0F is two byte instruction 
 
+	{0x00, 0x10, 0x00, 0, 0, 0, MRM, REG, NON, "adc"},
+	{0x00, 0x11, 0x00, 0, 1, 0, MRM, REG, NON, "adc"},
+	{0x00, 0x12, 0x00, 1, 0, 0, REG, MRM, NON, "adc"},
+	{0x00, 0x13, 0x00, 1, 1, 0, REG, MRM, NON, "adc"},
+	{0x00, 0x14, 0x00, 0, 0, 0, EAX, IMM8, NON, "adc"},
+	{0x00, 0x15, 0x00, 0, 1, 0, EAX, IMM32, NON, "adc"},
+	//16 is push ss
+	//17 is poop ss
+	{0x00, 0x18, 0x00, 0, 0, 0, MRM, REG, NON, "sbb"},
+	{0x00, 0x19, 0x00, 0, 1, 0, MRM, REG, NON, "sbb"},
+	{0x00, 0x1A, 0x00, 1, 0, 0, REG, MRM, NON, "sbb"},
+	{0x00, 0x1B, 0x00, 1, 1, 0, REG, MRM, NON, "sbb"},
+	{0x00, 0x1C, 0x00, 0, 0, 0, EAX, IMM8, NON, "sbb"},
+	{0x00, 0x1D, 0x00, 0, 1, 0, EAX, IMM32, NON, "sbb"},
+	//1E is pop ds
+	//1F is pop ds
+
+	{0x00, 0x20, 0x00, 0, 0, 0, MRM, REG, NON, "and"},
+	{0x00, 0x21, 0x00, 0, 1, 0, MRM, REG, NON, "and"},
+	{0x00, 0x22, 0x00, 1, 0, 0, REG, MRM, NON, "and"},
+	{0x00, 0x23, 0x00, 1, 1, 0, REG, MRM, NON, "and"},
+	{0x00, 0x24, 0x00, 0, 0, 0, EAX, IMM8, NON, "and"},
+	{0x00, 0x25, 0x00, 0, 1, 0, EAX, IMM32, NON, "and"},
+	//26 is ES segment override
+	{0x00, 0x27, 0x00, 0, 0, 0, EAX, NON, NON, "das"},
 	{0x00, 0x28, 0x00, 0, 0, 0, MRM, REG, NON, "sub"},
 	{0x00, 0x29, 0x00, 0, 1, 0, MRM, REG, NON, "sub"},
 	{0x00, 0x2A, 0x00, 1, 0, 0, REG, MRM, NON, "sub"},
 	{0x00, 0x2B, 0x00, 1, 1, 0, REG, MRM, NON, "sub"}, 
 	{0x00, 0x2D, 0x00, 0, 1, 0, EAX, IMM32, NON, "sub"}, 
+	{0x00, 0x2F, 0x00, 0, 0, 0, EAX, NON, NON, "das"}, 
 
-	//extended?
-	{0x00, 0x33, 0x00, 1, 1, 0, REG, MRM, NON, "xor"},
+	{0x00, 0x30, 0x00, 0, 0, 0, MRM, REG, NON, "xor"},
 	{0x00, 0x31, 0x00, 0, 1, 0, MRM, REG, NON, "xor"},
+	{0x00, 0x32, 0x00, 1, 0, 0, REG, MRM, NON, "xor"},
+	{0x00, 0x33, 0x00, 1, 1, 0, REG, MRM, NON, "xor"},
+	{0x00, 0x34, 0x00, 0, 0, 0, EAX, IMM8, NON, "xor"},
+	{0x00, 0x35, 0x00, 0, 1, 0, EAX, IMM32, NON, "xor"},
+	//36 is SS segment override
+	//37 is aaa al, ah
+	{0x00, 0x38, 0x00, 0, 0, 0, MRM, REG, NON, "cmp"},
+	{0x00, 0x39, 0x00, 0, 1, 0, MRM, REG, NON, "cmp"},
+	{0x00, 0x3A, 0x00, 1, 0, 0, REG, MRM, NON, "cmp"},
+	{0x00, 0x3B, 0x00, 1, 1, 0, REG, MRM, NON, "cmp"},
+	{0x00, 0x3C, 0x00, 0, 0, 0, EAX, IMM8, NON, "cmp"},
+	{0x00, 0x3D, 0x00, 0, 1, 0, EAX, IMM32, NON, "cmp"},
+	//3E is DS segment override
+	//3F is AAS AL, AH
+	{0x00, 0x40, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
+	{0x00, 0x41, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
+	{0x00, 0x42, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
+	{0x00, 0x43, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
+	{0x00, 0x44, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
+	{0x00, 0x45, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
+	{0x00, 0x46, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
+	{0x00, 0x47, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
+	{0x00, 0x48, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
+	{0x00, 0x49, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
+	{0x00, 0x4a, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
+	{0x00, 0x4b, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
+	{0x00, 0x4c, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
+	{0x00, 0x4d, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
+	{0x00, 0x4e, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
+	{0x00, 0x4f, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
 
 	{0x00, 0x50, 0x50, 0, 1, 0, RPC, NON, NON, "push"},
 	{0x00, 0x51, 0x50, 0, 1, 0, RPC, NON, NON, "push"},
@@ -66,9 +133,11 @@ static const x86_opcode x86_opcodes[] = {
 	{0x00, 0x5d, 0x58, 0, 1, 0, RPC, NON, NON, "pop"},
 	{0x00, 0x5e, 0x58, 0, 1, 0, RPC, NON, NON, "pop"},
 	{0x00, 0x5f, 0x58, 0, 1, 0, RPC, NON, NON, "pop"},
-	{0x00, 0x6A, 0x00, 0, 0, 0, IMM8, NON, NON, "push"}, //wat
 
+	//
 	{0x00, 0x68, 0x00, 0, 1, 0, IMM32, NON, NON, "push"}, //wat
+
+	{0x00, 0x6A, 0x00, 0, 0, 0, IMM8, NON, NON, "push"}, //wat
 
 
 	{0x00, 0x81, 0x00, 1, 0, 1, MRM, IMM32, NON, "add"},
@@ -100,6 +169,7 @@ static const x86_opcode x86_opcodes[] = {
 	{0x00, 0x7e, 0x00, 0, 0, 0, REL8, NON, NON, "jle"},
 	{0x00, 0x7f, 0x00, 0, 0, 0, REL8, NON, NON, "jg"},
 	{0x00, 0x90, 0x00, 0, 0, 0, NON, NON, NON, "nop"},
+	
 	//may revert dir to 0
 	{0x00, 0x83, 0x00, 1, 0, 1, MRM, IMM8, NON, "add"},
 	{0x00, 0x83, 0x01, 1, 0, 1, MRM, IMM8, NON, "add"},
@@ -176,28 +246,11 @@ static const x86_opcode x86_opcodes[] = {
 	{0x00, 0xE8, 0x00, 0, 1, 0, REL1632, NON, NON, "call"},
 	{0x00, 0xE9, 0x00, 0, 1, 0, REL1632, NON, NON, "jm"},
 	{0x00, 0xEB, 0x00, 0, 0, 0, REL8, NON, NON, "jmp"},
-	{0x00, 0x40, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
-	{0x00, 0x41, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
-	{0x00, 0x42, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
-	{0x00, 0x43, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
-	{0x00, 0x44, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
-	{0x00, 0x45, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
-	{0x00, 0x46, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
-	{0x00, 0x47, 0x040, 0, 1, 0, RPC, NON, NON, "inc"},
-	{0x00, 0x48, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
-	{0x00, 0x49, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
-	{0x00, 0x4a, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
-	{0x00, 0x4b, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
-	{0x00, 0x4c, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
-	{0x00, 0x4d, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
-	{0x00, 0x4e, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
 	{0x00, 0x4f, 0x048, 0, 1, 0, RPC, NON, NON, "dec"},
 	{0x00, 0xf4, 0x00, 0, 0, 0, NON, NON, NON, "hlt"},
 	{0x00, 0xA1, 0x00, 0, 1, 0, EAX, MOFF, NON, "mov"},
 
 	//
-	{0x00, 0x38, 0x00, 0, 0, 0, MRM, REG, NON, "cmp"},
-	{0x00, 0x39, 0x00, 0, 1, 0, MRM, REG, NON, "cmp"},
 	{0x00, 0xC9, 0x00, 0, 0, 0, NON, NON, NON, "leave"},
 	{0x00, 0xF7, 0x00, 0, 1, 1, MRM, IMM32, NON, "test"},
 	{0x00, 0xF7, 0x01, 0, 1, 1, MRM, IMM32, NON, "test"},
@@ -209,7 +262,8 @@ static const x86_opcode x86_opcodes[] = {
 	//{0x00, 0xF7, 0x07, 0, 1, 0, MRM, IMM32, NON, "test"}
 	{0x0F, 0xBE, 0x00, 1, 0, 0, REG, MRM, NON, "movsx"},
 	{0x0F, 0xB6, 0x00, 1, 1, 0, REG, MRM, NON, "movzx"},
-	{0x0F, 0x85, 0x00, 0, 1, 0, REL1632, NON, NON, "jne"}
+	{0x0F, 0x85, 0x00, 0, 1, 0, REL1632, NON, NON, "jne"},
+	{0x0F, 0x94, 0x00, 0, 0, 0, MRM, NON, NON, "sete"}
 
 
 };
