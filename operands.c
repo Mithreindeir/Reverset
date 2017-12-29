@@ -68,7 +68,7 @@ x86_operand x86_decode_rm(unsigned char * raw_bytes, int operand_size, int exten
 	offset += sib && (mod!=MOD_REG_ADDRESS);
 	//Decode SIB byte
 	x86_mem mem = x86_decode_sib(*(raw_bytes+1));
-	int idx = index != NO_INDEX;
+	int idx = mem.index != NO_INDEX;
 	//Displacement byte
 	char disp = *(raw_bytes+offset+1);
 	operand.type = MRM;
@@ -182,10 +182,10 @@ void print_modrm(x86_modrm_byte modrm, int size)
 			printf("%s", modrm.reg.regs[2-size]);
 			break;
 		case DISP8:
-			//printf("[%s%#x]", rmstr, modrm.mem);
-			printf("[%s", rmstr);
-			print_hex(modrm.mem.disp8);
-			printf("]");
+			printf("[%s%#x]", rmstr, modrm.mem.disp8);
+			//printf("[%s", rmstr);
+			//print_hex(modrm.mem.disp8);
+			//printf("]");
 			break;
 		case DISP32:
 			printf("[%s-%#x]",rmstr, modrm.mem.disp32);

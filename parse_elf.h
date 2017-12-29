@@ -144,14 +144,14 @@ typedef struct elf_file
 
 typedef struct elf_section_header
 {
-	char * sh_name;
-	char * sh_type;
-	char * sh_flags;
+	u_int32_t sh_name;
+	u_int32_t sh_type;
+	u_int32_t sh_flags;
 	u_int32_t addr;
 	u_int32_t offset;
 	u_int32_t size;
-	char * link;
-	char * info;
+	u_int32_t link;//should be char * but needs to still be 4 bytes for 64 bit version
+	u_int32_t info;
 	u_int32_t addr_align;
 	u_int32_t entsize;
 } elf_section_header;

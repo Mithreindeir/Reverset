@@ -1,6 +1,8 @@
 #ifndef FORMATTER_H
 #define FORMATTER_H
+
 #include <stdio.h>
+#include <stdlib.h>
 #include "instruction.h"
 
 struct jump

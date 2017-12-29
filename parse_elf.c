@@ -16,9 +16,9 @@ int check_elf(FILE * fp)
 
 void little_endian_copy(u_int32_t * dst, unsigned char * src)
 {
-	char buf[sizeof(u_int32_t)];
-	for (int i = 0; i < sizeof(u_int32_t); i++) {
-		buf[sizeof(u_int32_t)-i] = src[i];
+	char buf[4];
+	for (int i = 0; i < 4; i++) {
+		buf[4-i] = src[i];
 	}
 	*dst = *((u_int32_t*)buf);
 }
@@ -112,10 +112,10 @@ void x86_read_elf_sections(elf_file * elf, elf_data * ef, FILE * fp)
 */
 	fseek(fp, ef->section_info.shead + ef->section_info.sec_names*ef->section_info.shsize, SEEK_SET);
 	elf_section_header elf_hdr;
-	int s = sizeof(elf_section_header);
+	u_int32_t s = sizeof(elf_section_header);
 	fread(&elf_hdr, s, 1, fp);
 	u_int32_t names_addr = elf_hdr.offset;
-	//printf("names_addr %x\n", names_addr);
+	printf("names_addr %x\n", names_addr);
 
 	elf->sections = malloc(sizeof(elf_section_data*) * ef->section_info.shnum);
 	elf->num_sections = ef->section_info.shnum;
@@ -145,6 +145,7 @@ void x86_read_elf_sections(elf_file * elf, elf_data * ef, FILE * fp)
 			c = fgetc(fp);
 			size++;
 		}
+
 		buf[size] = 0;
 		elf_section_data * section = malloc(sizeof(elf_section_data));
 		section->size = elf_hdr.size;

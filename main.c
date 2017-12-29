@@ -1,5 +1,6 @@
 #include "disas.h"
 #include "parse_elf.h"
+/*
 #include "json-parser/json.h"
 
 char hex_to_char(char * str)
@@ -297,6 +298,7 @@ int json_instructions()
 	fclose(isa);
 	return 0;
 }
+*/
 
 int main(int argc, char ** argv)
 {
@@ -333,7 +335,7 @@ int main(int argc, char ** argv)
 			printf("Input too long\n");
 		}
 		memset(buffer, 0x00, 255);
-		string_to_hex(argv[1], buffer);
+		//string_to_hex(argv[1], buffer);
 	}
 	//printf("Instruction number %d\n", sizeof(x86_opcodes)/sizeof(x86_opcode));
 	//json_instructions();
