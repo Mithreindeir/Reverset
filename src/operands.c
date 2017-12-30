@@ -171,6 +171,7 @@ void print_sib(x86_mem mem, x86_modrm_type type)
 void print_modrm(x86_modrm_byte modrm, int size)
 {
 	char * rmstr = modrm.reg.regs[2-size];
+	int sign = 0;
 	switch (modrm.type) {
 		case INDIR_DISPONLY:
 			printf("%#x", modrm.mem.disp8);	
@@ -182,7 +183,8 @@ void print_modrm(x86_modrm_byte modrm, int size)
 			printf("%s", modrm.reg.regs[2-size]);
 			break;
 		case DISP8:
-			printf("[%s%#x]", rmstr, modrm.mem.disp8);
+			sign = modrm.mem.disp8 < 0x80;
+			printf("[%s%c%#x]", rmstr, sign ? '+' : '-', sign ? modrm.mem.disp8 : 0x100 - modrm.mem.disp8);
 			break;
 		case DISP32:
 			printf("[%s-%#x]",rmstr, modrm.mem.disp32);
