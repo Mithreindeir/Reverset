@@ -24,7 +24,7 @@ typedef struct x86_instruction
 	char * op1b;
 	char * op2b;
 	int used_bytes;
-	unsigned char b[16];
+	unsigned char * bytes;
 } x86_instruction;
 
 #endif

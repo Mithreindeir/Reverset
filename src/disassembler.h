@@ -6,18 +6,19 @@
 
 typedef struct disassembler
 {
-	unsigned char * raw_data;
-	int size;
-
 	x86_instruction ** instructions;
 	int num_instructions;
 
 	formatter * format;
+
+	int linear;
+	int recursive;
+	int printall;
 } disassembler;
 
 
-void disassemble_file(char * filename);
-void disassemble(disassembler * disas);
+void disassemble_file(char * filename, unsigned int args);
+void disassemble(disassembler * disas, unsigned char * raw_data, int size);
 void disassemble_analyze(disassembler * disas, elf_file * elf);
 void disassemble_print(disassembler * disas, int entry_point);
 

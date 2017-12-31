@@ -116,7 +116,6 @@ void formatter_analyze(formatter * format, int start_addr, x86_instruction ** in
 
 	format->functions = malloc(sizeof(function) * num_functions);
 	format->num_functions++;
-
 }
 
 void formatter_printjump(formatter * format, int addr)

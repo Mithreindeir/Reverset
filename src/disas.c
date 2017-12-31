@@ -38,7 +38,7 @@ x86_opcode x86_find_opcode(unsigned char v, unsigned char next, unsigned char tw
 x86_instruction * x86_decode_instruction(unsigned char * raw_bytes, int len)
 {
 	x86_instruction *instruction = malloc(sizeof(x86_instruction));
-	memset(&instruction, sizeof(x86_instruction), 0);
+	memset(instruction, 0, sizeof(x86_instruction));
 
 	//Iterator to decode each byte in instruction
 	int idx = 0;
@@ -130,7 +130,9 @@ x86_instruction * x86_decode_instruction(unsigned char * raw_bytes, int len)
 	} else if (op.arg2 == REL8) {
 		instruction->op2.rel8 += idx;
 	}
-
+	instruction->bytes = malloc(instruction->used_bytes+1);
+	instruction->bytes[instruction->used_bytes] = 0;
+	memcpy(instruction->bytes, raw_bytes, instruction->used_bytes);
 	return instruction;
 }
 
