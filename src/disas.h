@@ -7,7 +7,6 @@
 #include "operands.h"
 #include "instruction.h"
 #include "opcodes.h"
-#include "colors.h"
 #include "formatter.h"
 
 int is_seg_override(char b);

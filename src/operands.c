@@ -56,6 +56,7 @@ x86_operand x86_decode_rm(unsigned char * raw_bytes, int operand_size, int exten
 {
 	x86_operand operand;
 	memset(&operand, sizeof(x86_operand), 0);
+	operand.operand_size = operand_size;
 	//
 	int offset = 0;
 	unsigned char mod, rm, reg;
@@ -141,19 +142,28 @@ x86_operand x86_decode_rm(unsigned char * raw_bytes, int operand_size, int exten
 	return operand;
 }
 
-void print_sib(x86_mem mem, x86_modrm_type type)
+void print_sib(x86_mem mem, x86_modrm_type type, int size)
 {
 	int idx = mem.index != NO_INDEX;
-	char * indexstr = x86_registers[mem.index].regs[2];
-	char * basestr = x86_registers[mem.base].regs[2];
+	//This should not ever happen but incase
+	char * indexstr = NULL;
+	char * basestr = NULL;
+
+	if (mem.index < sizeof(x86_registers)) indexstr = x86_registers[mem.index].regs[2];
+	if (mem.base < sizeof(x86_registers)) basestr = x86_registers[mem.base].regs[2];
+
 	int scale = mem.scale;
 
 	switch (type) {
 		case INDIR_DISPONLY:
-			printf("[%#x+%s*%d]", mem.disp8, indexstr, scale);
+			if (size) printf("[%#x+%s*%d]", mem.disp32, indexstr, scale);
+			else printf("[%#x+%s*%d]", mem.disp8, indexstr, scale);
 			break;
 		case INDIR:
-			if (idx) printf("[%c+%s*%d]", mem.disp8, indexstr, scale);
+			if (idx) {
+				if (size) printf("[%#x+%s*%d]", mem.disp32, indexstr, scale);
+				else printf("[%#x+%s*%d]", mem.disp8, indexstr, scale);
+			}
 			else printf("[%s]", basestr);
 			break;
 		case DISP8:
@@ -197,22 +207,26 @@ void print_modrm(x86_modrm_byte modrm, int size)
 
 void print_modrm_byte(x86_modrm_byte modrm, x86_sreg seg, int size)
 {
+	int so = size & 0x2;
+	int os = size & 1;
+
 	if (modrm.type != REGM) {
-		if (size) {
+		if (os && so) {
 			printf("word ");
 		}
-		else if (size) {
+		else if (os) {
 			printf("dword ");
 		} else {
 			printf("byte ");
 		}
 	}
+	size = !os + so;
 	if (seg.map != 0x0) {
 		printf("%s:", seg.reg);
 	}
 	if (modrm.sib_byte)
 	{
-		print_sib(modrm.mem, modrm.type);
+		print_sib(modrm.mem, modrm.type, size);
 	} else {
 		print_modrm(modrm, size);
 	}
@@ -221,14 +235,14 @@ void print_modrm_byte(x86_modrm_byte modrm, x86_sreg seg, int size)
 void x86_print_operand(x86_operand opr)
 {	
 	x86_modrm_byte modrm;
-	int size = opr.size_override + opr.operand_size;
+	int size = opr.size_override + !opr.operand_size;
 
 	switch (opr.type) {
 		case REG:
 			printf("%s", opr.reg.regs[2-size]);
 			break;
 		case MRM:
-			print_modrm_byte(opr.modrm, opr.override, size);
+			print_modrm_byte(opr.modrm, opr.override, (opr.size_override >> 1) + opr.operand_size);//Needs to convey the original operand size and if there was a size override
 			break;
 		case IMM8:
 			printf("%#x", opr.imm8);

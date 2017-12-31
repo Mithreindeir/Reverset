@@ -92,7 +92,7 @@ x86_operand x86_decode_rm(unsigned char * raw_bytes, int operand_size, int exten
 void x86_load_disp32(unsigned int * dest, unsigned char * src);
 void print_modrm_byte(x86_modrm_byte modrm, x86_sreg seg, int size);
 void print_modrm(x86_modrm_byte modrm, int size);
-void print_sib(x86_mem mem, x86_modrm_type type);
+void print_sib(x86_mem mem, x86_modrm_type type, int size);
 void x86_print_operand(x86_operand opr);
 
 #endif

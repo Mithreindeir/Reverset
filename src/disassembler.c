@@ -69,6 +69,7 @@ void disassemble(disassembler * disas, unsigned char * raw_data, int size)
 			disas->instructions[i+disas->num_instructions] = instructions[i]; 
 			disas->num_instructions++;
 		}
+
 		free(instructions);
 	}
 }

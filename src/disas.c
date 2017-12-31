@@ -102,8 +102,8 @@ x86_instruction * x86_decode_instruction(unsigned char * raw_bytes, int len)
 		x86_decode_operand(instruction, op, raw_bytes+idx);
 		idx += instruction->used_bytes;
 	}
-	instruction->op1.operand_size = 0;
-	instruction->op2.operand_size = 0;
+	//instruction->op1.operand_size = 0;
+	//instruction->op2.operand_size = 0;
 
 	//Set segment register override
 	if (instruction->seg_override.map != 0x0) {
@@ -210,7 +210,7 @@ void x86_decode_operands(x86_instruction * instr, x86_opcode opcode, unsigned ch
 {
 	//Operand info
 	int dir = opcode.arg1 == REG;
-	int size = opcode.size || 1;
+	int size = opcode.size;
 	int immediate = (opcode.arg2 == IMM8) || (opcode.arg2 == IMM32);
 	int rpc1 = opcode.arg1 == RPC;
 	int rpc2 = opcode.arg2 == RPC;
