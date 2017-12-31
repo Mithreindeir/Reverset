@@ -144,13 +144,17 @@ x86_operand x86_decode_rm(unsigned char * raw_bytes, int operand_size, int exten
 
 void print_sib(x86_mem mem, x86_modrm_type type, int size)
 {
+	int so = size & 0x2;
+	int os = size & 1;
+	int regsize = os*2 + so;
+
 	int idx = mem.index != NO_INDEX;
 	//This should not ever happen but incase
 	char * indexstr = NULL;
 	char * basestr = NULL;
 
-	if (mem.index < sizeof(x86_registers)) indexstr = x86_registers[mem.index].regs[2];
-	if (mem.base < sizeof(x86_registers)) basestr = x86_registers[mem.base].regs[2];
+	if (mem.index < sizeof(x86_registers)) indexstr = x86_registers[mem.index].regs[regsize];
+	if (mem.base < sizeof(x86_registers)) basestr = x86_registers[mem.base].regs[regsize];
 
 	int scale = mem.scale;
 
@@ -180,7 +184,11 @@ void print_sib(x86_mem mem, x86_modrm_type type, int size)
 
 void print_modrm(x86_modrm_byte modrm, int size)
 {
-	char * rmstr = modrm.reg.regs[2-size];
+	int so = size & 0x2;
+	int os = size & 1;
+	int regsize = os*2 + so;
+
+	char * rmstr = modrm.reg.regs[regsize];
 	int sign = 0;
 	switch (modrm.type) {
 		case INDIR_DISPONLY:
@@ -190,7 +198,7 @@ void print_modrm(x86_modrm_byte modrm, int size)
 			printf("[%s]", rmstr);
 			break;
 		case REGM:
-			printf("%s", modrm.reg.regs[2-size]);
+			printf("%s", modrm.reg.regs[regsize]);
 			break;
 		case DISP8:
 			sign = modrm.mem.disp8 < 0x80;
@@ -220,7 +228,7 @@ void print_modrm_byte(x86_modrm_byte modrm, x86_sreg seg, int size)
 			printf("byte ");
 		}
 	}
-	size = !os + so;
+	//size = !os + so;
 	if (seg.map != 0x0) {
 		printf("%s:", seg.reg);
 	}
@@ -236,10 +244,11 @@ void x86_print_operand(x86_operand opr)
 {	
 	x86_modrm_byte modrm;
 	int size = opr.size_override + !opr.operand_size;
+	int regsize = opr.operand_size*2 + opr.size_override;
 
 	switch (opr.type) {
 		case REG:
-			printf("%s", opr.reg.regs[2-size]);
+			printf("%s", opr.reg.regs[regsize]);
 			break;
 		case MRM:
 			print_modrm_byte(opr.modrm, opr.override, (opr.size_override >> 1) + opr.operand_size);//Needs to convey the original operand size and if there was a size override
@@ -257,7 +266,7 @@ void x86_print_operand(x86_operand opr)
 			printf("%#010x", opr.rel1632);
 			break;
 		case RPC:
-			printf("%s", opr.rpc.regs[2-size]);
+			printf("%s", opr.rpc.regs[regsize]);
 			break;
 
 	}

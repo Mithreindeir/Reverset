@@ -177,6 +177,7 @@ void x86_decode_operand(x86_instruction * instr, x86_opcode opcode, unsigned cha
 		instr->op1.size_override = 0;
 		used_bytes += instr->op1.used_bytes;
 	}
+	instr->op1.operand_size = opcode.size;
 	instr->used_bytes += used_bytes;
 }
 
