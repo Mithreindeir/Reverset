@@ -151,6 +151,7 @@ void x86_read_elf_sections(elf_file * elf, elf_data * ef, FILE * fp)
 		elf_section_data * section = malloc(sizeof(elf_section_data));
 		section->size = elf_hdr.size;
 		section->offset = elf_hdr.offset;
+		section->addr = elf_hdr.addr;
 		section->flags = elf_hdr.sh_flags;
 
 		section->data = malloc(section->size);
@@ -223,6 +224,7 @@ void read_elf_symbols(elf_file * elf)
 
 }
 
+//Returns section given name
 elf_section_data * elf_get_section(elf_file * elf, char * name)
 {
 	for (int i = 0; i < elf->num_sections; i++) {
@@ -231,6 +233,25 @@ elf_section_data * elf_get_section(elf_file * elf, char * name)
 		}
 	}
 	return NULL;
+}
+
+//Returns name of section that address is in
+char * elf_find_section(elf_file * elf, uint32_t addr)
+{
+	for (int i = 0; i < elf->num_sections; i++) {
+		if (addr < elf->sections[i]->addr) continue;
+		if (addr < (elf->sections[i]->addr + elf->sections[i]->size)) return elf->sections[i]->name;
+	}
+	return NULL;
+}
+
+int elf_get_symbol(elf_file * elf, char * symbol)
+{
+	for (int j = 0; j < elf->num_syms; j++) {
+		elf_sym sym = elf->syms[j];
+		if (!strcmp(sym.name, symbol)) return sym.addr;
+	}
+	return -1;
 }
 
 elf_file * read_elf (char * file)
@@ -267,7 +288,13 @@ elf_file * read_elf (char * file)
 	x86_read_elf_sections(elf, ef, f);
 	elf->entry_point = ef->section_info.entry_point;
 	//Program header
-	rewind(f);
+	fseek(f, 0, SEEK_END);
+	long size = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	elf->raw = malloc(size+1);
+	fread(elf->raw, size, 1, f);
+	elf->raw[size] = 0;
+
 	fclose(f);
 	free(ef);
 

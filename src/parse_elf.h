@@ -119,6 +119,7 @@ typedef struct elf_section_data
 	uint32_t type;
 	uint32_t flags;
 	uint32_t offset;
+	uint32_t addr;
 } elf_section_data;
 
 //Symbol as how it appears in elf files
@@ -156,6 +157,10 @@ typedef struct elf_file
 	//Symbols used for analysis
 	elf_sym * syms;
 	int num_syms;
+
+	//Raw file
+	char * raw;
+	int size;
 
 	uint32_t entry_point;
 	int string_index;
@@ -204,7 +209,8 @@ void read_elf_sections(elf_file * elf, elf_data * ef, FILE * fp);
 void read_elf_data(elf_data * ef, FILE * fp);
 elf_file * read_elf(char * filename);
 elf_section_data * elf_get_section(elf_file * elf, char * name);
-
+char * elf_find_section(elf_file * elf, uint32_t addr);
+int elf_get_symbol(elf_file * elf, char * symbol);
 
 
 #endif

@@ -137,7 +137,6 @@ static const x86_opcode x86_opcodes[] = {
 
 	//
 	{0x00, 0x68, 0x00, 0, 1, 0, IMM32, NON, NON, "push"}, //wat
-
 	{0x00, 0x6A, 0x00, 0, 0, 0, IMM8, NON, NON, "push"}, //wat
 
 

@@ -153,8 +153,8 @@ void print_sib(x86_mem mem, x86_modrm_type type, int size)
 	char * indexstr = NULL;
 	char * basestr = NULL;
 
-	if (mem.index < sizeof(x86_registers)) indexstr = x86_registers[mem.index].regs[regsize];
-	if (mem.base < sizeof(x86_registers)) basestr = x86_registers[mem.base].regs[regsize];
+	if (mem.index < sizeof(x86_registers)) indexstr = x86_registers[mem.index].regs[2];
+	if (mem.base < sizeof(x86_registers)) basestr = x86_registers[mem.base].regs[2];
 
 	int scale = mem.scale;
 
@@ -188,7 +188,7 @@ void print_modrm(x86_modrm_byte modrm, int size)
 	int os = size & 1;
 	int regsize = os*2 + so;
 
-	char * rmstr = modrm.reg.regs[regsize];
+	char * rmstr = modrm.reg.regs[2];
 	int sign = 0;
 	switch (modrm.type) {
 		case INDIR_DISPONLY:
