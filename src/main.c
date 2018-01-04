@@ -65,7 +65,7 @@ int main(int argc, char ** argv)
 		printf("No input file specified\n");
 		return 1;
 	}
-	if (sym_s) printf("start at: %s\n", sym_s);
+
 	disassemble_file(argv[idx], args, sym_s, start_addr);
 
 	return 0;

@@ -167,6 +167,10 @@ void x86_decode_operand(x86_instruction * instr, x86_opcode opcode, unsigned cha
 		used_bytes += 4;
 	} else if (opcode.arg1 == IMM8) {
 		instr->op1.imm8 = raw_bytes[used_bytes++];
+	} else if (opcode.arg1 == IMM16) {
+		memcpy(&instr->op1.imm32, raw_bytes+used_bytes, 2);
+		used_bytes += 2;
+		instr->op1.type = IMM32;
 	} else if (opcode.arg1 == IMM32) {
 		memcpy(&instr->op1.imm32, raw_bytes+used_bytes, 4);
 		used_bytes += 4;

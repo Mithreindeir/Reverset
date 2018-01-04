@@ -12,6 +12,11 @@
 #define ST_BIND(info) ((info) >> 4)
 #define ST_TYPE(info) ((info) & 0xf)
 
+//For relocs
+#define ELF_RELOC_SYM(info) ((info) >> 8)
+#define ELF_RELOC_TYPE(info) ((unsigned char)(info))
+#define ELF_RELOC_INFO(sym, type) (((sym)<<8)+(unsigned char)(type))
+
 typedef enum ELF_CLASS
 {
 	ELF_X86 = 1,
@@ -138,6 +143,25 @@ typedef struct elf_symbol
 	//section table that this is in
 	uint16_t section_header;
 } elf_symbol;
+//__gnom_start__ is at 0x446 section ends at 473
+//Reloc entry: fc 9f 04 08 06 02 00 00
+// Next entry: 0c a0 04 08 07 01 00 00
+// Next entry: 10 a0 04 08 07 03 00 00 
+// Next entry: 53 83 ec 08 e8 8b 00 00
+
+typedef struct elf_reloc
+{
+	uint32_t offset;
+	uint32_t info;
+} elf_reloc;
+
+typedef struct elf_rel
+{
+	uint32_t addr;
+	char * name;
+	int type;
+	int section_idx;
+} elf_rel; 
 
 //Symbols used for analysis 
 typedef struct elf_sym {
@@ -150,6 +174,9 @@ typedef struct elf_file
 {
 	elf_section_data ** sections;
 	int num_sections;
+
+	elf_reloc * relocs;
+	int num_relocs;
 
 	elf_symbol * symbols;
 	int num_symbols; 

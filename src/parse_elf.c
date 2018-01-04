@@ -218,9 +218,42 @@ void read_elf_symbols(elf_file * elf)
 		elf->syms[i] = fsym;
 		//if (strlen(buf) > 2)
 		//	printf("%s %#x\n", fsym.name, fsym.addr);
-		//printf("%s\n", sym.name);
+		//printf("%s %d\n", fsym.name, i);
 		//printf("%02x ", symtab->data[i]);
 	}
+	elf->num_relocs = 0;
+	elf->relocs = NULL;
+	elf_section_data * dynstr = elf_get_section(elf, ".dynstr");
+
+	for (int i = 0; i < elf->num_sections; i++) {
+		if (!strncmp(".rel", elf->sections[i]->name, 4)) {
+			getchar();
+			elf_section_data * rel = elf->sections[i];
+			int s = rel->size / sizeof(elf_reloc);
+			for (int j = 0; j < s; j++) {
+				elf_reloc r = ((elf_reloc*)(rel->data))[j];
+				int addr = r.offset;
+				int si = ELF_RELOC_SYM(r.info);
+				char buf[256];
+				memset(buf,0, 256);
+				int iter = 0;
+				for (int k = 0; k < dynstr->size && iter < 256; k++) {
+
+					if (si==0) {
+						buf[iter++] = dynstr->data[k];
+					} else if (dynstr->data[k] == 0) si--;
+				}
+				printf("%#x %d %s\n", addr, ELF_RELOC_SYM(r.info), buf);
+			}
+		}
+	}
+
+	//relocs
+	/*
+#define ELF_RELOC_SYM(info) ((info) >> 8)
+#define ELF_RELOC_TYPE(info) ((unsigned char)(info))
+#define ELF_RELOC_INFO(sym, type) (((sym)<<8)+(unsigned char)(type))
+	*/
 
 }
 
@@ -228,7 +261,7 @@ void read_elf_symbols(elf_file * elf)
 elf_section_data * elf_get_section(elf_file * elf, char * name)
 {
 	for (int i = 0; i < elf->num_sections; i++) {
-		if (!strncmp(name, elf->sections[i]->name, 5)) {
+		if (!strcmp(name, elf->sections[i]->name)) {
 			return elf->sections[i];
 		}
 	}

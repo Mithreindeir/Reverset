@@ -22,7 +22,10 @@ void disassemble_file(char * filename, unsigned int args, char * symbol_start, i
 	disas->linear = (args & 0x40) != 0;
 	disas->printall = (args & 0x10) != 0;
 	disas->recursive = (args & 0x04) != 0;
-	
+	//Temporarily before recursive disas is done
+	disas->printall = disas->recursive ? 1 : disas->printall;
+
+
 	int ie = elf->entry_point;
 	if (symbol_start != NULL) {
 		int fail = 0;
@@ -46,7 +49,7 @@ void disassemble_file(char * filename, unsigned int args, char * symbol_start, i
 		elf_section_data * text = elf_get_section(elf, ".text");
 		elf_section_data * data = elf_get_section(elf, ".rodata");
 		int off = ie - text->addr;
-		
+
 		if ((off > text->size) || (off < 0)) {
 			printf("Start address given not inside .text section\n");
 			exit(1);
@@ -54,7 +57,7 @@ void disassemble_file(char * filename, unsigned int args, char * symbol_start, i
 		disassemble(disas, text->data + off, text->size-off, ie);
 	}
 	disassemble_analyze(disas, elf);
-	disassemble_print(disas);
+	disassemble_print(disas, elf);
 
 	disassembler_destroy(disas);
 
@@ -166,21 +169,44 @@ void disassemble(disassembler * disas, unsigned char * raw_data, int size, int s
 		disas->instructions = instructions;
 		disas->num_instructions = num_instructions;
 	} else {
-		disas->instructions = realloc(disas->instructions, sizeof(x86_instruction *)* (num_instructions+ disas->num_instructions));
-		
-		//order instructions
-		for (int i = 0; i < num_instructions; i++) {
-			disas->instructions[i+disas->num_instructions] = instructions[i]; 
+		//Merge both arrays and remove duplicates, keeping the ones in the old array
+		int total_unique = disas->num_instructions + num_instructions;
+		for (int i = 0; i < disas->num_instructions; i++) {
+			for (int j = 0; j < num_instructions; j++) {
+				if (disas->instructions[i]->address == instructions[j]->address) total_unique--;
+			}
 		}
-		disas->num_instructions += num_instructions;
+		x86_instruction ** instr = malloc(sizeof(x86_instruction*)*(total_unique));
+		int di = 0;
+		int ni = 0;
+		int i = 0;
+		for (; i < total_unique; i++) {
+			if (di < disas->num_instructions && ni < num_instructions) {
+				if (disas->instructions[di]->address > instructions[ni]->address) {
+					instr[i] = instructions[ni++];
+				} else if (disas->instructions[di]->address < instructions[ni]->address) {
+					instr[i] = disas->instructions[di++];
+				} else {
+					i--;
+					ni++;
+				}
+			} else if (di < disas->num_instructions) {
+				instr[i] = disas->instructions[di++];
+			} else instr[i] = instructions[ni++];
+		}
 
-		
+		free(disas->instructions);
 		free(instructions);
+
+		disas->num_instructions = total_unique;
+		disas->instructions = instr;
 	}
 }
 
 void disassemble_recursive(disassembler * disas, elf_file * file, int start_addr)
 {
+	/*Todo handle relocs so that the recursion can propogate */
+
 	char * sec_name = NULL;
 	elf_section_data * sec = NULL;
 	//0x804842c
@@ -230,12 +256,19 @@ void disassemble_analyze(disassembler * disas, elf_file * elf)
 	disas->format = format;
 }
 
-void disassemble_print(disassembler * disas)
+void disassemble_print(disassembler * disas, elf_file * elf)
 {
 	int addr = 0;
 	x86_instruction * ci = NULL;
+	char * last_section = NULL;
 	for (int i = 0; i < disas->num_instructions; i++) {
 		ci = disas->instructions[i];
+		char * new_section = elf_find_section(elf, ci->address);
+		if (!last_section || !!strcmp(new_section, last_section)) {
+			printf("//\tSECTION: %s\n", new_section);
+
+			last_section = new_section;
+		}
 		formatter_precomment(disas->format, ci->address);
 		
 		addr += ci->used_bytes;

@@ -45,7 +45,7 @@ int disassemble_getbound(disassembler * disas, int addr);
 void disassemble_recursive(disassembler * disas, elf_file * file, int start_addr);
 
 void disassemble_analyze(disassembler * disas, elf_file * elf);
-void disassemble_print(disassembler * disas);
+void disassemble_print(disassembler * disas, elf_file * elf);
 void disassemble_print_recursive(disassembler * disas, int func_number);
 
 void disassembler_destroy(disassembler * disas);

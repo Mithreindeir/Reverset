@@ -6,6 +6,7 @@ enum x86_OPERAND_TYPE
 	REG,
 	MRM,
 	IMM8,
+	IMM16,//c3 (retn imm16)
 	IMM32,
 	RPC,
 	REL8,
@@ -155,11 +156,13 @@ static const x86_opcode x86_opcodes[] = {
 	{0x00, 0x89, 0x00, 0, 1, 0, MRM, REG, NON, "mov"},
 	{0x00, 0x8a, 0x00, 0, 0, 0, REG, REG, NON, "mov"},
 	{0x00, 0x8b, 0x00, 1, 1, 0, REG, MRM, NON, "mov"},
-	//{0x00, 0xb8, 0x00, 0, 0, 0, MRM, IMM, NON, "mov"},
+	//{0x00, 0xb8, 0x00, 0, 0, 0, MRM, IMM, NON, "mov"}
+	{0x00, 0x72, 0x00, 0, 0, 0, REL8, NON, NON, "jb"},
+	{0x00, 0x73, 0x00, 0, 0, 0, REL8, NON, NON, "jae"},
 	{0x00, 0x74, 0x00, 0, 0, 0, REL8, NON, NON, "je"},
 	{0x00, 0x75, 0x00, 0, 0, 0, REL8, NON, NON, "jne"},
 	{0x00, 0x76, 0x00, 0, 0, 0, REL8, NON, NON, "jbe"},
-	{0x00, 0x77, 0x00, 0, 0, 0, REL8, NON, NON, "jnbe"},
+	{0x00, 0x77, 0x00, 0, 0, 0, REL8, NON, NON, "ja"},
 	{0x00, 0x78, 0x00, 0, 0, 0, REL8, NON, NON, "js"},
 	{0x00, 0x79, 0x00, 0, 0, 0, REL8, NON, NON, "jns"},
 	{0x00, 0x7a, 0x00, 0, 0, 0, REL8, NON, NON, "jp"},
@@ -262,6 +265,7 @@ static const x86_opcode x86_opcodes[] = {
 	{0x00, 0xA1, 0x00, 0, 1, 0, EAX, MOFF, NON, "mov"},
 
 	//
+	{0x00, 0xC2, 0x00, 0, 0, 0, IMM16, NON, NON, "retn"},
 	{0x00, 0xC9, 0x00, 0, 0, 0, NON, NON, NON, "leave"},
 	{0x00, 0xF7, 0x00, 0, 1, 1, MRM, IMM32, NON, "test"},
 	{0x00, 0xF7, 0x01, 0, 1, 1, MRM, IMM32, NON, "test"},
@@ -274,9 +278,19 @@ static const x86_opcode x86_opcodes[] = {
 	{0x0F, 0xBE, 0x00, 1, 0, 0, REG, MRM, NON, "movsx"},
 	{0x0F, 0xB6, 0x00, 1, 1, 0, REG, MRM, NON, "movzx"},
 	{0x0F, 0x85, 0x00, 0, 1, 0, REL1632, NON, NON, "jne"},
-	{0x0F, 0x94, 0x00, 0, 0, 0, MRM, NON, NON, "sete"}
+	{0x0F, 0x86, 0x00, 0, 1, 0, REL1632, NON, NON, "jbe"},
+	{0x0F, 0x87, 0x00, 0, 1, 0, REL1632, NON, NON, "ja"},
+	{0x0F, 0x88, 0x00, 0, 1, 0, REL1632, NON, NON, "js"},
+	{0x0F, 0x89, 0x00, 0, 1, 0, REL1632, NON, NON, "jns"},
+	{0x0F, 0x8A, 0x00, 0, 1, 0, REL1632, NON, NON, "jpe"},
+	{0x0F, 0x8B, 0x00, 0, 1, 0, REL1632, NON, NON, "jnp"},
+	{0x0F, 0x8C, 0x00, 0, 1, 0, REL1632, NON, NON, "jl"},
+	{0x0F, 0x8D, 0x00, 0, 1, 0, REL1632, NON, NON, "jge"},
+	{0x0F, 0x8E, 0x00, 0, 1, 0, REL1632, NON, NON, "jle"},
+	{0x0F, 0x8F, 0x00, 0, 1, 0, REL1632, NON, NON, "jg"},
 
-
+	{0x0F, 0x94, 0x00, 0, 0, 0, MRM, NON, NON, "sete"},
 };
+	//{0x0F, 0x94, 0x00, 0, 0, 0, REG, MRM, NON, "movzx"},// uses 16 bit mrm apparently
 
 #endif
