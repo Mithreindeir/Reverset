@@ -22,7 +22,7 @@ int main(int argc, char ** argv)
 }
 ```
 
-Disassembles to (snipped of full disassembly): 
+Disassembles to (snippet of full disassembly): 
 ```
 //	sym.function_foo
 0x400526:   55                      	push   rbp
