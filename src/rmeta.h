@@ -25,6 +25,7 @@ typedef enum r_meta_t
 typedef struct r_meta
 {
 	char * comment;
+	char * label;
 	
 	r64addr * addresses;
 	int num_addr;

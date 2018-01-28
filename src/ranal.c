@@ -7,7 +7,12 @@ void r_add_xref(r_disasm * to, r_disasm * from)
 
 void r_meta_analyze(r_disasm ** disassembly, int num_instructions, rfile * file)
 {
-	//Find references to symbols and replace address with symbol name
+	//General purpose buffer
+	char buf[256];
+	memset(buf, 0, 256);
+	
+	//Add labels for code that is the address of a file symbol
+	//And Find references to symbols and replace address with symbol name
 	for (int j = 0; j < num_instructions; j++) {
 		r_disasm * disas = disassembly[j];
 		for (int i = 0; i < file->num_symbols; i++) {
@@ -20,13 +25,15 @@ void r_meta_analyze(r_disasm ** disassembly, int num_instructions, rfile * file)
 				}
 				disas->op[0] = strdup(sym.name);
 			}
+			if (sym.type == R_FUNC && disas->address == sym.addr64) {
+				snprintf(buf, 256, "sym.%s", sym.name);
+				disas->metadata->label = strdup(buf);
+			}
 		}
 
 		//Find references to strings and insert them
 		for (int i = 0; i < file->num_strings; i++) {
 			if ((disas->metadata->type == r_tdata) && file->strings[i].addr64 != 0 && r_meta_find_addr(disas->metadata, file->strings[i].addr64)) {
-				char buf[256];
-				memset(buf, 0, 256);
 				for (int k = 0; k < disas->num_operands; k++) {
 					if (r_meta_isaddr(disas->op[k])){
 						int base = 16;
@@ -51,9 +58,7 @@ void r_meta_analyze(r_disasm ** disassembly, int num_instructions, rfile * file)
 			r_disasm * disas = disassembly[j];
 			for (int k = 0; k < disas->num_operands; k++) {
 				int n = r_meta_rip_relative(disas->op[k]);
-
 				if (n != 0) {
-					char buf[20];
 					memset(buf, 0, 20);
 					snprintf(buf, 20, "%#x", n + disas->address+disas->used_bytes);
 

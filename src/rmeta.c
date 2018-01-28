@@ -12,6 +12,7 @@ r_meta * r_meta_init()
 	meta->xref_from = NULL;
 	meta->num_addr = 0;
 	meta->addresses = NULL;
+	meta->label = NULL;
 
 	return meta;
 }
@@ -24,6 +25,7 @@ void r_meta_destroy(r_meta * meta)
 	if (meta->addresses) free(meta->addresses);
 	if (meta->xref_to) free(meta->xref_to);
 	if (meta->xref_from) free(meta->xref_from);
+	if (meta->label) free(meta->label);
 
 	free(meta);
 

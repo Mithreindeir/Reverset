@@ -49,6 +49,7 @@ void r_print_disas(r_disasm ** disassembly, int num_disassembly)
 {
 	for (int i = 0; i < num_disassembly; i++) {
 		r_disasm * disas = disassembly[i];
+		if (disas->metadata->label) printf("//\t%s\n", disas->metadata->label);
 		printf("%#x:   ", disas->address);
 		int b = 8*3;
 		for (int i = 0; i < disas->used_bytes; i++) {
