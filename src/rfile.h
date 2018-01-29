@@ -8,6 +8,11 @@
 
 /*Generic file type*/
 
+//Set bit if the symbol is a reloc
+#define R_RELOCBIT 0x80
+#define R_RELOC(v) (v & R_RELOCBIT)
+
+
 typedef enum rarchitecture
 {
 	r_noarch,
@@ -22,7 +27,7 @@ typedef enum rsym_t
 	R_FUNC,
 	R_OBJECT,
 	R_ARRAY,
-	R_STRING
+	R_STRING,
 } rsym_t;
 
 typedef struct rsymbol
@@ -61,8 +66,8 @@ typedef struct rsection
 	int size;
 	rsection_t type;
 	union {
-		r32addr start32;
-		r64addr start64;
+		uint32_t start32;
+		uint64_t start64;
 	};
 } rsection;
 
@@ -91,5 +96,7 @@ rfile * rfile_read(char * filename);
 void rfile_destroy(rfile * file);
 rsection * rfile_get_section(rfile * file, char * name);
 void rfile_find_strings(rfile * file);
+//Returns the section that contains addr
+rsection * rfile_section_addr(rfile * file, uint64_t addr);
 
 #endif

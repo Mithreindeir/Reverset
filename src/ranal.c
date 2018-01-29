@@ -17,7 +17,7 @@ void r_meta_analyze(r_disasm ** disassembly, int num_instructions, rfile * file)
 		r_disasm * disas = disassembly[j];
 		for (int i = 0; i < file->num_symbols; i++) {
 			rsymbol  sym = file->symbols[i];
-			if (disas->metadata->type == r_tcall && sym.type == R_FUNC && r_meta_find_addr(disas->metadata, sym.addr64)) {
+			if (disas->metadata->type == r_tcall && sym.type == R_FUNC && r_meta_find_addr(disas->metadata, sym.addr64, META_ADDR_BRANCH)) {
 				if (disas->op[0]) {
 					disas->metadata->comment = disas->op[0];
 					disas->op[0] = NULL;
@@ -33,7 +33,7 @@ void r_meta_analyze(r_disasm ** disassembly, int num_instructions, rfile * file)
 
 		//Find references to strings and insert them
 		for (int i = 0; i < file->num_strings; i++) {
-			if ((disas->metadata->type == r_tdata) && file->strings[i].addr64 != 0 && r_meta_find_addr(disas->metadata, file->strings[i].addr64)) {
+			if ((disas->metadata->type == r_tdata) && file->strings[i].addr64 != 0 && r_meta_find_addr(disas->metadata, file->strings[i].addr64, META_ADDR_DATA)) {
 				for (int k = 0; k < disas->num_operands; k++) {
 					if (r_meta_isaddr(disas->op[k])){
 						int base = 16;

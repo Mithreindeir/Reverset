@@ -26,8 +26,8 @@ void rfile_find_strings(rfile * file)
 	//Finds all printable strings that are at least 3 valid chars long with an unprintable character after.
 	//Only look in PROGBITS section
 	for (int i = 0; i < file->num_sections; i++) {
-		if (file->sections[i].type == r_programdefined) {
-			//Program defined usually contains text and data sections
+		if (file->sections[i].type == r_programdefined && !!strcmp(file->sections[i].name, ".text")) {
+			//Program defined usually contains text and data sections 
 			int print_start = -1;
 			for (int j = 0; j < file->sections[i].size; j++) {
 				char c = file->sections[i].raw[j];
@@ -90,6 +90,14 @@ rsection * rfile_get_section(rfile * file, char * name)
 		if (!strcmp(name, file->sections[i].name)) {
 			return &file->sections[i];
 		}
+	}
+	return NULL;
+}
+
+rsection * rfile_section_addr(rfile * file, uint64_t addr)
+{
+	for (int i = 0; i < file->num_sections; i++) {
+		if (addr >= file->sections[i].start64 && addr <= (file->sections[i].start64 + file->sections[i].size)) return &file->sections[i];
 	}
 	return NULL;
 }

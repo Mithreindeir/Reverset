@@ -492,8 +492,8 @@ void x86_disas_meta_type(r_disasm * disas)
 void x86_disas_meta_operand(r_disasm * disas, x86_instr_operand * op)
 {
 	if (op->type == X86O_REL) {
-		r_meta_add_addr(disas->metadata, op->relative);
-	} else if (op->type == X86O_IMM) {
-		r_meta_add_addr(disas->metadata, op->immediate);
+		r_meta_add_addr(disas->metadata, op->relative, META_ADDR_BRANCH);
+	} else if (op->type == X86O_IMM && op->size == 3 && (op->immediate >>8 != 0) && op->immediate != 0) {
+		r_meta_add_addr(disas->metadata, op->immediate, META_ADDR_DATA);
 	}
 }

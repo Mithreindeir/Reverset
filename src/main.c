@@ -21,15 +21,11 @@ int main(int argc, char ** argv)
 	rfile * file = r_openfile(argv[1]);
 	rfile_find_strings(file);
 	if (disassemblers[file->arch] != NULL) {
-		int num_disas = 0;
-		r_disasm ** disassembly = r_disassemble(file, disassemblers[file->arch], &num_disas);
-		r_meta_analyze(disassembly, num_disas, file);
-		r_print_disas(disassembly, num_disas);
+		r_disassembler * disassembler = r_disassemble(file, disassemblers[file->arch]);
+		r_meta_analyze(disassembler->instructions, disassembler->num_instructions, file);
+		r_print_disas(disassembler);
 
-		for (int i = 0; i < num_disas; i++) {
-			r_disasm_destroy(disassembly[i]);
-		}
-		free(disassembly);
+		r_disassembler_destroy(disassembler);
 	} else {
 		printf("Architecture not supported\n");
 		return 1;

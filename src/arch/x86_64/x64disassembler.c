@@ -143,6 +143,10 @@ r_disasm * x64_decode_instruction(unsigned char * stream, int address)
 	if (op3) free(op3);
 
 	disas->used_bytes = ub;
+	if (strlen(disas->mnemonic) == 0) {
+		disas->mnemonic = strdup("invalid");
+		disas->used_bytes = 1;
+	}
 	disas->raw_bytes = malloc(disas->used_bytes+1);
 	disas->raw_bytes[disas->used_bytes] = 0;
 	disas->raw_bytes = memcpy(disas->raw_bytes, stream, disas->used_bytes);
@@ -528,8 +532,8 @@ void x64_disas_meta_type(r_disasm * disas)
 void x64_disas_meta_operand(r_disasm * disas, x64_instr_operand * op)
 {
 	if (op->type == X64O_REL) {
-		r_meta_add_addr(disas->metadata, op->relative);
-	} else if (op->type == X64O_IMM) {
-		r_meta_add_addr(disas->metadata, op->immediate);
+		r_meta_add_addr(disas->metadata, op->relative, META_ADDR_BRANCH);
+	} else if (op->type == X64O_IMM && (op->size >= 3) && (op->immediate >>8 != 0) && op->immediate != 0) {
+		r_meta_add_addr(disas->metadata, op->immediate, META_ADDR_DATA);
 	}
 }

@@ -93,11 +93,13 @@ void elf_read32(FILE * f, rfile * file)
 			break;
 		}
 	}
+
 	rsection r;
 	if (strtabidx != -1) r = file->sections[strtabidx];
 	file->num_symbols = 0;
 	//Look for sections of type SHT_SYMTAB and find symbols
-	for (int i = 0; i < header.e_shnum; i++) {
+	for (int i = 0; i < file->num_sections; i++) {
+
 		if (sections[i].sh_type == SHT_SYMTAB) {
 			int num_symbols = sections[i].sh_size/sizeof(Elf32_Sym);
 			Elf32_Sym * symbols = (Elf32_Sym*)(file->sections[i].raw);
@@ -134,7 +136,109 @@ void elf_read32(FILE * f, rfile * file)
 
 		}
 	}
+	//Find Reloc section a create symbols using address of the jmp instruction
+	//Find DYNSTR
+	for (int i = 0; i < header.e_shnum; i++) {
+		if (!strcmp(file->sections[i].name, ".dynstr")) {
+			strtabidx = i;
+			break;
+		}
+	}
 
+	if (strtabidx != -1) r = file->sections[strtabidx];
+	rsymbol * dynsymbols = NULL;
+	int num_dynsyms = 0;
+
+	//Look for sections of type SHT_DYNSYM and find symbols
+	for (int i = 0; i < header.e_shnum; i++) {
+		if (sections[i].sh_type == SHT_DYNSYM) {
+			int num_symbols = sections[i].sh_size/sizeof(Elf32_Sym);
+			Elf32_Sym * symbols = (Elf32_Sym*)(file->sections[i].raw);
+			for (int j = 0; j < num_symbols; j++) {
+				if (strtabidx != -1) {
+					int iter = 0;
+					char c = r.raw[symbols[j].st_name];
+					char buf[256];
+					while (c && iter < 256) {
+						buf[iter++] = c;
+						c = r.raw[symbols[j].st_name + iter];
+					}
+					buf[iter] = 0;
+					//Do not use unknown or no type symbols
+					rsymbol rsym;
+					rsym.name = strdup(buf);
+					rsym.type = elft_to_rsymt(ELF32_ST_TYPE(symbols[j].st_info));
+					//rsym.type = symbols[j].st_type;
+					rsym.addr32 = symbols[j].st_value;
+					num_dynsyms++;
+					if (num_dynsyms == 1) {
+						dynsymbols = malloc(sizeof(rsymbol));
+					} else {
+						dynsymbols = realloc(dynsymbols, sizeof(rsymbol) * num_dynsyms);
+					}
+					dynsymbols[num_dynsyms-1] = rsym;
+				}
+
+			}
+
+		}
+	}
+
+	//Look for sections of type SHT_RELA and find reloc symbols
+	for (int i = 0; i < header.e_shnum; i++) {
+
+		if (sections[i].sh_type == SHT_REL) {
+			int num_symbols = sections[i].sh_size/sizeof(Elf32_Rel);
+			Elf32_Rel * symbols = (Elf32_Rel*)(file->sections[i].raw);
+			for (int j = 0; j < num_symbols; j++) {
+				//Only make rsymbol if the string is not NULL
+				int si = ELF32_R_SYM(symbols[j].r_info);
+				if (si > num_dynsyms) continue;
+				rsymbol rsym;
+				rsym.name = dynsymbols[si].name;
+				dynsymbols[si].name = NULL;
+				rsym.type = elft_to_rsymt(ELF32_R_TYPE(symbols[j].r_info)) | R_RELOCBIT;
+				//rsym.type = symbols[j].st_type;
+				rsym.addr32 = symbols[j].r_offset;
+				printf("%s %#x\n", rsym.name, rsym.addr32);
+				getchar();
+				file->num_symbols++;
+				if (file->num_symbols == 1) {
+					file->symbols = malloc(sizeof(rsymbol));
+				} else {
+					file->symbols = realloc(file->symbols, sizeof(rsymbol) * file->num_symbols);
+				}
+				file->symbols[file->num_symbols-1] = rsym;			
+			}
+		} else if (sections[i].sh_type == SHT_RELA) {
+			int num_symbols = sections[i].sh_size/sizeof(Elf32_Rela);
+			Elf32_Rela * symbols = (Elf32_Rela*)(file->sections[i].raw);
+			for (int j = 0; j < num_symbols; j++) {
+				//Only make rsymbol if the string is not NULL
+				int si = ELF32_R_SYM(symbols[j].r_info)-1;
+				if (si > num_dynsyms) continue;
+				rsymbol rsym;
+				rsym.name = dynsymbols[si].name;
+				dynsymbols[si].name = NULL;
+				rsym.type = elft_to_rsymt(ELF32_R_TYPE(symbols[j].r_info)) | R_RELOCBIT;
+				//rsym.type = symbols[j].st_type;
+				rsym.addr32 = symbols[j].r_offset;
+				printf("%s %#x\n", rsym.name, rsym.addr32);
+				getchar();
+				file->num_symbols++;
+				if (file->num_symbols == 1) {
+					file->symbols = malloc(sizeof(rsymbol));
+				} else {
+					file->symbols = realloc(file->symbols, sizeof(rsymbol) * file->num_symbols);
+				}
+				file->symbols[file->num_symbols-1] = rsym;			
+			}
+		}
+	}
+	for (int i = 0; i < num_dynsyms; i++) {
+		if (dynsymbols[i].name) free(dynsymbols[i].name);
+	}
+	if (dynsymbols) free(dynsymbols);
 	free(sections);
 }
 
@@ -256,7 +360,108 @@ void elf_read64(FILE * f, rfile * file)
 
 		}
 	}
+	
+	int dynamic_offset = file->num_symbols;
+	//Find DYNSTR
+	for (int i = 0; i < header.e_shnum; i++) {
+		if (!strcmp(file->sections[i].name, ".dynstr")) {
+			strtabidx = i;
+			break;
+		}
+	}
 
+	if (strtabidx != -1) r = file->sections[strtabidx];
+	rsymbol * dynsymbols = NULL;
+	int num_dynsyms = 0;
+
+	//Look for sections of type SHT_DYNSYM and find symbols
+	for (int i = 0; i < header.e_shnum; i++) {
+		if (sections[i].sh_type == SHT_DYNSYM) {
+			int num_symbols = sections[i].sh_size/sizeof(Elf64_Sym);
+			Elf64_Sym * symbols = (Elf64_Sym*)(file->sections[i].raw);
+			for (int j = 0; j < num_symbols; j++) {
+				if (strtabidx != -1) {
+					int iter = 0;
+					char c = r.raw[symbols[j].st_name];
+					char buf[256];
+					while (c && iter < 256) {
+						buf[iter++] = c;
+						c = r.raw[symbols[j].st_name + iter];
+					}
+					buf[iter] = 0;
+					//Do not use unknown or no type symbols
+					//Only make rsymbol if the string is not NULL
+					rsymbol rsym;
+					rsym.name = strdup(buf);
+					rsym.type = elft_to_rsymt(ELF64_ST_TYPE(symbols[j].st_info));
+					//rsym.type = symbols[j].st_type;
+					rsym.addr32 = symbols[j].st_value;
+					num_dynsyms++;
+					if (num_dynsyms == 1) {
+						dynsymbols = malloc(sizeof(rsymbol));
+					} else {
+						dynsymbols = realloc(dynsymbols, sizeof(rsymbol) * num_dynsyms);
+					}
+					dynsymbols[num_dynsyms-1] = rsym;
+				}
+
+			}
+
+		}
+	}
+
+	//Look for sections of type SHT_RELA and find reloc symbols
+	for (int i = 0; i < header.e_shnum; i++) {
+		if (sections[i].sh_type == SHT_REL) {
+			int num_symbols = sections[i].sh_size/sizeof(Elf64_Rel);
+			Elf64_Rel * symbols = (Elf64_Rel*)(file->sections[i].raw);
+
+			for (int j = 0; j < num_symbols; j++) {
+				//Only make rsymbol if the string is not NULL
+				int si = ELF64_R_SYM(symbols[j].r_info);
+				if (si >= num_dynsyms) continue;
+				rsymbol rsym;
+				rsym.name = dynsymbols[si].name;
+				dynsymbols[si].name = NULL;
+				rsym.type = elft_to_rsymt(ELF64_R_TYPE(symbols[j].r_info)) | R_RELOCBIT;
+				//rsym.type = symbols[j].st_type;
+				rsym.addr32 = symbols[j].r_offset;
+				file->num_symbols++;
+				if (file->num_symbols == 1) {
+					file->symbols = malloc(sizeof(rsymbol));
+				} else {
+					file->symbols = realloc(file->symbols, sizeof(rsymbol) * file->num_symbols);
+				}
+				file->symbols[file->num_symbols-1] = rsym;			
+			}
+		} else if (sections[i].sh_type == SHT_RELA) {
+			int num_symbols = sections[i].sh_size/sizeof(Elf64_Rela);
+			Elf64_Rela * symbols = (Elf64_Rela*)(file->sections[i].raw);
+			for (int j = 0; j < num_symbols; j++) {
+				//Only make rsymbol if the string is not NULL
+				int si = ELF64_R_SYM(symbols[j].r_info);
+				if (si >= num_dynsyms) continue;
+				rsymbol rsym;
+				rsym.name = dynsymbols[si].name;
+				dynsymbols[si].name = NULL;
+				rsym.type = elft_to_rsymt(ELF64_R_TYPE(symbols[j].r_info)) | R_RELOCBIT;
+				//rsym.type = symbols[j].st_type;
+				rsym.addr32 = symbols[j].r_offset;
+				file->num_symbols++;
+				if (file->num_symbols == 1) {
+					file->symbols = malloc(sizeof(rsymbol));
+				} else {
+					file->symbols = realloc(file->symbols, sizeof(rsymbol) * file->num_symbols);
+				}
+				file->symbols[file->num_symbols-1] = rsym;			
+			}
+		}
+
+	}
+	for (int i = 0; i < num_dynsyms; i++) {
+		if (dynsymbols[i].name) free(dynsymbols[i].name);
+	}
+	if (dynsymbols) free(dynsymbols);
 
 	free(sections);
 }

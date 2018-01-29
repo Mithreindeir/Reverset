@@ -141,7 +141,10 @@ static const instr_pair instr_pairs[] = {
 	{"movsx", r_tdata},
 	{"movzx", r_tdata},
 	//
-	{"call", r_tcall}
+	{"call", r_tcall},
+	//
+	{"ret", r_tret},
+	{"retn", r_tret}
 };
 
 r_meta_t instr_type(char * mnemonic);

@@ -31,7 +31,7 @@ void r_meta_destroy(r_meta * meta)
 
 }
 
-void r_meta_add_addr(r_meta * meta, r64addr address)
+void r_meta_add_addr(r_meta * meta, r64addr address, int type)
 {
 	meta->num_addr++;
 	if (meta->num_addr == 1) {
@@ -41,12 +41,19 @@ void r_meta_add_addr(r_meta * meta, r64addr address)
 	}
 	meta->addresses[meta->num_addr-1] = address;
 
+	if (meta->num_addr == 1) {
+		meta->address_types = malloc(1);
+	} else {
+		meta->address_types = realloc(meta->address_types, meta->num_addr);
+	}
+	meta->address_types[meta->num_addr-1] = type;
 }
 
-int r_meta_find_addr(r_meta * meta, r64addr address)
+int r_meta_find_addr(r_meta * meta, r64addr address, int type)
 {
 	for (int i = 0; i < meta->num_addr; i++) {
-		if (meta->addresses[i]==address) return 1;
+		if (type == 2 && meta->addresses[i]==address) return 1;
+		else if (type == meta->address_types[i] && meta->addresses[i]==address) return 1;
 	}
 	return 0;
 }
