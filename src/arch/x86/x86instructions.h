@@ -295,7 +295,7 @@ static const x86_instruction x86_instruction_table[] = {
 	{"call", "Av", "", ""},
 	{"jnp", "Jv", "", ""},
 	{"jnp", "Ap", "", ""},
-	{"jnp", "Jb", "", ""},
+	{"jmp", "Jb", "", ""},
 	{"in", "al", "dx", ""},
 	{"in", "eax", "dx", ""},
 	{"out", "dx", "al", ""},

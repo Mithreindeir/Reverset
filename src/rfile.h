@@ -1,5 +1,5 @@
-#ifndef _RFILE_H
-#define _RFILE_H
+#ifndef _r_file_H
+#define _r_file_H
 
 #include "rtype.h"
 #include <stdio.h>
@@ -42,6 +42,7 @@ typedef struct rsymbol
 
 typedef struct rstring
 {
+	int len;
 	char * string;
 	union {
 		r32addr addr32;
@@ -71,7 +72,7 @@ typedef struct rsection
 	};
 } rsection;
 
-typedef struct rfile
+typedef struct r_file
 {
 	//1 for 32 2 for 64
 	int bits;
@@ -89,14 +90,15 @@ typedef struct rfile
 
 	r64addr entry_point;
 	rarchitecture arch;
-} rfile;
+} r_file;
 
-rfile * rfile_init();
-rfile * rfile_read(char * filename);
-void rfile_destroy(rfile * file);
-rsection * rfile_get_section(rfile * file, char * name);
-void rfile_find_strings(rfile * file);
+r_file * r_file_init();
+r_file * r_file_read(char * filename);
+void r_file_destroy(r_file * file);
+rsection * r_file_get_section(r_file * file, char * name);
+void r_file_find_strings(r_file * file);
 //Returns the section that contains addr
-rsection * rfile_section_addr(rfile * file, uint64_t addr);
+rsection * r_file_section_addr(r_file * file, uint64_t addr);
+rstring * r_file_in_string(r_file * file, uint64_t addr);
 
 #endif

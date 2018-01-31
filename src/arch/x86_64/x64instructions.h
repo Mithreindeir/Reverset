@@ -150,7 +150,7 @@ static const x64_instruction x64_instruction_table[] = {
 	{"", "", "", ""},
 	{"", "", "", ""},
 	{"", "", "", ""},
-	{"arpl", "Ew", "Rw", ""},
+	{"movsxd", "Gv", "Ev", ""},
 	{"", "", "", ""}, //FS Segment register override
 	{"", "", "", ""}, //GS Segment register override
 	{"", "", "", ""}, //Operand size override
@@ -296,7 +296,7 @@ static const x64_instruction x64_instruction_table[] = {
 	{"call", "Av", "", ""},
 	{"jnp", "Jv", "", ""},
 	{"", "", "", ""},
-	{"jnp", "Jb", "", ""},
+	{"jmp", "Jb", "", ""},
 	{"in", "al", "dx", ""},
 	{"in", "eax", "dx", ""},
 	{"out", "dx", "al", ""},

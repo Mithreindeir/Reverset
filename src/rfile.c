@@ -1,8 +1,8 @@
 #include "rfile.h"
 
-rfile * rfile_init()
+r_file * r_file_init()
 {
-	rfile * file = malloc(sizeof(rfile));
+	r_file * file = malloc(sizeof(r_file));
 	
 	file->symbols = NULL;
 	file->num_symbols = 0;
@@ -21,7 +21,7 @@ rfile * rfile_init()
 	return file;
 }
 
-void rfile_find_strings(rfile * file)
+void r_file_find_strings(r_file * file)
 {
 	//Finds all printable strings that are at least 3 valid chars long with an unprintable character after.
 	//Only look in PROGBITS section
@@ -34,7 +34,7 @@ void rfile_find_strings(rfile * file)
 				if (c >= 0x20 && c < 0x127) {
 					if (print_start == -1) print_start = j;
 				} else {
-					if (print_start != -1 && (j-print_start) > 3) {
+					if (print_start != -1 && (j-print_start) >= 2) {
 						char buf[256];
 						memset(buf, 0, 256);
 						for (int k = print_start; k < j && ((k-print_start) < 255); k++) {
@@ -43,7 +43,7 @@ void rfile_find_strings(rfile * file)
 						rstring str;
 						str.string = strdup(buf);
 						str.addr64 = file->sections[i].start64 + print_start;
-						
+						str.len = strlen(buf);
 						file->num_strings++;
 						if (file->num_strings == 1) {
 							file->strings = malloc(sizeof(rstring));
@@ -59,7 +59,16 @@ void rfile_find_strings(rfile * file)
 	}
 }
 
-void rfile_destroy(rfile * file)
+rstring * r_file_in_string(r_file * file, uint64_t addr)
+{
+	for (int i = 0; i < file->num_strings; i++) {
+		int d = addr - file->strings[i].addr64;
+		if (d >= 0 && d <= file->strings[i].len) return &file->strings[i];
+	}
+	return NULL;
+}
+
+void r_file_destroy(r_file * file)
 {
 	if (!file) return;
 
@@ -84,7 +93,7 @@ void rfile_destroy(rfile * file)
 	free(file);
 }
 
-rsection * rfile_get_section(rfile * file, char * name)
+rsection * r_file_get_section(r_file * file, char * name)
 {
 	for (int i = 0; i < file->num_sections; i++) {
 		if (!strcmp(name, file->sections[i].name)) {
@@ -94,7 +103,7 @@ rsection * rfile_get_section(rfile * file, char * name)
 	return NULL;
 }
 
-rsection * rfile_section_addr(rfile * file, uint64_t addr)
+rsection * r_file_section_addr(r_file * file, uint64_t addr)
 {
 	for (int i = 0; i < file->num_sections; i++) {
 		if (addr >= file->sections[i].start64 && addr <= (file->sections[i].start64 + file->sections[i].size)) return &file->sections[i];

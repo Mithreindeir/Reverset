@@ -1,6 +1,6 @@
 #include "read_elf.h"
 
-void elf_read_file(FILE * f, rfile * file)
+void elf_read_file(FILE * f, r_file * file)
 {
 	file->bits = fgetc(f);
 	rewind(f);
@@ -9,7 +9,7 @@ void elf_read_file(FILE * f, rfile * file)
 	} else if (file->bits == ELFCLASS64) {
 		elf_read64(f, file);
 	}
-	//Copy the entire file into rfile
+	//Copy the entire file into r_file
 	fseek(f, 0, SEEK_END);
 	int len = ftell(f);
 	rewind(f);
@@ -17,11 +17,11 @@ void elf_read_file(FILE * f, rfile * file)
 	fread(file->raw_file, len, 1, f);
 }
 
-void elf_read32(FILE * f, rfile * file)
+void elf_read32(FILE * f, r_file * file)
 {
 	Elf32_Ehdr header;
 	fread(&header, ALIGNED_SIZEOF(Elf32_Ehdr), 1, f);
-	//Set rfiles architecture, entry_point and number of sections
+	//Set r_files architecture, entry_point and number of sections
 	switch (header.e_machine) {
 		case EM_ARM:
 			file->arch = r_arm;
@@ -200,8 +200,6 @@ void elf_read32(FILE * f, rfile * file)
 				rsym.type = elft_to_rsymt(ELF32_R_TYPE(symbols[j].r_info)) | R_RELOCBIT;
 				//rsym.type = symbols[j].st_type;
 				rsym.addr32 = symbols[j].r_offset;
-				printf("%s %#x\n", rsym.name, rsym.addr32);
-				getchar();
 				file->num_symbols++;
 				if (file->num_symbols == 1) {
 					file->symbols = malloc(sizeof(rsymbol));
@@ -223,8 +221,6 @@ void elf_read32(FILE * f, rfile * file)
 				rsym.type = elft_to_rsymt(ELF32_R_TYPE(symbols[j].r_info)) | R_RELOCBIT;
 				//rsym.type = symbols[j].st_type;
 				rsym.addr32 = symbols[j].r_offset;
-				printf("%s %#x\n", rsym.name, rsym.addr32);
-				getchar();
 				file->num_symbols++;
 				if (file->num_symbols == 1) {
 					file->symbols = malloc(sizeof(rsymbol));
@@ -242,11 +238,11 @@ void elf_read32(FILE * f, rfile * file)
 	free(sections);
 }
 
-void elf_read64(FILE * f, rfile * file)
+void elf_read64(FILE * f, r_file * file)
 {
 	Elf64_Ehdr header;
 	fread(&header, ALIGNED_SIZEOF(Elf64_Ehdr), 1, f);
-	//Set rfiles architecture, entry_point and number of sections
+	//Set r_files architecture, entry_point and number of sections
 	switch (header.e_machine) {
 		case EM_ARM:
 			file->arch = r_arm;
@@ -361,7 +357,6 @@ void elf_read64(FILE * f, rfile * file)
 		}
 	}
 	
-	int dynamic_offset = file->num_symbols;
 	//Find DYNSTR
 	for (int i = 0; i < header.e_shnum; i++) {
 		if (!strcmp(file->sections[i].name, ".dynstr")) {
@@ -481,6 +476,7 @@ int elft_to_rsymt(int elfsymt)
 			return R_NONE;
 			break;
 	}
+	return R_NONE;
 }
 
 int check_elf(FILE * f)

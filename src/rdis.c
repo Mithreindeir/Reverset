@@ -1,8 +1,8 @@
 #include "rdis.h"
 
-rfile* r_openfile(char * filename)
+r_file* r_openfile(char * filename)
 {
-	rfile * file = rfile_init();
+	r_file * file = r_file_init();
 
 	FILE * f = fopen(filename, "r");
 	if (!f) {
@@ -62,7 +62,7 @@ r_disassembler * r_disassembler_init()
 	disassembler->bounds = NULL;
 	disassembler->num_bounds = 0;
 
-	disassembler->recursive = 1;
+	disassembler->recursive = 0;
 
 	return disassembler;
 }
@@ -83,16 +83,18 @@ void r_disassembler_destroy(r_disassembler * disassembler)
 	free(disassembler);
 }
 
-void r_disassemble_raw(r_disassembler * disassembler, r_disasm*(*disassemble)(unsigned char * stream, int address), unsigned char * raw_data, int size, int start_addr)
+uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_data, int size, int start_addr)
 {
 	r_disasm ** instructions = NULL;
 	int num_instructions = 0;
 
+	uint64_t laddr = start_addr;
 	int addr = start_addr;
 	int iter = 0;
 	while (iter < size) {
 		r_disasm * disas = NULL;
-		disas = disassemble(raw_data + iter, addr+iter);
+		disas = disassembler->disassemble(raw_data + iter, addr+iter);
+		laddr = disas->address;
 		if (!disas) break;
 		iter += disas->used_bytes;
 		num_instructions++;
@@ -159,40 +161,112 @@ void r_disassemble_raw(r_disassembler * disassembler, r_disasm*(*disassemble)(un
 		disassembler->num_instructions = total_unique;
 		disassembler->instructions = unique_instructions;
 	}
-
+	return laddr;
 }
 
-r_disassembler * r_disassemble(rfile * file, r_disasm*(*disassemble)(unsigned char * stream, int address))
+r_disassembler * r_disassemble(r_file * file, r_disasm*(*disassemble)(unsigned char * stream, int address))
 {
 	r_disassembler * disassembler = r_disassembler_init();
+	disassembler->disassemble = disassemble;
 
-	uint64_t addr = rfile_get_section(file, ".text")->start64;
+	uint64_t addr = r_file_get_section(file, ".text")->start64;
 	r_disassembler_pushaddr(disassembler, addr);
-
+	for (int i = 0; i < file->num_symbols; i++) {
+		if (file->symbols[i].type == R_FUNC && file->symbols[i].addr64 != 0) {
+			r_disassembler_pushaddr(disassembler, file->symbols[i].addr64);
+		}
+	}
+	//If the end of the section is reached return
 	while (disassembler->num_addresses > 0) {
 		addr = r_disassembler_popaddr(disassembler);
-		rsection * section = rfile_section_addr(file, addr);
+		if (r_disassembler_getbound(disassembler, addr) != -1) continue;
+
+		rsection * section = r_file_section_addr(file, addr);
 		if (!section) {
-			printf("Invalid section from address %#lx\n", addr);
+			//printf("Invalid section from address %#lx\n", addr);
 			continue;
 		}
 		int offset = addr - section->start64;
 
 		int tmp = disassembler->num_instructions;
 		//void r_disassemble_raw(r_disassembler * disassembler, r_disasm*(*disassemble)(unsigned char * stream, int address), unsigned char * raw_data, int size, int start_addr)
-		r_disassemble_raw(disassembler, disassemble, section->raw+offset, section->size - offset, section->start64 + offset);
-
+		uint64_t laddr = r_disassemble_raw(disassembler, section->raw+offset, section->size - offset, section->start64 + offset);
+		if ((disassembler->num_instructions - tmp) > 0) r_disassembler_addbound(disassembler, section->start64 + offset,  laddr);
+	
 		for (int i = tmp; i < disassembler->num_instructions; i++) {
 			r_disasm * disasm = disassembler->instructions[i];
 			for (int j = 0; j < disasm->metadata->num_addr; j++) {
 				//printf("%#lx\n", disasm->metadata->addresses[j]);
 				//getchar();
-				r_disassembler_pushaddr(disassembler, disasm->metadata->addresses[j]);
+				//if (disasm->metadata->address_types[j] == META_ADDR_BRANCH && r_disassembler_getbound(disassembler, disasm->metadata->addresses[j]) == -1)
+				//	r_disassembler_pushaddr(disassembler, disasm->metadata->addresses[j]);
 			}
 		}
 	}
-
+	//getchar();
 	return disassembler;
+}
+
+void r_disassemble_address(r_disassembler * disassembler, r_file * file, uint64_t addr)
+{
+	if (r_disassembler_getbound(disassembler, addr) != -1) return;
+	rsection * section = r_file_section_addr(file, addr);
+	if (!section) {
+		printf("Invalid section from address %#lx\n", addr);
+		return;
+	} else {
+		printf("\rDisassembling section from address %#lx", addr);
+	}
+	int offset = addr - section->start64;
+
+	int tmp = disassembler->num_instructions;
+	//void r_disassemble_raw(r_disassembler * disassembler, r_disasm*(*disassemble)(unsigned char * stream, int address), unsigned char * raw_data, int size, int start_addr)
+	uint64_t laddr = r_disassemble_raw(disassembler, section->raw+offset, section->size - offset, section->start64 + offset);
+	if ((disassembler->num_instructions - tmp) > 0) r_disassembler_addbound(disassembler, section->start64 + offset,  laddr);
+	
+	for (int i = tmp; i < disassembler->num_instructions; i++) {
+		r_disasm * disasm = disassembler->instructions[i];
+		for (int j = 0; j < disasm->metadata->num_addr; j++) {
+			//printf("%#lx\n", disasm->metadata->addresses[j]);
+			//getchar();
+			if (disasm->metadata->address_types[j] == META_ADDR_BRANCH && r_disassembler_getbound(disassembler, disasm->metadata->addresses[j]) == -1)
+				r_disassembler_pushaddr(disassembler, disasm->metadata->addresses[j]);
+		}
+	}
+}
+void r_print_disas_f(r_disassembler * disassembler, uint64_t addr)
+{
+	for (int i = 0; i < disassembler->num_instructions; i++) {
+		r_disasm * disas = disassembler->instructions[i];
+		if (disas->address < addr) continue;
+		if (disas->metadata->label) printf("//\t%s\n", disas->metadata->label);
+		printf("%#x:   ", disas->address);
+		int b = 8*3;
+		for (int i = 0; i < disas->used_bytes; i++) {
+			if ((b-3) <= 0) {
+				printf(".");
+				break;
+			} 
+			printf("%02x ", disas->raw_bytes[i]);
+			b -= 3;
+		}
+		while (b > 0) {
+			printf("   ");
+			b -= 3;
+		}
+		printf("\t");
+		int space = 6-strlen(disas->mnemonic);
+		printf("%s ", disas->mnemonic);
+		for (int i = 0; i < space; i++) printf(" ");
+		
+		for (int i = 0; i < disas->num_operands; i++) {
+			if (i!=0) printf(",");
+			printf("%s", disas->op[i]);
+		}
+		if (disas->metadata->comment) printf("\t # %s", disas->metadata->comment);
+		printf("\n");
+		//if (disas->metadata->type == r_tret) break;
+	}
 }
 
 void r_print_disas(r_disassembler * disassembler)
@@ -283,7 +357,6 @@ void r_disassembler_addbound(r_disassembler * disassembler, uint64_t s, uint64_t
 	block_bounds bound;
 	bound.start = s;
 	bound.end = e;
-
 	disassembler->bounds[disassembler->num_bounds-1] = bound; 
 }
 
@@ -294,4 +367,19 @@ uint64_t r_disassembler_getbound(r_disassembler * disassembler, uint64_t addr)
 	}
 
 	return -1;
+}
+
+void r_disassembler_find_functions(r_disassembler * disassembler, r_file * file, r_cconv convention)
+{
+	switch (convention) {
+		case rc_cdecl:
+
+			break;
+		case rc_unix64:
+			break;
+		default:
+			printf("Only cdecl and unix64 calling conventions supported\n");
+			return;
+			break;
+	}
 }

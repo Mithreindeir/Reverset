@@ -8,6 +8,7 @@ x64_instr_prefix x64_instruction_prefix(unsigned char * stream, int * len)
 	prefix.segment_register = NULL;
 	prefix.instr_prefix = NULL;
 	prefix.extended = 0;
+	prefix.rex_prefix = 0;
 
 	int prefix_found = 0;
 	do {
@@ -363,6 +364,15 @@ void x64_decode_sib(x64_instr_operand * opr, x64_disas_state *state)
 			opr->disp = 0x100 - opr->disp;
 		}
 	} else if (mod == 0x2) {//4 byte
+		memcpy(&opr->disp, state->stream + *state->iter, 4);
+		(*state->iter) += 4;
+		opr->sign = 1;
+		if (opr->disp > 0x80000000) {
+			opr->sign = 0;
+			opr->disp = 0x100000000 - opr->disp;
+		}
+	}
+	else if (mod == 0x0) {//4 byte
 		memcpy(&opr->disp, state->stream + *state->iter, 4);
 		(*state->iter) += 4;
 		opr->sign = 1;

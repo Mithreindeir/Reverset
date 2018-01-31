@@ -129,6 +129,10 @@ r_disasm * x86_decode_instruction(unsigned char * stream, int address)
 	if (op3) free(op3);
 
 	disas->used_bytes = ub;
+	if (strlen(disas->mnemonic) == 0) {
+		disas->mnemonic = strdup("invalid");
+		disas->used_bytes = 1;
+	}
 	disas->raw_bytes = malloc(disas->used_bytes+1);
 	disas->raw_bytes[disas->used_bytes] = 0;
 	disas->raw_bytes = memcpy(disas->raw_bytes, stream, disas->used_bytes);
@@ -156,7 +160,7 @@ x86_instr_operand *x86_decode_operand(char * operand, x86_disas_state *state)
 		switch(operand[1]) {
 			case X86_TWO_WORD:
 				printf("Not implemented\n");
-				exit(1);
+				//exit(1);
 				break;
 			case X86_BYTE:
 				operand_size = 1;
@@ -495,5 +499,7 @@ void x86_disas_meta_operand(r_disasm * disas, x86_instr_operand * op)
 		r_meta_add_addr(disas->metadata, op->relative, META_ADDR_BRANCH);
 	} else if (op->type == X86O_IMM && op->size == 3 && (op->immediate >>8 != 0) && op->immediate != 0) {
 		r_meta_add_addr(disas->metadata, op->immediate, META_ADDR_DATA);
-	}
+	} else if (op->type == X86O_INDIR && op->size == 3 && (op->disp >>8 != 0)) { //4 byte disp offset
+		r_meta_add_addr(disas->metadata, op->disp, META_ADDR_DATA);
+	} 
 }

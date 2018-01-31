@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//The context addresses are used in
+/*The context addresses are used in*/
 #define META_ADDR_BOTH 2
 #define META_ADDR_DATA 1
 #define META_ADDR_BRANCH 0
@@ -19,13 +19,14 @@ All addresses are 64 bit so they can fit all.
 
 typedef enum r_meta_t
 {
-	r_tjump,	//Jump or branch instructions
-	r_tarith,	//Arithmetic instructions
-	r_tlogic,	//Logical instructions
-	r_tdata,	//Data instruction (like mov or lea)
-	r_tcall,	//Call instruction
-	r_tret,		//Return from execution instruction
-	r_tnone		//Not determined, other, or none
+	r_tcjump,	/*Conditional Jump or branch instructions*/
+	r_tujump,	/*Unconditional jump or branch*/
+	r_tarith,	/*Arithmetic instructions*/
+	r_tlogic,	/*Logical instructions*/
+	r_tdata,	/*Data instruction (like mov or lea)*/
+	r_tcall,	/*Call instruction*/
+	r_tret,		/*Return from execution instruction*/
+	r_tnone		/*Not determined, other, or none*/
 } r_meta_t;
 
 

@@ -13,9 +13,9 @@ static const char elf_magic[] = ELFMAG;
 
 void read_bytes(unsigned char * dst, FILE * f, int endianess, int size);
 int check_elf(FILE * fp);
-void elf_read_file(FILE * f, rfile * file);
-void elf_read32(FILE * f, rfile * file);
-void elf_read64(FILE * f, rfile * file);
+void elf_read_file(FILE * f, r_file * file);
+void elf_read32(FILE * f, r_file * file);
+void elf_read64(FILE * f, r_file * file);
 int elft_to_rsymt(int elfsymt);
 
 #endif
