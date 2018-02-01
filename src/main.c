@@ -5,12 +5,22 @@
 #include "rdis.h"
 #include "ranal.h"
 #include "arch/x86/x86disassembler.h"
+#include "arch/x86_64/x64assembler.h"
 #include "arch/x86_64/x64disassembler.h"
 //48 2d 38 10 60 00
 static r_disasm*(*disassemblers[])(unsigned char * stream, int address) = {NULL, x86_decode_instruction, x64_decode_instruction, NULL};
 
 int main(int argc, char ** argv)
 {
+	/*
+	if (argc < 2) {
+		printf("Usage: %s \"asm\"\n", argv[0]);
+		return 1;
+	}
+	x64_assemble(argv[1]);
+
+	return 0;
+	*/
 	if (argc < 2) {
 		printf("Usage: %s file\n", argv[0]);
 		return 1;
@@ -18,10 +28,13 @@ int main(int argc, char ** argv)
 
 	r_file * file = r_openfile(argv[1]);
 	r_file_find_strings(file);
-	r_disassembler *  disassembler = NULL;
+	r_disassembler *  disassembler = r_disassembler_init();
 	r_analyzer * anal = r_analyzer_init();
 	if (disassemblers[file->arch] != NULL) {
-		disassembler = r_disassemble(file, disassemblers[file->arch]);
+		disassembler->disassemble =  disassemblers[file->arch];
+		r_disassembler_pushaddr(disassembler,  r_file_get_section(file, ".text")->start64);
+		r_disassembler_add_symbols(disassembler, file);
+		r_disassemble(disassembler, file);
 		r_meta_analyze(anal, disassembler, file);
 	} else {
 		printf("Architecture not supported\n");

@@ -57,7 +57,7 @@ typedef struct r_disassembler
 } r_disassembler;
 
 r_file* r_openfile(char * filename);
-r_disassembler * r_disassemble(r_file * file, r_disasm*(*disassemble)(unsigned char * stream, int address));
+void r_disassemble(r_disassembler * disassembler, r_file * file);
 void r_disassemble_address(r_disassembler * disassembler, r_file * file,  uint64_t addr);
 /*Returns address of last disassembled*/
 uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_data, int size, int start_addr);
@@ -75,5 +75,6 @@ uint64_t r_disassembler_popaddr(r_disassembler * disassembler);
 void r_disassembler_addbound(r_disassembler * disassembler, uint64_t s, uint64_t e);
 uint64_t r_disassembler_getbound(r_disassembler * disassembler, uint64_t addr);
 void r_disassembler_find_functions(r_disassembler * disassembler, r_file * file, r_cconv convention);
+void r_disassembler_add_symbols(r_disassembler * disassembler, r_file * file);
 
 #endif

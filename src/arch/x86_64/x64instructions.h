@@ -3,9 +3,14 @@
 
 typedef struct x64_instruction {
 	char * mnemonic;
-	char * op1;
-	char * op2;
-	char * op3;
+	union {
+		struct {
+			char * op1;
+			char * op2;
+			char * op3;
+		};
+		char * op[3];
+	};
 } x64_instruction;
 
 enum x64_Addressing_Mode {
@@ -109,7 +114,7 @@ static const x64_instruction x64_instruction_table[] = {
 	{"cmp", "Gb", "Eb", ""},
 	{"cmp", "Gv", "Ev", ""},
 	{"cmp", "al", "Ib", ""},
-	{"cmp", "eax", "Id", ""},
+	{"cmp", "rax", "Id", ""},
 	{"", "", "", ""}, //DS segment register override
 	{"", "", "", ""},
 	//4
@@ -150,7 +155,7 @@ static const x64_instruction x64_instruction_table[] = {
 	{"", "", "", ""},
 	{"", "", "", ""},
 	{"", "", "", ""},
-	{"movsxd", "Gv", "Ev", ""},
+	{"movsxd", "Gv", "Ed", ""},
 	{"", "", "", ""}, //FS Segment register override
 	{"", "", "", ""}, //GS Segment register override
 	{"", "", "", ""}, //Operand size override
@@ -177,9 +182,9 @@ static const x64_instruction x64_instruction_table[] = {
 	{"jp", "Jb", "", ""},
 	{"jnp", "Jb", "", ""},
 	{"jl", "Jb", "", ""},
-	{"jnl", "Jb", "", ""},
+	{"jge", "Jb", "", ""},
 	{"jle", "Jb", "", ""},
-	{"jnle", "Jb", "", ""},
+	{"jg", "Jb", "", ""},
 	//8
 	{"grp1d", "Eb", "Ib", ""},
 	{"grp1d", "Ev", "Id", ""},
@@ -473,9 +478,9 @@ static const x64_instruction x64_instruction_extended_table[] = {
 	{"jp", "Jv", "", ""},
 	{"jnp", "Jv", "", ""},
 	{"jl", "Jv", "", ""},
-	{"jnl", "Jv", "", ""},
+	{"jge", "Jv", "", ""},
 	{"jle", "Jv", "", ""},
-	{"jnle", "Jv", "", ""},
+	{"jg", "Jv", "", ""},
 	//9
 	{"seto", "Eb", "", ""},
 	{"setno", "Eb", "", ""},

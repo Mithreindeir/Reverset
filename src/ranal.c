@@ -96,8 +96,11 @@ void r_meta_printall(r_disassembler * disassembler, r_analyzer * anal, uint64_t 
 	for (int i = 0; i < disassembler->num_instructions; i++) {
 		r_disasm * disas = disassembler->instructions[i];
 		if (disas->address < addr) continue;
+		printf(KBLU);
 		if (disas->metadata->label) printf("//\t%s\n", disas->metadata->label);
+		printf(KRED);
 		printf("%#x:   ", disas->address);
+		printf(KCYN);
 		int b = 8*3;
 		for (int i = 0; i < disas->used_bytes; i++) {
 			if ((b-3) <= 0) {
@@ -112,11 +115,16 @@ void r_meta_printall(r_disassembler * disassembler, r_analyzer * anal, uint64_t 
 			b -= 3;
 		}
 		printf("\t");
+		printf(KRED);
 		r_meta_printjump(anal, disas->address, addr, end);
 		int space = 6-strlen(disas->mnemonic);
+		printf(KBLU);
 		printf("%s ", disas->mnemonic);
 		for (int i = 0; i < space; i++) printf(" ");
-		
+		if (disas->metadata && (disas->metadata->type == r_tcall || disas->metadata->type == r_tujump || disas->metadata->type == r_tcjump))
+			printf(KYEL);
+		else
+			printf(KRED);
 		for (int i = 0; i < disas->num_operands; i++) {
 			if (i!=0) printf(",");
 			printf("%s", disas->op[i]);
@@ -125,6 +133,7 @@ void r_meta_printall(r_disassembler * disassembler, r_analyzer * anal, uint64_t 
 		printf("\n");
 		if (disas->metadata->type == r_tret) break;
 	}
+	printf(KNRM);
 }
 
 void r_meta_calculate_branches(r_analyzer * anal, r_disassembler * disassembler)

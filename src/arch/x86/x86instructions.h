@@ -176,9 +176,9 @@ static const x86_instruction x86_instruction_table[] = {
 	{"jp", "Jb", "", ""},
 	{"jnp", "Jb", "", ""},
 	{"jl", "Jb", "", ""},
-	{"jnl", "Jb", "", ""},
+	{"jge", "Jb", "", ""},
 	{"jle", "Jb", "", ""},
-	{"jnle", "Jb", "", ""},
+	{"jg", "Jb", "", ""},
 	//8
 	{"grp1d", "Eb", "Ib", ""},
 	{"grp1d", "Ev", "Iv", ""},
@@ -472,9 +472,9 @@ static const x86_instruction x86_instruction_extended_table[] = {
 	{"jp", "Jv", "", ""},
 	{"jnp", "Jv", "", ""},
 	{"jl", "Jv", "", ""},
-	{"jnl", "Jv", "", ""},
+	{"jge", "Jv", "", ""},
 	{"jle", "Jv", "", ""},
-	{"jnle", "Jv", "", ""},
+	{"jg", "Jv", "", ""},
 	//9
 	{"seto", "Eb", "", ""},
 	{"setno", "Eb", "", ""},
