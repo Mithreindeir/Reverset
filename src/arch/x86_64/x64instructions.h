@@ -648,7 +648,13 @@ static const x64_instruction x64_grp3[] = {
 
 static const x64_instruction x64_grp4[] = {
 	{"inc", "", "", ""},
-	{"dec", "", "", ""}
+	{"dec", "", "", ""},
+	{"", "", "", ""},
+	{"", "", "", ""},
+	{"", "", "", ""},
+	{"", "", "", ""},
+	{"", "", "", ""},
+	{"", "", "", ""}
 };
 
 static const x64_instruction x64_grp5[] = {

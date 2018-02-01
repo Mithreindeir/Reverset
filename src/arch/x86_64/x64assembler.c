@@ -381,7 +381,7 @@ int x64_find_instruction(char * mnemonic, struct x64_assemble_op * operands, int
 				} else if (opr == 'b') {
 					instr = x64_groups[group][j+GROUP_OFFSET];
 				}
-
+				if (!instr.mnemonic[0]) continue;
 				if (!strcmp(mnemonic, instr.mnemonic)) {
 					if (x64_operands_compatible(instr, operands, num_operands)) {
 						*extended = j;
