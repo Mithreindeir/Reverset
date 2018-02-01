@@ -42,10 +42,10 @@ char * strtok_dup(char * string, char *delim, int last)
 	str += i+1;
 	return str2;
 }
-//10 00 0 000
-void x64_assemble(char * instr)
+
+unsigned char * x64_assemble(char * instr, int * num_bytes)
 {
-	printf("input: %s\n", instr);
+	//printf("input: %s\n", instr);
 	char * instruction = strdup(instr);
 	char * mnemonic = NULL;
 	char ** operands = NULL;
@@ -54,10 +54,30 @@ void x64_assemble(char * instr)
 	int len = strlen(instruction);
 
 	int chars = -1;
+	struct x64_asm_bytes * xasm = malloc(sizeof(struct x64_asm_bytes));
+	xasm->bytes = NULL;
+	xasm->num_bytes = 0;
 	//Rudimentary parser.
 	//Sets first token as mnemonic
+	int i = 0;
+	for (int i = 0; i < len+1; i++) if (instr[i]!=' ') {i++; break;};
+
 	//First operands are delimited by a comma, the last is delimited by a NULL character
-	for (int i = 0; i < len+1; i++) {
+	for (; i < len+1; i++) {
+
+		if (mnemonic) {
+			//If mnemonic is a prefix then set the mnemonic back to null and add prefix byte
+			for (int j = 0; j < sizeof(x86_instr_prefix_str)/sizeof(char*); j++) {
+				if (!x86_instr_prefix_str[j]) continue;
+				if (!strcmp(mnemonic, x86_instr_prefix_str[j])) {
+					x64_add_byte_prefix(xasm, x86_instr_prefix_byte[j]);
+					mnemonic = NULL;
+					chars = -1;
+					break;
+				}
+			}
+
+		}
 		//Set the mnemonic to the first word that has a space after it.
 		if ((instruction[i] == 0 || instruction[i] == ' ') && !mnemonic) {
 			instruction[i] = 0;
@@ -95,28 +115,28 @@ void x64_assemble(char * instr)
 		} else if (chars == -1) chars = i;
 	}
 	
-	struct x64_asm_bytes * xasm = malloc(sizeof(struct x64_asm_bytes));
-	xasm->bytes = NULL;
-	xasm->num_bytes = 0;
-
 	struct x64_assemble_op * modes = malloc(sizeof(struct x64_assemble_op) * num_operands);
-	printf("mnenomic: \"%s\"\n", mnemonic);
+	//printf("mnenomic: \"%s\"\n", mnemonic);
 	for (int i = 0; i < num_operands; i++) {
 		modes[i] = x64_assembler_type(operands[i]);
 		modes[i].operand = operands[i];
 	}
 	int extended = -1;
 	int opc = x64_find_instruction(mnemonic, modes, num_operands, &extended);
-
-	printf("opcode: %#x\t", opc);
-	if (extended != -1) {
-		printf("extended: %d\n", extended);
-	}
-	x64_add_byte(xasm, opc);
 	if (opc != -1) {
 		x64_instruction instr = x64_instruction_table[opc];
-		printf("%s %s %s %s\n", instr.mnemonic, instr.op[0], instr.op[1], instr.op[2]);
+		//printf("%s %s %s %s\n", instr.mnemonic, instr.op[0], instr.op[1], instr.op[2]);
+	} else {
+		free(xasm);
+		free(operands);
+		free(mnemonic);
+		free(modes);
+		free(instruction);
+		printf("Unable to assemble instruction\n");
+		return NULL;
 	}
+	x64_add_byte(xasm, opc);
+
 	x64_encode_modrm(xasm, modes, num_operands, extended);
 	for (int i = 0; i < num_operands; i++) {
 		if (X64_NUMBER_OP(modes[i].mode)) {
@@ -132,16 +152,17 @@ void x64_assemble(char * instr)
 	x64_calculate_rex(xasm, modes, num_operands);
 
 	for (int i = 0; i < num_operands; i++) {
-		printf("operand %d: \"%s\" '%c%c'\n", i, modes[i].operand, modes[i].mode, modes[i].size);
 		free(modes[i].operand);
 	}
-	for (int i = 0; i < xasm->num_bytes; i++) {
-		printf("%02x ", xasm->bytes[i]);
-	}
-	printf("\n");
+
 	free(operands);
 	free(mnemonic);
+	free(modes);
 	free(instruction);
+	unsigned char * bytes = xasm->bytes;
+	*num_bytes = xasm->num_bytes;
+	free(xasm);
+	return bytes;
 }
 
 void x64_calculate_rex(struct x64_asm_bytes * op, struct x64_assemble_op * operands, int num_operands)
@@ -499,7 +520,12 @@ int x64_operands_compatible(x64_instruction instr, struct x64_assemble_op * oper
 		int m2 = instr.op[i][0];//Retrieves addressing mode
 		int s2 = instr.op[i][1];//Retrieves operand size
 		if (operands[i].mode != m2) {
-			if (!strcmp(operands[i].operand, instr.op[i])) continue;
+			//Use this opportunity to set operand size possible
+			if (!strcmp(operands[i].operand, instr.op[i])) {
+				int r = x64_register_index(operands[i].operand);
+				if (r!=-1) operands[i].opr_size = X64_REG_SIZE(r);
+				continue;
+			}
 			//G can also be a E if there is no other E
 			if (operands[i].mode == X64_REG && m2 == X64_MODRM) {
 				int other_e = 0;
@@ -510,7 +536,7 @@ int x64_operands_compatible(x64_instruction instr, struct x64_assemble_op * oper
 			} else if ((X64_NUMBER_OP(operands[i].mode) && X64_NUMBER_OP(m2)));//Immediate, relative and moffset are all same string so make them all compatible
 			else return 0;		
 		}
-		if (!x64_size_compatible(operands[i].size,s2)) return 0;
+		if (!x64_size_compatible(m2, operands[i].size,s2)) return 0;
 	}
 
 	//If the two instruction are compatible, then set the valid mode and size
@@ -523,11 +549,17 @@ int x64_operands_compatible(x64_instruction instr, struct x64_assemble_op * oper
 	return 1;
 }
 
-int x64_size_compatible(int size1, int size2)
+int x64_size_compatible(int type, int size1, int size2)
 {
 	if (size1 == size2) return 1;
 	if (size1 == 'v' && (size2 == 'd' || size2 == 'w')) return 1;
 	if (size2 == 'v' && (size1 == 'd' || size1 == 'w')) return 1;
+	//Number types are always upwards compatible (0x0 can be a byte, word, dword or qword)
+	if (X64_NUMBER_OP(type)) {
+		if (size1 == 'b' && (size2 == 'w' || size2 == 'd' || size2 == 'v' || size2 == 'q')) return 1;
+		if (size1 == 'w' && (size2 == 'd' || size2 == 'v' || size2 == 'q')) return 1;
+		if (size1 == 'd' && (size2 == 'v' || size2 == 'q')) return 1;
+	}
 	return 0;
 }
 

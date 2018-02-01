@@ -12,15 +12,7 @@ static r_disasm*(*disassemblers[])(unsigned char * stream, int address) = {NULL,
 
 int main(int argc, char ** argv)
 {
-	/*
-	if (argc < 2) {
-		printf("Usage: %s \"asm\"\n", argv[0]);
-		return 1;
-	}
-	x64_assemble(argv[1]);
-
-	return 0;
-	*/
+	
 	if (argc < 2) {
 		printf("Usage: %s file\n", argv[0]);
 		return 1;
@@ -51,11 +43,16 @@ int main(int argc, char ** argv)
 		printf("%#lx>", current_address);
 		char buf[256];
 		memset(buf, 0, 256);
-		scanf("%256s", buf);
+		fgets(buf, 256, stdin);
+		//Removes trailing newline
+		strtok(buf, "\n");
 		int size = strlen(buf);
 		int iter = 0;
 		while (iter < size) {
-			if (buf[iter] == ' ') continue;
+			if (buf[iter] == ' ' || buf[iter] == '\n' || buf[iter] == '\t'){
+				iter++;
+				continue;
+			}
 			else if (buf[iter] == 'd') {
 				//r_disassemble_address(disassembler, file, current_address);
 				//r_meta_analyze(anal, disassembler, file);
@@ -78,7 +75,7 @@ int main(int argc, char ** argv)
 					addresses[num_addresses-1] = current_address;
 				}
 				iter += i-1;
-			} else if (buf[iter]=='p'){
+			} else if (buf[iter]=='p') {
 				r_meta_printall(disassembler, anal,current_address);
 			} else if (buf[iter] == 'q') {
 				run = 0;
@@ -89,6 +86,18 @@ int main(int argc, char ** argv)
 					addresses = realloc(addresses, sizeof(uint64_t) * num_addresses);
 				}
 				current_address = addresses[num_addresses-1];
+			} else if (buf[iter] == 'a') {
+				//Assemble 
+				int num_bytes = 0;
+				unsigned char * bytes = x64_assemble(buf+iter+1, &num_bytes);
+				if (bytes) {
+					printf("%d bytes: ", num_bytes);
+					for (int i = 0; i < num_bytes; i++) {
+						printf("%02x ", bytes[i]);
+					}
+					printf("\n");
+				}
+				break;
 			} else {
 				printf("%c invalid\n", buf[iter]);
 				break;

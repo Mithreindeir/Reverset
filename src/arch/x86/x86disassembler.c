@@ -101,7 +101,7 @@ r_disasm * x86_decode_instruction(unsigned char * stream, int address)
 
 	int iter = 0;
 	char buf[32];
-	if (prefix.instr_prefix) iter += snprintf(buf+iter, 32-iter, "%s", prefix.instr_prefix);
+	if (prefix.instr_prefix) iter += snprintf(buf+iter, 32-iter, "%s ", prefix.instr_prefix);
 	snprintf(buf+iter, 32-iter, "%s", instr.mnemonic);
 	r_disasm * disas = r_disasm_init();
 	disas->mnemonic = strdup(buf);

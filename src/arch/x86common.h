@@ -40,7 +40,7 @@ static char x86_instr_prefix_byte[] = {
 };
 
 static char * x86_instr_prefix_str[] = {
-	"repz ", "repnz ", "lock ", NULL, NULL 
+	"repz", "repnz", "lock", NULL, NULL 
 };
 
 static char x86_segment_register_byte[] = {
