@@ -95,7 +95,7 @@ void x64_assemble(char * instr)
 		} else if (chars == -1) chars = i;
 	}
 	
-	struct x64_asm_op * xasm = malloc(sizeof(struct x64_asm_op));
+	struct x64_asm_bytes * xasm = malloc(sizeof(struct x64_asm_bytes));
 	xasm->bytes = NULL;
 	xasm->num_bytes = 0;
 
@@ -129,6 +129,8 @@ void x64_assemble(char * instr)
 			}
 		}
 	}
+	x64_calculate_rex(xasm, modes, num_operands);
+
 	for (int i = 0; i < num_operands; i++) {
 		printf("operand %d: \"%s\" '%c%c'\n", i, modes[i].operand, modes[i].mode, modes[i].size);
 		free(modes[i].operand);
@@ -141,9 +143,29 @@ void x64_assemble(char * instr)
 	free(mnemonic);
 	free(instruction);
 }
-//7d
-//10 111 101
-void x64_encode_modrm(struct x64_asm_op * asm_op, struct x64_assemble_op * operands, int num_operands, int extended)
+
+void x64_calculate_rex(struct x64_asm_bytes * op, struct x64_assemble_op * operands, int num_operands)
+{
+	char rex = 0;
+
+	//Calculate operand size by looking at operands not indirect
+	for (int i = 0; i < num_operands; i++) {
+		//rexw
+		if (operands[i].opr_size == 4) rex |= 0x8;
+		//rexb
+		if (operands[i].rexb) rex |= 0x1;
+		//rexr
+		if (operands[i].rexr) rex |= 0x4;
+		//rexx
+		if (operands[i].rexx) rex |= 0x2;
+	}
+	if (rex != 0) {
+		rex += 0x40;
+		x64_add_byte_prefix(op,rex);
+	}
+}
+
+void x64_encode_modrm(struct x64_asm_bytes * asm_op, struct x64_assemble_op * operands, int num_operands, int extended)
 {
 	unsigned char modrm = 0;
 	//Code extended into modrm
@@ -156,6 +178,11 @@ void x64_encode_modrm(struct x64_asm_op * asm_op, struct x64_assemble_op * opera
 		if (operands[i].mode == X64_REG) {
 			int reg = x64_register_index(operands[i].operand);
 			char r = X64_REG_BIN(reg);
+			//Rex.b is 1
+			if (r > 7) {
+				r -= 8;
+				operands[i].rexr = 1;
+			}
 			modrm |= (r<<3);
 		}
 
@@ -166,15 +193,37 @@ void x64_encode_modrm(struct x64_asm_op * asm_op, struct x64_assemble_op * opera
 		int reg = x64_register_index(operands[modop].operand);
 		if (reg != -1) {
 			modrm |= MODRM_REGISTER << 6;
-			modrm |= X64_REG_BIN(reg);
+			int r = X64_REG_BIN(reg);
+			operands[modop].opr_size = X64_REG_SIZE(reg);
+			if (r > 7) {
+				r -= 8;
+				operands[modop].rexb = 1;
+			}
+			modrm |= r;
 			x64_add_byte(asm_op, modrm);
 		} else {
 			//Either SIB or reg+displacement
 			//Check for reg+displacement
 			struct x64_indirect indir;
-			x64_retreive_indirect(operands[modop].operand, &indir);
+			x64_retrieve_indirect(operands[modop].operand, &indir);
 			if (indir.sib) {
+				modrm |= MODRM_SIB;
+				if (indir.disp_size == 1) modrm |= 0x1<<6;
+				else if (indir.disp_size == 4) modrm |= 0x2<<6; 
+				char sib = 0;
+				if (indir.scale != -1)
+					sib |= x64_scale(indir.scale)<<6;
+				if (indir.index != -1)
+					sib |= indir.index<<3;
+				if (indir.base != -1)
+					sib |= indir.base;
 
+				x64_add_byte(asm_op, modrm);
+				x64_add_byte(asm_op, sib);
+				if (indir.disp_size==1) x64_add_byte(asm_op, (unsigned char)indir.disp);
+				else if (indir.disp_size==4) {
+					x64_add_int32(asm_op, indir.disp);
+				}
 			} else {
 				if (indir.base != -1 && indir.disp_size == 0) modrm |= MODRM_INDIRECT << 6;
 				else if (indir.base != -1 && indir.disp_size == 1) modrm |= MODRM_ONEBYTE << 6;
@@ -182,6 +231,9 @@ void x64_encode_modrm(struct x64_asm_op * asm_op, struct x64_assemble_op * opera
 				if (indir.base) {
 					modrm |= indir.base;
 				}
+				operands[modop].rexb = indir.rexb;
+				operands[modop].rexx = indir.rexx;
+				operands[modop].addr_size = indir.addr_size;
 				x64_add_byte(asm_op, modrm);
 				if (indir.disp_size==1) x64_add_byte(asm_op, (unsigned char)indir.disp);
 				else if (indir.disp_size==4) {
@@ -192,7 +244,15 @@ void x64_encode_modrm(struct x64_asm_op * asm_op, struct x64_assemble_op * opera
 	}
 }
 
-void x64_retreive_indirect(char * operand, struct x64_indirect * indir)
+int x64_scale(int scalef)
+{
+	if (scalef == 8) return 3;
+	else if (scalef == 4) return 2;
+	else if (scalef == 2) return 1;
+	else return 0;
+}
+
+void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 {
 	char * base = NULL;
 	char * index = NULL;
@@ -203,6 +263,9 @@ void x64_retreive_indirect(char * operand, struct x64_indirect * indir)
 	int neg = 0;
 	int size = 0;
 	char * prefix = strtok_dup(operand, "[", 0);
+	indir->rexb = 0;
+	indir->rexx = 0;
+
 	if (prefix) {
 		char * body = strtok_dup(NULL, "]", 0);
 		char * before = NULL;
@@ -244,7 +307,6 @@ void x64_retreive_indirect(char * operand, struct x64_indirect * indir)
 				base = strtok_dup(NULL, " ", 1);
 			}
 		}
-
 		//In disponly cases, base will be a number
 		if (base && !index && !scale && !displacement) {
 			int is_reg = x64_register_index(base);
@@ -263,11 +325,18 @@ void x64_retreive_indirect(char * operand, struct x64_indirect * indir)
 				base = NULL;
 			}
 		}
+		indir->addr_size = 0;
+		if (index || scale) indir->sib = 1;
 
 		if (index) {
 			int i = x64_register_index(index);
 			if (i==-1) indir->index = -1;
 			else indir->index = X64_REG_BIN(i);
+			indir->addr_size = X64_REG_SIZE(i);
+			if (indir->index > 7) {
+				indir->index -= 8;
+				indir->rexx = 1;
+			}
 		} else indir->index = -1;
 		
 		if (scale) {
@@ -278,6 +347,11 @@ void x64_retreive_indirect(char * operand, struct x64_indirect * indir)
 			int b = x64_register_index(base);
 			if (b==-1) indir->base = -1;
 			else indir->base = X64_REG_BIN(b);
+			indir->addr_size = X64_REG_SIZE(b);
+			if (indir->base > 7) {
+				indir->base -= 8;
+				indir->rexb = 1;
+			}
 		} else indir->base = -1;
 
 		if (displacement) {
@@ -305,6 +379,10 @@ struct x64_assemble_op x64_assembler_type(char * operand)
 {
 	struct x64_assemble_op op;
 
+	op.rexx = 0;
+	op.rexb = 0;
+	op.rexr = 0;
+	op.addr_size = 0;
 	op.mode = 0;
 	op.size = 0;
 	int size = 0;
@@ -312,6 +390,7 @@ struct x64_assemble_op x64_assembler_type(char * operand)
 	//Indir size of anything other than 0 means it is an indirect addressing mode
 	if (indir_size) {
 		size = indir_size;
+		op.opr_size = size;
 		op.mode = X64_MODRM;
 		//All indirect size prefixs are 5 except byte which is four, so adjust operand index accordingly
 		//x64_encode_modrm(oper, operand + 4+(indir_size!=1));
@@ -320,6 +399,7 @@ struct x64_assemble_op x64_assembler_type(char * operand)
 		int s = strlen(operand);
 		if (s <= 5) size = 1;
 		else size = 3;
+		op.opr_size = size;
 		op.mode = X64_IMM;
 	} else {
 		//The operand is a register
@@ -329,6 +409,7 @@ struct x64_assemble_op x64_assembler_type(char * operand)
 		}
 		op.mode = X64_REG;
 	}
+
 	if (size == 3 || size == 4) {
 		op.size = X64_WDWORD;
 	} else if (size == 2) {
@@ -429,7 +510,7 @@ int x64_operands_compatible(x64_instruction instr, struct x64_assemble_op * oper
 			} else if ((X64_NUMBER_OP(operands[i].mode) && X64_NUMBER_OP(m2)));//Immediate, relative and moffset are all same string so make them all compatible
 			else return 0;		
 		}
-		if (!x64_size_compatible(operands[i].size,s2) && !X64_NUMBER_OP(operands[i].mode)) return 0;
+		if (!x64_size_compatible(operands[i].size,s2)) return 0;
 	}
 
 	//If the two instruction are compatible, then set the valid mode and size
@@ -450,7 +531,7 @@ int x64_size_compatible(int size1, int size2)
 	return 0;
 }
 
-void x64_add_byte(struct x64_asm_op * op, unsigned char byte)
+void x64_add_byte(struct x64_asm_bytes * op, unsigned char byte)
 {
 	op->num_bytes++;
 	if (op->num_bytes==1) {
@@ -461,7 +542,21 @@ void x64_add_byte(struct x64_asm_op * op, unsigned char byte)
 	op->bytes[op->num_bytes-1] = byte;
 }
 
-void x64_add_int32(struct x64_asm_op * op, uint32_t bint)
+void x64_add_byte_prefix(struct x64_asm_bytes * op, unsigned char byte)
+{
+	op->num_bytes++;
+	if (op->num_bytes==1) {
+		op->bytes = malloc(1);
+	} else {
+		op->bytes = realloc(op->bytes, op->num_bytes);
+		for (int i = (op->num_bytes-1); i >= 0; i--) {
+			op->bytes[i+1] = op->bytes[i]; 
+		}
+	}
+	op->bytes[0] = byte;
+}
+
+void x64_add_int32(struct x64_asm_bytes * op, uint32_t bint)
 {
 	unsigned char * dchar = (unsigned char*)&bint;
 	for (int i = 0; i < 4; i++) {

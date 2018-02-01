@@ -17,12 +17,15 @@ struct x64_assemble_op
 {
 	int mode;
 	int size;
+	int opr_size;
+	int addr_size;
+	int rexb;
+	int rexr;
+	int rexx;
 	char * operand;
-	char * encoded;
-	int num_bytes;
 };
 
-struct x64_asm_op
+struct x64_asm_bytes
 {
 	unsigned char * bytes;
 	int num_bytes;
@@ -30,7 +33,9 @@ struct x64_asm_op
 
 struct x64_indirect
 {
-	int size;
+	int rexb;
+	int rexx;
+	int addr_size;
 	int sib;//1 if sib
 	int disp_size;//0=no disp, 1 = 1 byte 4 = 4 byte
 	uint32_t disp;
@@ -43,16 +48,19 @@ struct x64_assemble_op x64_assembler_type(char * operand);
 char * no_space_strdup(char * str);
 char * strtok_dup(char * string, char * delim, int last);
 void x64_assemble(char * instruction);
-void x64_encode_modrm(struct x64_asm_op * asm_op, struct x64_assemble_op * operands, int num_operand, int extended);
-void x64_retreive_indirect(char * operand,struct  x64_indirect * indir);
+void x64_calculate_rex(struct x64_asm_bytes * op, struct x64_assemble_op * operands, int num_operands);
+void x64_encode_modrm(struct x64_asm_bytes * asm_op, struct x64_assemble_op * operands, int num_operand, int extended);
+void x64_retrieve_indirect(char * operand, struct  x64_indirect * indir);
+
 
 int x64_indirect_prefix(char * operand);
 int x64_register_index(char * reg);
 int x64_find_instruction(char * mnemonic, struct x64_assemble_op * operands, int num_operands, int * extended);
 int x64_size_compatible(int size1, int size2);
 int x64_operands_compatible(x64_instruction instr, struct x64_assemble_op * operands, int num_operand);
-void x64_add_byte(struct x64_asm_op * op, unsigned char byte);
-void x64_add_int32(struct x64_asm_op * op, uint32_t bint);
-
+void x64_add_byte(struct x64_asm_bytes * op, unsigned char byte);
+void x64_add_int32(struct x64_asm_bytes * op, uint32_t bint);
+void x64_add_byte_prefix(struct x64_asm_bytes * op, unsigned char byte);
+int x64_scale(int scalef);
 
 #endif
