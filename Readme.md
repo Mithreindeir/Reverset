@@ -1,7 +1,7 @@
 ## Reverset
 
 Reverset is a lightweight portable disassembler and binary analysis tool. Currently supports the entire standard x86 instruction set, with coming support for x87 fpu, avx, and sse instructions. Supports almost the entire x64 instruction set.
-No external dependencies, written completely in C.
+No external dependencies, written completely in C. Also includes a x86_64 work in progress (unoptimizing) assembler.
 
 # Example
 A test program of:
