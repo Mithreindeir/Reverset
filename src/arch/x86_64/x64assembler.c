@@ -43,7 +43,7 @@ char * strtok_dup(char * string, char *delim, int last)
 	return str2;
 }
 
-unsigned char * x64_assemble(char * instr, int * num_bytes)
+unsigned char * x64_assemble(char * instr, uint64_t addr, int * num_bytes)
 {
 	//printf("input: %s\n", instr);
 	char * instruction = strdup(instr);
@@ -122,7 +122,7 @@ unsigned char * x64_assemble(char * instr, int * num_bytes)
 		modes[i].operand = operands[i];
 	}
 	int extended = -1;
-	int opc = x64_find_instruction(mnemonic, modes, num_operands, &extended);
+	int opc = x64_find_instruction(mnemonic, addr, modes, num_operands, &extended);
 	if (opc != -1) {
 		x64_instruction instr = x64_instruction_table[opc];
 		//printf("%s %s %s %s\n", instr.mnemonic, instr.op[0], instr.op[1], instr.op[2]);
@@ -139,12 +139,22 @@ unsigned char * x64_assemble(char * instr, int * num_bytes)
 
 	x64_encode_modrm(xasm, modes, num_operands, extended);
 	for (int i = 0; i < num_operands; i++) {
-		if (X64_NUMBER_OP(modes[i].mode)) {
+		if (X64_NUMBER_OP(modes[i].mode) && modes[i].mode != X64_REL) {
 			if (modes[i].size == X64_BYTE) {
-				unsigned char c = strtol(modes[i].operand,NULL,0);
+				unsigned char c = strtol(modes[i].operand, NULL, 0);
 				x64_add_byte(xasm, c);
 			} else if (modes[i].size == X64_WDWORD || modes[i].size == X64_DWORD) {
 				uint32_t c = (uint32_t)strtol(modes[i].operand,NULL,0);
+				x64_add_int32(xasm, c);
+			}
+		} else if (modes[i].mode == X64_REL) {
+			uint32_t c = strtol(modes[i].operand, NULL, 0);
+			c -= addr + xasm->num_bytes;
+			if (modes[i].relative_size == X64_BYTE) {
+				c -= 1;
+				x64_add_byte(xasm, (unsigned char)c);
+			} else if (modes[i].relative_size == X64_WDWORD || modes[i].relative_size == X64_DWORD) {
+				c -= 4;
 				x64_add_int32(xasm, c);
 			}
 		}
@@ -440,6 +450,16 @@ struct x64_assemble_op x64_assembler_type(char * operand)
 	}
 	return op;
 }
+
+int x64_relative_size(char * operand, uint64_t address)
+{
+	uint64_t rel = strtol(operand, NULL, 0) - address;
+	if (!(rel >> 8)) return X64_BYTE;
+	if (!(rel >> 16)) return X64_WORD;
+
+	return X64_WDWORD;
+}
+
 //Checks for indirect size prefix
 int x64_indirect_prefix(char * operand)
 {
@@ -464,7 +484,7 @@ int x64_register_index(char * reg)
 	return -1;
 }
 
-int x64_find_instruction(char * mnemonic, struct x64_assemble_op * operands, int num_operands, int * extended)
+int x64_find_instruction(char * mnemonic, uint64_t addr, struct x64_assemble_op * operands, int num_operands, int * extended)
 {
 	x64_instruction instr;
 	for (int i = 0; i < (sizeof(x64_instruction_table)/sizeof(x64_instruction)); i++) {
@@ -473,6 +493,7 @@ int x64_find_instruction(char * mnemonic, struct x64_assemble_op * operands, int
 		if (!strncmp("grp", instr.mnemonic, 3)) {
 			char group = instr.mnemonic[3]-0x30 -1;
 			char opr = instr.mnemonic[4];
+			//Some groups all share the same operands, other differ. 'd' means use the default given by the group operand. a means use the operands in group table a and b means group table b and etc
 
 			for (int j = 0; j < 8; j++) {
 				instr = x64_instruction_table[i];
@@ -484,19 +505,17 @@ int x64_find_instruction(char * mnemonic, struct x64_assemble_op * operands, int
 					instr = x64_groups[group][j+GROUP_OFFSET];
 				}
 				if (!instr.mnemonic[0]) continue;
+
 				if (!strcmp(mnemonic, instr.mnemonic)) {
-					if (x64_operands_compatible(instr, operands, num_operands)) {
+					if (x64_operands_compatible(instr, addr, operands, num_operands)) {
 						*extended = j;
 						return i;
 					}
 				}
 			}
-
-
-			//Some groups all share the same operands, other differ. 'd' means use the default given by the group operand. a means use the operands in group table a and b means group table b and etc
 		}
 		if (!strcmp(mnemonic, instr.mnemonic)) {
-			if (x64_operands_compatible(instr, operands, num_operands))
+			if (x64_operands_compatible(instr, addr, operands, num_operands))
 				return i;
 
 		}
@@ -506,7 +525,7 @@ int x64_find_instruction(char * mnemonic, struct x64_assemble_op * operands, int
 
 //G, G is analagous to both G, E and E, G
 //But G, E != E, G or G, G or E, E
-int x64_operands_compatible(x64_instruction instr, struct x64_assemble_op * operands, int num_operands)
+int x64_operands_compatible(x64_instruction instr, uint64_t addr, struct x64_assemble_op * operands, int num_operands)
 {
 	int num_ops = 0;
 	for (;num_ops < 3; num_ops++) {
@@ -536,7 +555,14 @@ int x64_operands_compatible(x64_instruction instr, struct x64_assemble_op * oper
 			} else if ((X64_NUMBER_OP(operands[i].mode) && X64_NUMBER_OP(m2)));//Immediate, relative and moffset are all same string so make them all compatible
 			else return 0;		
 		}
-		if (!x64_size_compatible(m2, operands[i].size,s2)) return 0;
+		int size = operands[i].size;
+		if (m2 == X64_REL) {
+			int a_size = (size == X64_BYTE) ? 1 : 4;
+			operands[i].relative_size = x64_relative_size(operands[i].operand, addr+1+a_size);
+			size = operands[i].relative_size;
+		}
+		
+		if (!x64_size_compatible(m2, size, s2)) return 0;
 	}
 
 	//If the two instruction are compatible, then set the valid mode and size
@@ -555,7 +581,7 @@ int x64_size_compatible(int type, int size1, int size2)
 	if (size1 == 'v' && (size2 == 'd' || size2 == 'w')) return 1;
 	if (size2 == 'v' && (size1 == 'd' || size1 == 'w')) return 1;
 	//Number types are always upwards compatible (0x0 can be a byte, word, dword or qword)
-	if (X64_NUMBER_OP(type)) {
+	if (X64_NUMBER_OP(type) && type != X64_REL) {
 		if (size1 == 'b' && (size2 == 'w' || size2 == 'd' || size2 == 'v' || size2 == 'q')) return 1;
 		if (size1 == 'w' && (size2 == 'd' || size2 == 'v' || size2 == 'q')) return 1;
 		if (size1 == 'd' && (size2 == 'v' || size2 == 'q')) return 1;

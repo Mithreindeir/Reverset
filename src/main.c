@@ -89,7 +89,7 @@ int main(int argc, char ** argv)
 			} else if (buf[iter] == 'a') {
 				//Assemble 
 				int num_bytes = 0;
-				unsigned char * bytes = x64_assemble(buf+iter+1, &num_bytes);
+				unsigned char * bytes = x64_assemble(buf+iter+1, current_address, &num_bytes);
 				if (bytes) {
 					printf("%d bytes: ", num_bytes);
 					for (int i = 0; i < num_bytes; i++) {
