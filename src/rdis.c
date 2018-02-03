@@ -4,7 +4,7 @@ r_file* r_openfile(char * filename)
 {
 	r_file * file = r_file_init();
 
-	FILE * f = fopen(filename, "r");
+	FILE * f = fopen(filename, "r+");
 	if (!f) {
 		printf("Error opening file %s\n", filename);
 		exit(1);
@@ -14,7 +14,8 @@ r_file* r_openfile(char * filename)
 		elf_read_file(f, file);
 	}
 
-	fclose(f);
+	file->file = f;
+	//fclose(f);
 	return file;
 }
 
@@ -63,6 +64,9 @@ r_disassembler * r_disassembler_init()
 	disassembler->num_bounds = 0;
 
 	disassembler->recursive = 0;
+	disassembler->overwrite = 0;
+
+	disassembler->disassemble = NULL;
 
 	return disassembler;
 }
@@ -89,12 +93,15 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 	int num_instructions = 0;
 
 	uint64_t laddr = start_addr;
+	uint64_t lbyte = 0;
 	int addr = start_addr;
 	int iter = 0;
 	while (iter < size) {
 		r_disasm * disas = NULL;
 		disas = disassembler->disassemble(raw_data + iter, addr+iter);
 		laddr = disas->address;
+		lbyte = disas->used_bytes;
+
 		if (!disas) break;
 		iter += disas->used_bytes;
 		num_instructions++;
@@ -112,13 +119,19 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 	if (disassembler->num_instructions == 0) {
 		disassembler->instructions = instructions;
 		disassembler->num_instructions = num_instructions;
-	} else {
+	} else  {
 		//Remove duplicates and merge
 		int total_unique = disassembler->num_instructions + num_instructions;
 		for (int i = 0; i < disassembler->num_instructions; i++) {
+			int rm = 0;
 			for (int j = 0; j < num_instructions; j++) {
-				if (disassembler->instructions[i]->address == instructions[j]->address) total_unique--;
+				if (disassembler->instructions[i]->address == instructions[j]->address) {
+					rm = 1;
+					total_unique--;
+				}
 			}
+			if (!rm && disassembler->instructions[i]->address >= addr && disassembler->instructions[i]->address < (laddr + lbyte))
+				total_unique--;
 		}
 		r_disasm ** unique_instructions = malloc(sizeof(r_disasm*)*total_unique);
 		int di = 0;
@@ -126,16 +139,16 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 		int i = 0;
 		for (; i < total_unique; i++) {
 			if (di < disassembler->num_instructions && ni < num_instructions) {
-				if (disassembler->instructions[di]->address > instructions[ni]->address) {
-					unique_instructions[i] = instructions[ni++];
-					instructions[ni-1] = NULL;
+				if (disassembler->instructions[di]->address >= addr && disassembler->instructions[di]->address < (laddr + lbyte)) {
+					i--;
+					di++;
 				} else if (disassembler->instructions[di]->address < instructions[ni]->address) {
 					unique_instructions[i] = disassembler->instructions[di++];
 					disassembler->instructions[di-1] = NULL;
 				} else {
-					i--;
-					ni++;
-				}
+					unique_instructions[i] = instructions[ni++];
+					instructions[ni-1] = NULL;
+				} 
 			} else if (di < disassembler->num_instructions) {
 				unique_instructions[i] = disassembler->instructions[di++];
 				disassembler->instructions[di-1] = NULL;
@@ -159,7 +172,7 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 		free(instructions);
 
 		disassembler->num_instructions = total_unique;
-		disassembler->instructions = unique_instructions;
+		disassembler->instructions = unique_instructions;		
 	}
 	return laddr;
 }
@@ -170,7 +183,7 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 	//If the end of the section is reached return
 	while (disassembler->num_addresses > 0) {
 		addr = r_disassembler_popaddr(disassembler);
-		if (r_disassembler_getbound(disassembler, addr) != -1) continue;
+		if (!disassembler->overwrite && r_disassembler_getbound(disassembler, addr) != -1) continue;
 
 		rsection * section = r_file_section_addr(file, addr);
 		if (!section) {
@@ -178,12 +191,14 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 		} else {
 			printf("\rDisassembling %#lx\n", addr);
 		}
-		int offset = addr - section->start64;
+
+		if (disassembler->overwrite) disassembler->overwrite = 0;
+		int offset = addr - section->start;
 
 		int tmp = disassembler->num_instructions;
 
-		uint64_t laddr = r_disassemble_raw(disassembler, section->raw+offset, section->size - offset, section->start64 + offset);
-		if ((disassembler->num_instructions - tmp) > 0) r_disassembler_addbound(disassembler, section->start64 + offset,  laddr);
+		uint64_t laddr = r_disassemble_raw(disassembler, section->raw+offset, section->size - offset, section->start + offset);
+		if ((disassembler->num_instructions - tmp) > 0) r_disassembler_addbound(disassembler, section->start + offset,  laddr);
 	
 		for (int i = tmp; i < disassembler->num_instructions; i++) {
 			r_disasm * disasm = disassembler->instructions[i];
@@ -278,8 +293,10 @@ void r_disassembler_pushaddr(r_disassembler * disassembler, uint64_t addr)
 	for (int i = 0; i < disassembler->num_addresses; i++) {
 		if (disassembler->addrstack[i] == addr) return;
 	}
-	for (int i = 0; i < disassembler->unum_addresses; i++) {
-		if (disassembler->used_addrstack[i] == addr) return;
+	if (!disassembler->overwrite) {
+		for (int i = 0; i < disassembler->unum_addresses; i++) {
+			if (disassembler->used_addrstack[i] == addr) return;
+		}
 	}
 	
 	disassembler->num_addresses++;
@@ -305,6 +322,10 @@ uint64_t r_disassembler_popaddr(r_disassembler * disassembler)
 		disassembler->addrstack = realloc(disassembler->addrstack, sizeof(uint64_t) * disassembler->num_addresses);
 	}
 
+	for (int i = 0; i < disassembler->unum_addresses; i++) {
+		if (disassembler->used_addrstack[i] == addr) return addr;
+	}
+
 	disassembler->unum_addresses++;
 	if (disassembler->unum_addresses == 1) {
 		disassembler->used_addrstack = malloc(sizeof(uint64_t));
@@ -319,7 +340,7 @@ uint64_t r_disassembler_popaddr(r_disassembler * disassembler)
 void r_disassembler_addbound(r_disassembler * disassembler, uint64_t s, uint64_t e)
 {
 	disassembler->num_bounds++;
-	if (disassembler->num_bounds == 0) {
+	if (disassembler->num_bounds == 1) {
 		disassembler->bounds = malloc(sizeof(block_bounds));
 	} else {
 		disassembler->bounds = realloc(disassembler->bounds, sizeof(block_bounds) * disassembler->num_bounds);

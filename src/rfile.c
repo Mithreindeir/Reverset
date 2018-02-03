@@ -18,6 +18,8 @@ r_file * r_file_init()
 	file->strings = NULL;
 	file->num_strings = 0;
 
+	file->file = NULL;
+
 	return file;
 }
 
@@ -42,7 +44,7 @@ void r_file_find_strings(r_file * file)
 						}
 						rstring str;
 						str.string = strdup(buf);
-						str.addr64 = file->sections[i].start64 + print_start;
+						str.addr64 = file->sections[i].start + print_start;
 						str.len = strlen(buf);
 						file->num_strings++;
 						if (file->num_strings == 1) {
@@ -68,10 +70,30 @@ rstring * r_file_in_string(r_file * file, uint64_t addr)
 	return NULL;
 }
 
+void r_file_patch(r_file * file, uint64_t addr, unsigned char * bytes, int num_bytes)
+{
+	if (!file->file) return;
+	rsection * section = r_file_section_addr(file, addr);
+	if (!section) return;
+
+
+	uint64_t diff = addr - section->start;
+	fseek(file->file, section->offset + diff, SEEK_SET);
+	int written = fwrite(bytes, 1, num_bytes, file->file);
+	uint64_t off = section->offset + diff;
+	for (int i = off; i < (off+written); i++) {
+		file->raw_file[i] = bytes[i-off];
+		section->raw[i-section->offset] = bytes[i-off];
+	}
+
+	printf("%d bytes written\n", written);
+}
+
 void r_file_destroy(r_file * file)
 {
 	if (!file) return;
 
+	if (file->file) fclose(file->file);
 	//Free symbols
 	for (int i = 0; i < file->num_symbols; i++) {
 		free(file->symbols[i].name);
@@ -96,6 +118,7 @@ void r_file_destroy(r_file * file)
 rsection * r_file_get_section(r_file * file, char * name)
 {
 	for (int i = 0; i < file->num_sections; i++) {
+		if (!file->sections[i].name || !file->sections[i].name[0]) continue;
 		if (!strcmp(name, file->sections[i].name)) {
 			return &file->sections[i];
 		}
@@ -106,7 +129,7 @@ rsection * r_file_get_section(r_file * file, char * name)
 rsection * r_file_section_addr(r_file * file, uint64_t addr)
 {
 	for (int i = 0; i < file->num_sections; i++) {
-		if (addr >= file->sections[i].start64 && addr <= (file->sections[i].start64 + file->sections[i].size)) return &file->sections[i];
+		if (addr >= file->sections[i].start && addr <= (file->sections[i].start + file->sections[i].size)) return &file->sections[i];
 	}
 	return NULL;
 }

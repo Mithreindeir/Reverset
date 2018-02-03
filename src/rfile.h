@@ -33,10 +33,7 @@ typedef enum rsym_t
 typedef struct rsymbol
 {
 	char * name;
-	union {
-		r32addr addr32;
-		r64addr addr64;
-	};
+	uint64_t addr64;
 	rsym_t type;
 } rsymbol;
 
@@ -62,14 +59,15 @@ typedef enum rsection_t
 
 typedef struct rsection
 {
+	//Offset is the offset in the raw file
 	char * name;
 	unsigned char * raw;
 	int size;
+	long offset;
+
 	rsection_t type;
-	union {
-		uint32_t start32;
-		uint64_t start64;
-	};
+	uint64_t start;
+
 } rsection;
 
 typedef struct r_file
@@ -88,6 +86,8 @@ typedef struct r_file
 	char * raw_file;
 	int size;
 
+	FILE * file;
+
 	r64addr entry_point;
 	rarchitecture arch;
 } r_file;
@@ -97,6 +97,8 @@ r_file * r_file_read(char * filename);
 void r_file_destroy(r_file * file);
 rsection * r_file_get_section(r_file * file, char * name);
 void r_file_find_strings(r_file * file);
+
+void r_file_patch(r_file * file, uint64_t addr, unsigned char * bytes, int num_bytes);
 //Returns the section that contains addr
 rsection * r_file_section_addr(r_file * file, uint64_t addr);
 rstring * r_file_in_string(r_file * file, uint64_t addr);

@@ -9,6 +9,7 @@
 #define X64_REG_SIZE(idx) (idx%4+1)
 //Takes register index and returns binary form of how processors refer to it
 #define X64_REG_BIN(idx) (idx/4)
+#define X64_IS_RIP(reg) (!strncmp(reg, "rip", 3) || !strncmp(reg, "eip", 3))
 //size = (i-1)%4 + 1;
 //
 #define X64_NUMBER_OP(type) (type == X64_IMM || type == X64_REL || type == X64_MEM || type == X64_DIRECT_ADDRESSING)
@@ -44,6 +45,7 @@ struct x64_indirect
 	int  base;//-1 if nonexistant
 	int index;//-1 if nonexistant
 	int  scale;//-1 if nonexistant
+	int rip;//If rip addressing is used
 };
 
 unsigned char * x64_assemble(char * instruction, uint64_t addr, int * num_bytes);

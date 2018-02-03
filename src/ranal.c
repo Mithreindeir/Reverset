@@ -15,6 +15,8 @@ void r_meta_analyze(r_analyzer * anal, r_disassembler * disassembler, r_file * f
 
 	r_meta_symbol_replace(disassembler, file);
 	r_meta_string_replace(disassembler, file);
+
+
 }
 
 void r_meta_printjump(r_analyzer * anal, uint64_t addr, uint64_t sb, uint64_t eb)
@@ -138,6 +140,10 @@ void r_meta_printall(r_disassembler * disassembler, r_analyzer * anal, uint64_t 
 
 void r_meta_calculate_branches(r_analyzer * anal, r_disassembler * disassembler)
 {
+	//Upon reanalysis assume instruction have changed so remove all branches
+	if (anal->branches) free(anal->branches);
+	anal->num_branches = 0;
+
 	for (int j = 0; j < disassembler->num_instructions; j++) {
 		r_disasm * disas = disassembler->instructions[j];
 		if (disas->metadata->type == r_tcjump || disas->metadata->type == r_tujump) {
@@ -269,7 +275,6 @@ void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file)
 		r_disasm * disas = disassembler->instructions[j];
 		for (int i = 0; i < file->num_symbols; i++) {
 			rsymbol  sym = file->symbols[i];
-
 			if (disas->metadata->type == r_tcall && sym.type == R_FUNC && r_meta_find_addr(disas->metadata, sym.addr64, META_ADDR_BRANCH) && !disas->metadata->comment) {
 				if (disas->op[0]) {
 					disas->metadata->comment = disas->op[0];

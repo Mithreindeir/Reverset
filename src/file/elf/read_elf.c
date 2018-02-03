@@ -53,9 +53,11 @@ void elf_read32(FILE * f, r_file * file)
 	}
 	for (int i = 0; i < header.e_shnum; i++) {
 		rsection r;
+		memset(&r, 0, sizeof(rsection));
 		r.name = NULL;
+		r.offset = sections[i].sh_offset;
 		r.size = sections[i].sh_size;
-		r.start32 = sections[i].sh_addr;
+		r.start = sections[i].sh_addr;
 		r.type = r_notype;
 		if (sections[i].sh_type == SHT_PROGBITS) {
 			r.type = r_programdefined;
@@ -120,7 +122,7 @@ void elf_read32(FILE * f, r_file * file)
 						rsym.name = strdup(buf);
 						rsym.type = elft_to_rsymt(ELF32_ST_TYPE(symbols[j].st_info));
 						//rsym.type = symbols[j].st_type;
-						rsym.addr32 = symbols[j].st_value;
+						rsym.addr64 = symbols[j].st_value;
 
 						file->num_symbols++;
 						if (file->num_symbols == 1) {
@@ -169,7 +171,7 @@ void elf_read32(FILE * f, r_file * file)
 					rsym.name = strdup(buf);
 					rsym.type = elft_to_rsymt(ELF32_ST_TYPE(symbols[j].st_info));
 					//rsym.type = symbols[j].st_type;
-					rsym.addr32 = symbols[j].st_value;
+					rsym.addr64 = symbols[j].st_value;
 					num_dynsyms++;
 					if (num_dynsyms == 1) {
 						dynsymbols = malloc(sizeof(rsymbol));
@@ -199,7 +201,7 @@ void elf_read32(FILE * f, r_file * file)
 				dynsymbols[si].name = NULL;
 				rsym.type = elft_to_rsymt(ELF32_R_TYPE(symbols[j].r_info)) | R_RELOCBIT;
 				//rsym.type = symbols[j].st_type;
-				rsym.addr32 = symbols[j].r_offset;
+				rsym.addr64 = symbols[j].r_offset;
 				file->num_symbols++;
 				if (file->num_symbols == 1) {
 					file->symbols = malloc(sizeof(rsymbol));
@@ -220,7 +222,7 @@ void elf_read32(FILE * f, r_file * file)
 				dynsymbols[si].name = NULL;
 				rsym.type = elft_to_rsymt(ELF32_R_TYPE(symbols[j].r_info)) | R_RELOCBIT;
 				//rsym.type = symbols[j].st_type;
-				rsym.addr32 = symbols[j].r_offset;
+				rsym.addr64 = symbols[j].r_offset;
 				file->num_symbols++;
 				if (file->num_symbols == 1) {
 					file->symbols = malloc(sizeof(rsymbol));
@@ -276,7 +278,8 @@ void elf_read64(FILE * f, r_file * file)
 		rsection r;
 		r.name = NULL;
 		r.size = sections[i].sh_size;
-		r.start32 = sections[i].sh_addr;
+		r.offset = sections[i].sh_offset;
+		r.start = sections[i].sh_addr;
 		r.type = r_notype;
 		if (sections[i].sh_type == SHT_PROGBITS) {
 			
@@ -340,7 +343,7 @@ void elf_read64(FILE * f, r_file * file)
 						rsym.name = strdup(buf);
 						rsym.type = elft_to_rsymt(ELF64_ST_TYPE(symbols[j].st_info));
 						//rsym.type = symbols[j].st_type;
-						rsym.addr32 = symbols[j].st_value;
+						rsym.addr64 = symbols[j].st_value;
 
 						file->num_symbols++;
 						if (file->num_symbols == 1) {
@@ -390,7 +393,7 @@ void elf_read64(FILE * f, r_file * file)
 					rsym.name = strdup(buf);
 					rsym.type = elft_to_rsymt(ELF64_ST_TYPE(symbols[j].st_info));
 					//rsym.type = symbols[j].st_type;
-					rsym.addr32 = symbols[j].st_value;
+					rsym.addr64 = symbols[j].st_value;
 					num_dynsyms++;
 					if (num_dynsyms == 1) {
 						dynsymbols = malloc(sizeof(rsymbol));
@@ -420,7 +423,7 @@ void elf_read64(FILE * f, r_file * file)
 				dynsymbols[si].name = NULL;
 				rsym.type = elft_to_rsymt(ELF64_R_TYPE(symbols[j].r_info)) | R_RELOCBIT;
 				//rsym.type = symbols[j].st_type;
-				rsym.addr32 = symbols[j].r_offset;
+				rsym.addr64 = symbols[j].r_offset;
 				file->num_symbols++;
 				if (file->num_symbols == 1) {
 					file->symbols = malloc(sizeof(rsymbol));
@@ -441,7 +444,7 @@ void elf_read64(FILE * f, r_file * file)
 				dynsymbols[si].name = NULL;
 				rsym.type = elft_to_rsymt(ELF64_R_TYPE(symbols[j].r_info)) | R_RELOCBIT;
 				//rsym.type = symbols[j].st_type;
-				rsym.addr32 = symbols[j].r_offset;
+				rsym.addr64 = symbols[j].r_offset;
 				file->num_symbols++;
 				if (file->num_symbols == 1) {
 					file->symbols = malloc(sizeof(rsymbol));

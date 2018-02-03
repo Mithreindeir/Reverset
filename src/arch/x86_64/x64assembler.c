@@ -259,12 +259,21 @@ void x64_encode_modrm(struct x64_asm_bytes * asm_op, struct x64_assemble_op * op
 				if (indir.base != -1 && indir.disp_size == 0) modrm |= MODRM_INDIRECT << 6;
 				else if (indir.base != -1 && indir.disp_size == 1) modrm |= MODRM_ONEBYTE << 6;
 				else if (indir.base != -1 && indir.disp_size == 4) modrm |= MODRM_FOURBYTE << 6;
-				if (indir.base) {
+				if (indir.rip) {
+					//RIP is represented by mod of 0 and rm of 5
+					//force disp32 
+					if (indir.disp_size != 4) {
+						indir.disp_size = 4;
+					}
+					modrm |= 5;
+				}
+				if (indir.base != -1) {
 					modrm |= indir.base;
 				}
 				operands[modop].rexb = indir.rexb;
 				operands[modop].rexx = indir.rexx;
 				operands[modop].addr_size = indir.addr_size;
+
 				x64_add_byte(asm_op, modrm);
 				if (indir.disp_size==1) x64_add_byte(asm_op, (unsigned char)indir.disp);
 				else if (indir.disp_size==4) {
@@ -296,6 +305,8 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 	char * prefix = strtok_dup(operand, "[", 0);
 	indir->rexb = 0;
 	indir->rexx = 0;
+	indir->rip = 0;
+	indir->disp = 0;
 
 	if (prefix) {
 		char * body = strtok_dup(NULL, "]", 0);
@@ -338,11 +349,12 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 				base = strtok_dup(NULL, " ", 1);
 			}
 		}
+
 		//In disponly cases, base will be a number
 		if (base && !index && !scale && !displacement) {
 			int is_reg = x64_register_index(base);
 			//If base is not a register then swap it with displacement
-			if (is_reg==-1) {
+			if (is_reg==-1 && !X64_IS_RIP(base)) {
 				displacement = base;
 				if (strlen(displacement) > 4) {
 					disp32 = strtol(displacement, NULL, 0);
@@ -376,6 +388,7 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 		
 		if (base) {
 			int b = x64_register_index(base);
+
 			if (b==-1) indir->base = -1;
 			else indir->base = X64_REG_BIN(b);
 			indir->addr_size = X64_REG_SIZE(b);
@@ -383,6 +396,8 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 				indir->base -= 8;
 				indir->rexb = 1;
 			}
+			indir->rip = X64_IS_RIP(base);
+
 		} else indir->base = -1;
 
 		if (displacement) {
@@ -581,7 +596,7 @@ int x64_size_compatible(int type, int size1, int size2)
 	if (size1 == 'v' && (size2 == 'd' || size2 == 'w')) return 1;
 	if (size2 == 'v' && (size1 == 'd' || size1 == 'w')) return 1;
 	//Number types are always upwards compatible (0x0 can be a byte, word, dword or qword)
-	if (X64_NUMBER_OP(type) && type != X64_REL) {
+	if (0 &&X64_NUMBER_OP(type) && type != X64_REL) {
 		if (size1 == 'b' && (size2 == 'w' || size2 == 'd' || size2 == 'v' || size2 == 'q')) return 1;
 		if (size1 == 'w' && (size2 == 'd' || size2 == 'v' || size2 == 'q')) return 1;
 		if (size1 == 'd' && (size2 == 'v' || size2 == 'q')) return 1;

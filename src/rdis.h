@@ -39,6 +39,7 @@ typedef enum r_cconv {
 /*Disassembler structure. Holds values that allow recursive descent disassembling*/
 typedef struct r_disassembler
 {
+	int overwrite;
 	r_disasm ** instructions;
 	int num_instructions;
 
@@ -71,6 +72,7 @@ void r_disasm_destroy(r_disasm * disas);
 r_disassembler * r_disassembler_init();
 void r_disassembler_destroy(r_disassembler * disassembler);
 void r_disassembler_pushaddr(r_disassembler * disassembler, uint64_t addr);
+
 uint64_t r_disassembler_popaddr(r_disassembler * disassembler);
 void r_disassembler_addbound(r_disassembler * disassembler, uint64_t s, uint64_t e);
 uint64_t r_disassembler_getbound(r_disassembler * disassembler, uint64_t addr);
