@@ -41,6 +41,8 @@ typedef struct r_branch
 
 typedef struct r_analyzer
 {
+	int function;
+
 	r_function * functions;
 	int num_functions;
 
@@ -67,7 +69,7 @@ int r_meta_isaddr(char * operand, int * len);
 int r_meta_rip_relative(char * operand);
 void r_add_xref(r_disasm * to, r_disasm * from);
 
-void r_meta_printall(r_disassembler * disassembler, r_analyzer * anal, uint64_t addr);
-void r_meta_printjump(r_analyzer * anal, uint64_t addr, uint64_t sb, uint64_t eb);
+char * r_meta_printall(r_disassembler * disassembler, r_analyzer * anal, uint64_t addr);
+char * r_meta_printjump(r_analyzer * anal, uint64_t addr, uint64_t sb, uint64_t eb);
 
 #endif

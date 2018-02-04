@@ -7,12 +7,22 @@
 #include "arch/x86/x86disassembler.h"
 #include "arch/x86_64/x64assembler.h"
 #include "arch/x86_64/x64disassembler.h"
+#include "reverset.h"
+
 //48 2d 38 10 60 00
-static r_disasm*(*disassemblers[])(unsigned char * stream, int address) = {NULL, x86_decode_instruction, x64_decode_instruction, NULL};
 
 int main(int argc, char ** argv)
 {
-	
+	if (argc < 2) {
+		printf("Usage: %s file\n", argv[0]);
+		return 1;
+	}
+	reverset * rev = reverset_init();
+	reverset_openfile(rev, argv[1]);
+	reverset_sh(rev);
+
+	reverset_destroy(rev);
+	return 0;
 	if (argc < 2) {
 		printf("Usage: %s file\n", argv[0]);
 		return 1;

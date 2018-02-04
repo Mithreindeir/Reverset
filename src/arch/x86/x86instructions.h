@@ -3,9 +3,14 @@
 
 typedef struct x86_instruction {
 	char * mnemonic;
-	char * op1;
-	char * op2;
-	char * op3;
+	union {
+		struct {
+			char * op1;
+			char * op2;
+			char * op3;
+		};
+		char * op[3];
+	};
 } x86_instruction;
 
 enum x86_Addressing_Mode {

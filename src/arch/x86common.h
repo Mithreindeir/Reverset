@@ -149,5 +149,7 @@ static const instr_pair instr_pairs[] = {
 };
 
 r_meta_t instr_type(char * mnemonic);
+char * no_space_strdup(char * str);
+char * strtok_dup(char * string, char * delim, int last);
 
 #endif

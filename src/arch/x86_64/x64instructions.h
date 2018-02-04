@@ -664,7 +664,7 @@ static const x64_instruction x64_grp5[] = {
 	{"callf", "", "", ""},//don't know how to decode this yet
 	{"jmp", "Eq", "", ""},
 	{"jmp", "Ep", "", ""},
-	{"push", "Ev", "", ""},
+	{"push", "Eq", "", ""},
 	{"", "", "", ""}
 };
 

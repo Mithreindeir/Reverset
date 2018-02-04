@@ -1,48 +1,5 @@
 #include "x64assembler.h"
 
-//Removes whitespace 
-char * no_space_strdup(char * str)
-{
-	int len2 = 0;
-	int len = 0;
-	while (str[len++]) {
-		if (str[len] != ' ') len2++;
-	}
-	len2++;
-	char * str2 = malloc(len2);
-	for (int i = 0, j = 0; i < len && j < len2; i++) {
-		if (str[i] != ' ')
-			str2[j++] = str[i];
-	}
-	str2[len2] = 0;
-	return str2;
-}
-
-//Version of strtok that fits my needs better
-char * strtok_dup(char * string, char *delim, int last)
-{
-	static char * str = NULL;
-	if (string)
-		str = string;
-	//For obtaining what is left in the str
-	if (last) return strdup(str);
-	int size = strlen(str);
-	int i = 0;
-	for (i = 0; i < size; i++) {
-		if (!strncmp(str+i,delim,strlen(delim))) break;
-	}
-	if (i == size) {
-		//str += i+1;
-		return NULL;
-	}
-	char * str2 = malloc(i);
-	for (int j = 0; j < i; j++) {
-		str2[j] = str[j];
-	}
-	str += i+1;
-	return str2;
-}
-
 unsigned char * x64_assemble(char * instr, uint64_t addr, int * num_bytes)
 {
 	//printf("input: %s\n", instr);
@@ -60,7 +17,12 @@ unsigned char * x64_assemble(char * instr, uint64_t addr, int * num_bytes)
 	//Rudimentary parser.
 	//Sets first token as mnemonic
 	int i = 0;
-	for (int i = 0; i < len+1; i++) if (instr[i]!=' ') {i++; break;};
+	for (; i < len+1; i++) if (instr[i]!=' ' && instr[i]!='\n' && instr[i]!='\t') break;
+	if (i >= (len)) {
+		free(instruction);
+		free(xasm);
+		return NULL;
+	}
 
 	//First operands are delimited by a comma, the last is delimited by a NULL character
 	for (; i < len+1; i++) {
@@ -122,7 +84,7 @@ unsigned char * x64_assemble(char * instr, uint64_t addr, int * num_bytes)
 		modes[i].operand = operands[i];
 	}
 	int extended = -1;
-	int opc = x64_find_instruction(mnemonic, addr, modes, num_operands, &extended);
+	int opc = x64_find_instruction(xasm, mnemonic, addr, modes, num_operands, &extended);
 	if (opc != -1) {
 		x64_instruction instr = x64_instruction_table[opc];
 		//printf("%s %s %s %s\n", instr.mnemonic, instr.op[0], instr.op[1], instr.op[2]);
@@ -182,7 +144,7 @@ void x64_calculate_rex(struct x64_asm_bytes * op, struct x64_assemble_op * opera
 	//Calculate operand size by looking at operands not indirect
 	for (int i = 0; i < num_operands; i++) {
 		//rexw
-		if (operands[i].opr_size == 4) rex |= 0x8;
+		if (operands[i].opr_size == 4 && operands[i].size != 'q') rex |= 0x8;
 		//rexb
 		if (operands[i].rexb) rex |= 0x1;
 		//rexr
@@ -246,6 +208,7 @@ void x64_encode_modrm(struct x64_asm_bytes * asm_op, struct x64_assemble_op * op
 					sib |= x64_scale(indir.scale)<<6;
 				if (indir.index != -1)
 					sib |= indir.index<<3;
+				else sib |= 0x4<<3;	//ESP is an invalid index so use that if no index
 				if (indir.base != -1)
 					sib |= indir.base;
 
@@ -312,7 +275,7 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 		char * body = strtok_dup(NULL, "]", 0);
 		char * before = NULL;
 		before = strtok_dup(body, "+0x", 0);
-		
+
 		if (!before) {
 			before = strtok_dup(body, "-0x", 0);
 			if (before) {
@@ -322,6 +285,7 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 		} else {
 			displacement = strtok_dup(NULL, "", 1);
 		}
+
 		if (displacement) {
 			if (strlen(displacement) > 4) {
 				disp32 = strtol(displacement, NULL, 0);
@@ -368,6 +332,7 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 				base = NULL;
 			}
 		}
+		//11 10 0 000
 		indir->addr_size = 0;
 		if (index || scale) indir->sib = 1;
 
@@ -386,6 +351,16 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 			indir->scale = strtol(scale,NULL,16);
 		} else indir->scale = -1;
 		
+		if (displacement) {
+			if (size == 3) {
+				indir->disp_size = 4;
+				indir->disp = disp32;
+			} else {
+				indir->disp_size = 1;
+				indir->disp = disp8;
+			}
+		} else indir->disp_size = 0;
+
 		if (base) {
 			int b = x64_register_index(base);
 
@@ -397,18 +372,14 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 				indir->rexb = 1;
 			}
 			indir->rip = X64_IS_RIP(base);
-
-		} else indir->base = -1;
-
-		if (displacement) {
-			if (size == 3) {
-				indir->disp_size = 4;
-				indir->disp = disp32;
-			} else {
+			//ESP forced sib
+			if (X64_REG_BIN(b) == 0x4) indir->sib = 1;
+			//There is no [ebp] mode so use a [ebp+0x0] if needed
+			if (!scale && !index && !displacement) {
 				indir->disp_size = 1;
-				indir->disp = disp8;
+				indir->disp = 0;
 			}
-		} else indir->disp_size = 0;
+		} else indir->base = -1;
 
 		if (index) free(index);
 		if (scale) free(scale);
@@ -499,7 +470,7 @@ int x64_register_index(char * reg)
 	return -1;
 }
 
-int x64_find_instruction(char * mnemonic, uint64_t addr, struct x64_assemble_op * operands, int num_operands, int * extended)
+int x64_find_instruction( struct x64_asm_bytes * asm_op, char * mnemonic, uint64_t addr, struct x64_assemble_op * operands, int num_operands, int * extended)
 {
 	x64_instruction instr;
 	for (int i = 0; i < (sizeof(x64_instruction_table)/sizeof(x64_instruction)); i++) {
@@ -529,12 +500,53 @@ int x64_find_instruction(char * mnemonic, uint64_t addr, struct x64_assemble_op 
 				}
 			}
 		}
-		if (!strcmp(mnemonic, instr.mnemonic)) {
-			if (x64_operands_compatible(instr, addr, operands, num_operands))
+		if (!strcmp(mnemonic, instr.mnemonic)) {			
+			if (x64_operands_compatible(instr, addr, operands, num_operands)) {
 				return i;
+			}
 
 		}
 	}
+
+	for (int i = 0; i < (sizeof(x64_instruction_extended_table)/sizeof(x64_instruction)); i++) {
+	 	instr = x64_instruction_extended_table[i];
+	 	//if part of a group then iterate through that
+		if (!strncmp("grp", instr.mnemonic, 3)) {
+			char group = instr.mnemonic[3]-0x30 -1;
+			char opr = instr.mnemonic[4];
+			//Some groups all share the same operands, other differ. 'd' means use the default given by the group operand. a means use the operands in group table a and b means group table b and etc
+
+			for (int j = 0; j < 8; j++) {
+				instr = x64_instruction_table[i];
+				if (opr == 'd') {
+					instr.mnemonic = x64_groups[group][j].mnemonic;
+				} else if (opr == 'a') {
+					instr = x64_groups[group][j];
+				} else if (opr == 'b') {
+					instr = x64_groups[group][j+GROUP_OFFSET];
+				}
+				if (!instr.mnemonic[0]) continue;
+
+				if (!strcmp(mnemonic, instr.mnemonic)) {
+					if (x64_operands_compatible(instr, addr, operands, num_operands)) {
+						*extended = j;
+						x64_add_byte_prefix(asm_op, 0x0f);
+						return i;
+					}
+				}
+			}
+		}
+
+		if (!strcmp(mnemonic, instr.mnemonic)) {
+			if (x64_operands_compatible(instr, addr, operands, num_operands)) {
+				x64_add_byte_prefix(asm_op, 0x0f);
+				return i;
+			}
+
+		}
+	}
+										
+
 	return -1;
 }
 
@@ -553,6 +565,10 @@ int x64_operands_compatible(x64_instruction instr, uint64_t addr, struct x64_ass
 	for (int i = 0; i < num_ops; i++) {
 		int m2 = instr.op[i][0];//Retrieves addressing mode
 		int s2 = instr.op[i][1];//Retrieves operand size
+
+		//X64_MEM is an altered version of m
+		if (m2 == X64_MEM) m2 = X64_MODRM;
+
 		if (operands[i].mode != m2) {
 			//Use this opportunity to set operand size possible
 			if (!strcmp(operands[i].operand, instr.op[i])) {
@@ -577,22 +593,26 @@ int x64_operands_compatible(x64_instruction instr, uint64_t addr, struct x64_ass
 			size = operands[i].relative_size;
 		}
 		
-		if (!x64_size_compatible(m2, size, s2)) return 0;
+		if (s2 && !x64_size_compatible(m2, size, s2)) return 0;
 	}
 
 	//If the two instruction are compatible, then set the valid mode and size
 	for (int i = 0; i < num_ops; i++) {
 		int m2 = instr.op[i][0];
 		int s2 = instr.op[i][1];
+		if (m2 == X64_MEM) m2 = X64_MODRM;
+
 		operands[i].mode = m2;
-		operands[i].size = s2;
+		if (s2) operands[i].size = s2;
 	}
+
 	return 1;
 }
 
 int x64_size_compatible(int type, int size1, int size2)
 {
 	if (size1 == size2) return 1;
+	if ((size1 == 'q' && size2 == 'v') || (size2 == 'q' && size1 == 'v')) return 1;
 	if (size1 == 'v' && (size2 == 'd' || size2 == 'w')) return 1;
 	if (size2 == 'v' && (size1 == 'd' || size1 == 'w')) return 1;
 	//Number types are always upwards compatible (0x0 can be a byte, word, dword or qword)
