@@ -9,7 +9,7 @@ reverset * reverset_init()
 	rev->disassembler = r_disassembler_init();
 	rev->anal = r_analyzer_init();
 	rev->status = rs_none;
-	rev->pipe = NULL;
+	//rev->pipe = NULL;
 
 	return rev;
 }
@@ -94,8 +94,7 @@ void reverset_sh(reverset * rev)
 		char * output = reverset_eval(rev, argc, args);
 
 		if (output) {
-			printf("%s", output);
-			free(output);
+			printf("%s\n", output);			
 		}
 
 		free(input);
@@ -103,6 +102,7 @@ void reverset_sh(reverset * rev)
 			free(args[i]);
 		}
 		free(args);
+		if (output) free(output);
 	} while (rev->status == rs_shell);
 
 }

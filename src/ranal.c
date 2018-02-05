@@ -100,12 +100,11 @@ char * r_meta_printall(r_disassembler * disassembler, r_analyzer * anal, uint64_
 	int num_char = 0;
 	int old_char = 0;
 	for (int i = 0; i < disassembler->num_instructions; i++) {
+		r_disasm * disas = disassembler->instructions[i];
+		if (disas->address < addr) continue;
 		char buf[256];
 		memset(buf, 0, 256);
 		int iter = 0;
-
-		r_disasm * disas = disassembler->instructions[i];
-		if (disas->address < addr) continue;
 		iter += snprintf(buf+iter, 256-iter, KBLU);
 		if (disas->metadata->label) iter += snprintf(buf+iter, 256-iter, "//\t%s\n", disas->metadata->label);
 		iter += snprintf(buf+iter, 256-iter, KRED);
@@ -143,18 +142,20 @@ char * r_meta_printall(r_disassembler * disassembler, r_analyzer * anal, uint64_
 		}
 		if (disas->metadata->comment) iter += snprintf(buf+iter, 256-iter, "\t # %s", disas->metadata->comment);
 		iter += snprintf(buf+iter, 256-iter, "\n");
+		buf[iter] = 0;
 		num_char += iter;
-		if (num_char <= 0) continue;
-		if (num_char == iter) {
-			printed = malloc(num_char);
-		} else {
-			printed = realloc(printed, num_char);
+		if (num_char > old_char) {
+			if (!printed) {
+				printed = malloc(num_char);
+			} else {
+				printed = realloc(printed, num_char);
+			}
+			memcpy(printed+old_char, buf, iter);
 		}
-		memcpy(printed+old_char, buf, iter);
 		old_char = num_char;
 		if (anal->function && disas->metadata->type == r_tret) break;
 	}
-	if (num_char > 0) printed[num_char] = 0;
+	if (num_char > 0) printed[num_char-1] = 0;
 
 	return printed;
 }
@@ -408,8 +409,12 @@ int r_meta_rip_relative(char * operand)
 				opaddr[len] = 0;
 				int base = 16;
 				if (strlen(opaddr) > 2 && (opaddr[1] == 'x' || opaddr[1] == 'X')) base = 0;
-				return (uint64_t)strtol(opaddr, NULL, base);
+				
+				uint64_t num =  (uint64_t)strtol(opaddr, NULL, base);
+				free(opaddr);
+				return num;
 			}
+			free(opaddr);
 		}
 	}
 

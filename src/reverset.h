@@ -25,7 +25,6 @@ typedef enum r_state
 /* API for Reverset */
 typedef struct reverset
 {
-	char * pipe;
 	//Current address
 	uint64_t address;
 	//The currently opened file

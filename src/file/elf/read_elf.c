@@ -70,7 +70,8 @@ void elf_read32(FILE * f, r_file * file)
 		}
 		//Copy the raw bytes into the rsection
 		fseek(f, sections[i].sh_offset, SEEK_SET);
-		r.raw = malloc(r.size);
+		r.raw = malloc(r.size+1);
+		memset(r.raw, 0, r.size+1);
 		fread(r.raw, r.size, 1, f);
 		//If there is a section name table read the name
 		if (names_offset != -1) {
@@ -293,7 +294,8 @@ void elf_read64(FILE * f, r_file * file)
 		}
 		//Copy the raw bytes into the rsection
 		fseek(f, sections[i].sh_offset, SEEK_SET);
-		r.raw = malloc(r.size);
+		r.raw = malloc(r.size+1);
+		memset(r.raw, 0, r.size+1);
 		fread(r.raw, r.size, 1, f);
 		//If there is a section name table read the name
 		if (names_offset != -1) {

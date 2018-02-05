@@ -1,7 +1,34 @@
 ## Reverset
 
-Reverset is a lightweight portable disassembler and binary analysis tool. Currently supports the entire standard x86 instruction set, with coming support for x87 fpu, avx, and sse instructions. Supports almost the entire x64 instruction set.
-No external dependencies, written completely in C. Also includes a x86_64 work in progress (unoptimizing) assembler.
+Reverset is a lightweight portable reverse engineering and binary analysis tool. Currently supports the entire standard x86 instruction set, with coming support for x87 fpu, avx, and sse instructions. Supports almost the entire x64 instruction set.
+No external dependencies, written completely in C.
+
+# Features
+
+* x86 disassembler
+* x64 disassembler
+* x86 assembler
+* x64 assembler
+* Analysis of 32 and 64 bit elf files
+* Patching
+
+# How To
+
+After building it, use ./reverset program to open the binary file and enter a reverset shell.
+
+Commands:
+
+* disas here/function/address //Disassembles given start address
+* anal here/function/address //Analyzes given start address. This is done automatically after calling disas
+* write "bytes"		     //Writes the bytes given as an argument to the current address. Automatically redisassembles after patching.
+* asm   "assembly"	     //Assembles using intel format, and returns bytes
+* list symbols/functions     //Lists the symbols or symbols that are marked as functions (at this time there is no automatic function analysis)
+* goto address/symbol	     //Moves the current address to the new one specified. 
+* quit			     //Quits the reverset shell
+
+# Building
+
+Not tested on Windows yet. Use make to compile.
 
 # Example
 A test program of:

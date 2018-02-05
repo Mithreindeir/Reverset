@@ -145,6 +145,7 @@ r_disasm * x64_decode_instruction(unsigned char * stream, int address)
 
 	disas->used_bytes = ub;
 	if (strlen(disas->mnemonic) == 0) {
+		free(disas->mnemonic);
 		disas->mnemonic = strdup("invalid");
 		disas->used_bytes = 1;
 	}
