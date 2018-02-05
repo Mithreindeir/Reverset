@@ -363,6 +363,7 @@ char * reverset_list(reverset * rev, char ** args)
 			onum = cnum;
 		}
 	}
-
+	if (printed) printed[cnum] = 0;
+	
 	return printed;
 }
