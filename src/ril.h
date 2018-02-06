@@ -25,7 +25,6 @@ r_node_register	   r_node_memory
 				  			  ebx		 4
 */
 
-
 typedef struct r_node_t
 {
 	//TYPE 				  FORMAT 				//TREE TYPE

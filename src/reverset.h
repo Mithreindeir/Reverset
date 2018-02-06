@@ -7,6 +7,7 @@
 #include "rfile.h"
 #include "rdis.h"
 #include "ranal.h"
+#include "rformat.h"
 #include "arch/x86/x86disassembler.h"
 #include "arch/x86_64/x64assembler.h"
 #include "arch/x86/x86assembler.h"
@@ -21,6 +22,12 @@ typedef enum r_state
 	rs_none,
 	rs_shell
 } r_state;
+
+typedef struct r_pipe
+{
+	char * buf;
+	int len;
+} r_pipe;
 
 /* API for Reverset */
 typedef struct reverset

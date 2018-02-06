@@ -63,9 +63,6 @@ void r_disassemble_address(r_disassembler * disassembler, r_file * file,  uint64
 /*Returns address of last disassembled*/
 uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_data, int size, int start_addr);
 
-void r_print_disas(r_disassembler * disassembler);
-void r_print_disas_f(r_disassembler * disassembler, uint64_t addr);
-
 r_disasm * r_disasm_init();
 void r_disasm_destroy(r_disasm * disas);
 r_disassembler * r_disassembler_init();

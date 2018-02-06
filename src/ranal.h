@@ -63,13 +63,11 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file);
 
 void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file);
 void r_meta_string_replace(r_disassembler * disassembler, r_file * file);
+void r_meta_find_xrefs(r_disassembler * disassembler, r_file * file);
 
 uint64_t r_meta_get_address(char * operand, int * status);
 int r_meta_isaddr(char * operand, int * len);
 int r_meta_rip_relative(char * operand);
 void r_add_xref(r_disasm * to, r_disasm * from);
-
-char * r_meta_printall(r_disassembler * disassembler, r_analyzer * anal, uint64_t addr);
-char * r_meta_printjump(r_analyzer * anal, uint64_t addr, uint64_t sb, uint64_t eb);
 
 #endif

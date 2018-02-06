@@ -129,7 +129,7 @@ rsection * r_file_get_section(r_file * file, char * name)
 rsection * r_file_section_addr(r_file * file, uint64_t addr)
 {
 	for (int i = 0; i < file->num_sections; i++) {
-		if (addr >= file->sections[i].start && addr <= (file->sections[i].start + file->sections[i].size)) return &file->sections[i];
+		if (addr >= file->sections[i].start && addr < (file->sections[i].start + file->sections[i].size)) return &file->sections[i];
 	}
 	return NULL;
 }

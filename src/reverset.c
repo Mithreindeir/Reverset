@@ -37,6 +37,8 @@ void reverset_openfile(reverset * rev, char * file)
 		rev->anal = r_analyzer_init();
 		rev->file = r_openfile(file);
 	}
+	//At least find strings
+	r_file_find_strings(rev->file);
 	if (disassemblers[rev->file->arch] != NULL) {
 		rev->disassembler->disassemble =  disassemblers[rev->file->arch];
 		rev->address = rev->file->entry_point; 
@@ -192,6 +194,7 @@ uint64_t reverset_resolve_arg(reverset * rev, char * arg)
 	int found = 0;
 	for (int i = 0; i < rev->file->num_symbols; i++) {
 		rsymbol sym = rev->file->symbols[i];
+		if (!sym.name) continue;
 		if (sym.type == R_FUNC && !strcmp(sym.name, arg)) {
 			addr = sym.addr64;
 			found = 1;
@@ -205,13 +208,19 @@ uint64_t reverset_resolve_arg(reverset * rev, char * arg)
 			found = 1;
 		}
 	}
-	if (!found) addr = rev->address;
+	if (!found && !strncmp(arg, "here", 4)) {
+		addr = rev->address;
+		found = 1;
+	}
+	else if (!found) return -1;
+	
 	return addr;
 }
 
 char* reverset_analyze(reverset * rev, char ** args)
 {
 
+	return NULL;
 }
 
 char* reverset_print(reverset * rev, char ** args)
@@ -226,9 +235,14 @@ char* reverset_print(reverset * rev, char ** args)
 	} else {
 		rev->anal->function = 1;
 		addr = reverset_resolve_arg(rev, arg);
+		if (addr == -1) {
+			char buf[256];
+			snprintf(buf, 256, "No address found for \"%s\"", arg);
+			return strdup(buf);
+		}
 	}
 	
-	char * print = r_meta_printall(rev->disassembler, rev->anal, addr);
+	char * print = r_formatted_printall(rev->disassembler, rev->anal, addr);
 	return print;
 }
 
@@ -238,6 +252,11 @@ char* reverset_disas(reverset * rev, char ** args)
 	if (!arg) return NULL;
 
 	uint64_t addr = reverset_resolve_arg(rev, arg);
+	if (addr == -1) {
+		char buf[256];
+		snprintf(buf, 256, "No address found for \"%s\"", arg);
+		return strdup(buf);
+	}
 	rev->disassembler->overwrite = 1;
 	r_disassembler_pushaddr(rev->disassembler, addr);
 	r_disassemble(rev->disassembler, rev->file);
@@ -317,6 +336,11 @@ char* reverset_goto(reverset * rev, char ** args)
 	if (!arg) return NULL;
 
 	uint64_t addr = reverset_resolve_arg(rev, arg);
+	if (addr == -1) {
+		char buf[256];
+		snprintf(buf, 256, "No address found for \"%s\"", arg);
+		return strdup(buf);
+	}
 	rev->address = addr;
 
 	return NULL;
@@ -332,37 +356,63 @@ char * reverset_list(reverset * rev, char ** args)
 {
 	char * arg = args[0];
 	if (!arg) return NULL;
-	int symbols = 0;
-	if (!strcmp(arg, "symbols") || !strcmp(arg, "symbol")) symbols = 1;
-	else if (!strcmp(arg, "functions") || !strcmp(arg, "function"))
-		symbols = 0;
-	else return NULL;
+
 
 	int cnum = 0;
 	int onum = 0;
 	char * printed = NULL;
 
-	for (int i = 0; i < rev->file->num_symbols; i++) {
-		rsymbol sym = rev->file->symbols[i];
-		char buf[256];
-		int iter = 0;
+	int symbols = -1;
+	if (!strcmp(arg, "symbols") || !strcmp(arg, "symbol"))
+		symbols = 1;
+	else if (!strcmp(arg, "functions") || !strcmp(arg, "function"))
+		symbols = 0;
 
-		if (!symbols && sym.type == R_FUNC) {
-			iter += snprintf(buf+iter, 256-iter, "symbol: %s address: %#lx\n", sym.name, sym.addr64);
-		} else if (symbols) {
-			iter += snprintf(buf+iter, 256-iter, "symbol: %s address: %#lx\n", sym.name, sym.addr64);
-		}
-		if (iter > 0) {
-			cnum += iter;
-			if (onum == 0) {
-				printed = malloc(cnum);
-			} else {
-				printed = realloc(printed, cnum);
+	if (symbols != -1) {
+		for (int i = 0; i < rev->file->num_symbols; i++) {
+			rsymbol sym = rev->file->symbols[i];
+			char buf[256];
+			int iter = 0;
+
+			if (!symbols && sym.type == R_FUNC) {
+				iter += snprintf(buf+iter, 256-iter, "symbol: %s address: %#lx\n", sym.name, sym.addr64);
+			} else if (symbols) {
+				iter += snprintf(buf+iter, 256-iter, "symbol: %s address: %#lx\n", sym.name, sym.addr64);
 			}
-			memcpy(printed+onum, buf, iter);
-			onum = cnum;
+			if (iter > 0) {
+				cnum += iter;
+				if (onum == 0) {
+					printed = malloc(cnum);
+				} else {
+					printed = realloc(printed, cnum);
+				}
+				memcpy(printed+onum, buf, iter);
+				onum = cnum;
+			}
 		}
 	}
+	else if (!strcmp(arg, "string") || !strcmp(arg, "strings")) {
+		for (int i = 0; i < rev->file->num_strings; i++) {
+			rstring str = rev->file->strings[i];
+			char buf[256];
+			int iter = 0;
+
+			iter += snprintf(buf+iter, 256-iter, "address: %#lx str: \"%s\"\n", str.addr64, str.string);
+
+			if (iter > 0) {
+				cnum += iter;
+				if (onum == 0) {
+					printed = malloc(cnum);
+				} else {
+					printed = realloc(printed, cnum);
+				}
+				memcpy(printed+onum, buf, iter);
+				onum = cnum;
+			}
+		}
+	}
+
+
 	if (printed) printed[cnum] = 0;
 	
 	return printed;

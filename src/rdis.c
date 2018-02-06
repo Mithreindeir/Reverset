@@ -183,8 +183,8 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 	//If the end of the section is reached return
 	while (disassembler->num_addresses > 0) {
 		addr = r_disassembler_popaddr(disassembler);
-		if (!disassembler->overwrite && r_disassembler_getbound(disassembler, addr) != -1) continue;
 
+		if (!disassembler->overwrite && r_disassembler_getbound(disassembler, addr) != -1) continue;
 		rsection * section = r_file_section_addr(file, addr);
 		if (!section) {
 			continue;
@@ -218,74 +218,6 @@ void r_disassembler_add_symbols(r_disassembler * disassembler, r_file * file)
 			r_disassembler_pushaddr(disassembler, file->symbols[i].addr64);
 		}
 	}
-}
-
-void r_print_disas_f(r_disassembler * disassembler, uint64_t addr)
-{
-	for (int i = 0; i < disassembler->num_instructions; i++) {
-		r_disasm * disas = disassembler->instructions[i];
-		if (disas->address < addr) continue;
-		if (disas->metadata->label) printf("//\t%s\n", disas->metadata->label);
-		printf("%#x:   ", disas->address);
-		int b = 8*3;
-		for (int i = 0; i < disas->used_bytes; i++) {
-			if ((b-3) <= 0) {
-				printf(".");
-				break;
-			} 
-			printf("%02x ", disas->raw_bytes[i]);
-			b -= 3;
-		}
-		while (b > 0) {
-			printf("   ");
-			b -= 3;
-		}
-		printf("\t");
-		int space = 6-strlen(disas->mnemonic);
-		printf("%s ", disas->mnemonic);
-		for (int i = 0; i < space; i++) printf(" ");
-		
-		for (int i = 0; i < disas->num_operands; i++) {
-			if (i!=0) printf(",");
-			printf("%s", disas->op[i]);
-		}
-		if (disas->metadata->comment) printf("\t # %s", disas->metadata->comment);
-		printf("\n");
-		//if (disas->metadata->type == r_tret) break;
-	}
-}
-
-void r_print_disas(r_disassembler * disassembler)
-{
-	for (int i = 0; i < disassembler->num_instructions; i++) {
-		r_disasm * disas = disassembler->instructions[i];
-		if (disas->metadata->label) printf("//\t%s\n", disas->metadata->label);
-		printf("%#x:   ", disas->address);
-		int b = 8*3;
-		for (int i = 0; i < disas->used_bytes; i++) {
-			if ((b-3) <= 0) {
-				printf(".");
-				break;
-			} 
-			printf("%02x ", disas->raw_bytes[i]);
-			b -= 3;
-		}
-		while (b > 0) {
-			printf("   ");
-			b -= 3;
-		}
-		printf("\t");
-		int space = 6-strlen(disas->mnemonic);
-		printf("%s ", disas->mnemonic);
-		for (int i = 0; i < space; i++) printf(" ");
-		
-		for (int i = 0; i < disas->num_operands; i++) {
-			if (i!=0) printf(",");
-			printf("%s", disas->op[i]);
-		}
-		if (disas->metadata->comment) printf("\t # %s", disas->metadata->comment);
-		printf("\n");
-	}	
 }
 
 void r_disassembler_pushaddr(r_disassembler * disassembler, uint64_t addr)
