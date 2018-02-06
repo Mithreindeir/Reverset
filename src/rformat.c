@@ -1,6 +1,6 @@
 #include "rformat.h"
 
-char * r_formatted_printjump(r_analyzer * anal, uint64_t addr, uint64_t sb, uint64_t eb)
+void r_formatted_printjump(r_pipe * pipe, r_analyzer * anal, uint64_t addr, uint64_t sb, uint64_t eb)
 {
 	int j_addr = 0;
 	int start = 0;
@@ -63,65 +63,56 @@ char * r_formatted_printjump(r_analyzer * anal, uint64_t addr, uint64_t sb, uint
 	}
 
 	buf[6] = 0;
-	//printf("%s ", buf);
-	return strdup(buf);
+	r_pipe_write(pipe, "%s" , buf);
 }
 
-char * r_formatted_print(r_disasm * disas, r_analyzer * anal, int * idx, uint64_t start, uint64_t end)
+void r_formatted_print(r_pipe * pipe, r_disasm * disas, r_analyzer * anal,  uint64_t start, uint64_t end)
 {
-	char * buf = malloc(256);
-	memset(buf, 0, 256);
-	int iter = 0;
-
-	iter += snprintf(buf+iter, 256-iter, KBLU);
-	if (disas->metadata->label) iter += snprintf(buf+iter, 256-iter, "//\t%s\n", disas->metadata->label);
-	iter += snprintf(buf+iter, 256-iter, KRED);
-	iter += snprintf(buf+iter, 256-iter, "%#x:   ", disas->address);
-	iter += snprintf(buf+iter, 256-iter, KCYN);
+	r_pipe_write(pipe, KBLU);
+	if (disas->metadata->label) r_pipe_write(pipe, "//\t%s\n", disas->metadata->label);
+	r_pipe_write(pipe, KRED);
+	r_pipe_write(pipe, "%#x:   ", disas->address);
+	r_pipe_write(pipe, KCYN);
 	int b = 8*3;
 	for (int i = 0; i < disas->used_bytes; i++) {
 		if ((b-3) <= 0) {
-			iter += snprintf(buf+iter, 256-iter, ".");
+			r_pipe_write(pipe, ".");
 			break;
 		} 
-		iter += snprintf(buf+iter, 256-iter, "%02x ", disas->raw_bytes[i]);
+		r_pipe_write(pipe, "%02x ", disas->raw_bytes[i]);
 		b -= 3;
 	}
 	while (b > 0) {
-		iter += snprintf(buf+iter, 256-iter, "   ");
+		r_pipe_write(pipe, "   ");
 		b -= 3;
 	}
-	iter += snprintf(buf+iter, 256-iter, "\t");
-	iter += snprintf(buf+iter, 256-iter, KRED);
+	r_pipe_write(pipe, "\t");
+	r_pipe_write(pipe, KRED);
 	
-	char * jmp = r_formatted_printjump(anal, disas->address, start, end);
-	iter += snprintf(buf+iter, 256-iter, "%s ", jmp);
-	free(jmp);
+	r_formatted_printjump(pipe, anal, disas->address, start, end);
+
 	int space = 6-strlen(disas->mnemonic);
-	iter += snprintf(buf+iter, 256-iter, KBLU);
-	iter += snprintf(buf+iter, 256-iter, "%s ", disas->mnemonic);
-	for (int i = 0; i < space; i++) iter += snprintf(buf+iter, 256-iter, " ");
+	r_pipe_write(pipe, KBLU);
+	r_pipe_write(pipe, "%s ", disas->mnemonic);
+	for (int i = 0; i < space; i++) r_pipe_write(pipe, " ");
 	if (disas->metadata && (disas->metadata->type == r_tcall || disas->metadata->type == r_tujump || disas->metadata->type == r_tcjump))
-		iter += snprintf(buf+iter, 256-iter, KYEL);
+		r_pipe_write(pipe, KYEL);
 	else
-		iter += snprintf(buf+iter, 256-iter, KRED);
+		r_pipe_write(pipe, KRED);
 	for (int i = 0; i < disas->num_operands; i++) {
-		if (i!=0) iter += snprintf(buf+iter, 256-iter, ",");
-		iter += snprintf(buf+iter, 256-iter, "%s", disas->op[i]);
+		if (i!=0) r_pipe_write(pipe, ", ");
+		//Check if it is a string or symbol 
+		if (disas->op[i][0]=='\"') r_pipe_write(pipe, KYEL);
+
+		r_pipe_write(pipe, "%s", disas->op[i]);
 	}
-	if (disas->metadata->comment) iter += snprintf(buf+iter, 256-iter, "\t # %s", disas->metadata->comment);
-	iter += snprintf(buf+iter, 256-iter, "\n");
-	buf[iter] = 0;
-	*idx = iter;
-	if (iter > 0) {
-		buf = realloc(buf, iter);
-		return buf;
-	}
-	free(buf);
-	return NULL;
+	r_pipe_write(pipe, KGRN);
+	if (disas->metadata->comment) r_pipe_write(pipe, "\t # %s", disas->metadata->comment);
+	r_pipe_write(pipe, "\n");
+
 }
 
-char * r_formatted_printall(r_disassembler * disassembler, r_analyzer * anal, uint64_t addr)
+void r_formatted_printall(r_pipe * pipe, r_disassembler * disassembler, r_analyzer * anal, uint64_t addr)
 {
 	uint64_t end = 0;
 	for (int i = 0; i < disassembler->num_instructions; i++) {
@@ -131,30 +122,11 @@ char * r_formatted_printall(r_disassembler * disassembler, r_analyzer * anal, ui
 		if (disas->metadata->type == r_tret) break;
 	}
 
-	char * printed = NULL;
-	int num_char = 0;
-	int old_char = 0;
 	for (int i = 0; i < disassembler->num_instructions; i++) {
 		r_disasm * disas = disassembler->instructions[i];
 		if (disas->address < addr) continue;
 
-		int iter = 0;
-		char * instr = r_formatted_print(disas, anal, &iter, addr, end);
-
-		num_char += iter;
-		if (num_char > old_char) {
-			if (!printed) {
-				printed = malloc(num_char);
-			} else {
-				printed = realloc(printed, num_char);
-			}
-			memcpy(printed+old_char, instr, iter);
-		}
-		old_char = num_char;
-		if (instr) free(instr);
+		r_formatted_print(pipe, disas, anal, addr, end);
 		if (anal->function && disas->metadata->type == r_tret) break;
 	}
-	if (num_char > 0) printed[num_char-1] = 0;
-
-	return printed;
 }

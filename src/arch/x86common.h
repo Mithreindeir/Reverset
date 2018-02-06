@@ -116,6 +116,7 @@ static const instr_pair instr_pairs[] = {
 	//
 	{"jmp", r_tujump},
 	//
+	{"jg", r_tcjump},
 	{"jo", r_tcjump},
 	{"jno", r_tcjump},
 	{"jb", r_tcjump},

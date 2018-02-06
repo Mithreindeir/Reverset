@@ -41,10 +41,8 @@ typedef struct rstring
 {
 	int len;
 	char * string;
-	union {
-		r32addr addr32;
-		r64addr addr64;
-	};
+	int section;
+	uint64_t addr64;
 } rstring;
 
 typedef enum rsection_t

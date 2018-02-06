@@ -188,7 +188,7 @@ void r_meta_string_replace(r_disassembler * disassembler, r_file * file)
 							disas->metadata->comment = disas->op[k];
 							disas->op[k] = NULL;
 							//free(disas->op[k]);
-							snprintf(buf, 256, " \"%s\"", file->strings[i].string);
+							snprintf(buf, 256, "\"%s\"", file->strings[i].string);
 							disas->op[k] = strdup(buf);
 						}
 					}
@@ -255,10 +255,13 @@ int r_meta_rip_relative(char * operand)
 
 	int s = strlen(operand);
 	for (int i = 0; i < s; i++) {
-		if (!strncmp(operand + i, "rip+", 4)) {
+		if (!strncmp(operand + i, "rip", 3)) {
+			char c = operand[i+3];
+			if (c != '-' && c != '+') continue;
+
 			char * opaddr = strdup(operand+i+4);
 			//rip operands are usually like [rip+0xaddr] so remove ']' at the end
-			int len = 0;
+			int len = 0;////
 			r_meta_isaddr(opaddr, &len);
 			//It is a valid address up until the ']' indirect part
 			if (opaddr[len]==']') {
@@ -266,8 +269,9 @@ int r_meta_rip_relative(char * operand)
 				int base = 16;
 				if (strlen(opaddr) > 2 && (opaddr[1] == 'x' || opaddr[1] == 'X')) base = 0;
 				
-				uint64_t num =  (uint64_t)strtol(opaddr, NULL, base);
+				uint64_t num = (uint64_t)strtol(opaddr, NULL, base);
 				free(opaddr);
+				if (c == '-') num = -num;
 				return num;
 			}
 			free(opaddr);

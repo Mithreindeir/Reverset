@@ -8,6 +8,7 @@
 #include "rdis.h"
 #include "ranal.h"
 #include "rformat.h"
+#include "rpipe.h"
 #include "arch/x86/x86disassembler.h"
 #include "arch/x86_64/x64assembler.h"
 #include "arch/x86/x86assembler.h"
@@ -23,12 +24,6 @@ typedef enum r_state
 	rs_shell
 } r_state;
 
-typedef struct r_pipe
-{
-	char * buf;
-	int len;
-} r_pipe;
-
 /* API for Reverset */
 typedef struct reverset
 {
@@ -42,14 +37,15 @@ typedef struct reverset
 	r_analyzer * anal;
 	//Status 
 	r_state status;
+	//output pipe
+	r_pipe * pipe;
 } reverset;
 
 typedef struct r_cmd
 {
 	char * name;
-	int argc;
 	char * usage;
-	char*(*execute)(reverset * rev, char ** args);
+	int(*execute)(reverset * rev, char ** args, int num_args);
 } r_cmd;
 
 /*Public API*/
@@ -57,8 +53,8 @@ reverset * reverset_init();
 void reverset_destroy(reverset * rev);
 
 void reverset_openfile(reverset * rev, char * file);
-char * reverset_execute(reverset * rev, char * cmd);
-char * reverset_eval(reverset * rev, int argc, char ** argv);
+void reverset_execute(reverset * rev, char * cmd);
+void reverset_eval(reverset * rev, int argc, char ** argv);
 void reverset_sh(reverset * rev);
 
 /*Private Functions for reverset shell*/
@@ -68,24 +64,26 @@ char * reverset_split(char * first);
 
 /*Wrapper functions*/
 uint64_t reverset_resolve_arg(reverset * rev, char * arg);
-char* reverset_analyze(reverset * rev, char ** args);
-char* reverset_print(reverset * rev, char ** args);
-char* reverset_disas(reverset * rev, char ** args);
-char* reverset_write(reverset * rev, char ** args);
-char* reverset_goto(reverset * rev, char ** args);
-char * reverset_asm(reverset * rev, char ** args);
-char * reverset_quit(reverset * rev, char ** args);
-char * reverset_list(reverset * rev, char ** args);
+int reverset_analyze(reverset * rev, char ** args, int num_args);
+int reverset_print(reverset * rev, char ** args, int num_args);
+int reverset_disas(reverset * rev, char ** args, int num_args);
+int reverset_write(reverset * rev, char ** args, int num_args);
+int reverset_goto(reverset * rev, char ** args, int num_args);
+int reverset_asm(reverset * rev, char ** args, int num_args);
+int reverset_quit(reverset * rev, char ** args, int num_args);
+int reverset_list(reverset * rev, char ** args, int num_args);
+int reverset_strmod(reverset * rev, char ** args, int num_args);
 
 const static r_cmd r_commands[] = {
-	{"print", 1, "print all/here/function/address\n", &reverset_print},
-	{"anal", 1, "anal here/function/address\n", &reverset_analyze},
-	{"disas", 1, "disas here/function/address\n", &reverset_disas},
-	{"write", 1, "write \"bytes\"\n", &reverset_write},
-	{"goto", 1, "goto address/symbol\n", &reverset_goto},
-	{"asm", 1, "asm \"assembly\"\n", &reverset_asm},
-	{"list", 1, "list symbols/functions/flags\n", &reverset_list},
-	{"quit", 0, "quit\n", &reverset_quit}
+	{"print","print all/here/function/address\n", &reverset_print},
+	{"anal", "anal here/function/address\n", &reverset_analyze},
+	{"disas", "disas here/function/address\n", &reverset_disas},
+	{"write", "write \"bytes\"\n", &reverset_write},
+	{"goto", "goto address/symbol\n", &reverset_goto},
+	{"asm", "asm \"assembly\"\n", &reverset_asm},
+	{"list", "list symbols/functions/flags\n", &reverset_list},
+	{"/", "/ token\n", &reverset_strmod},
+	{"quit", "quit\n", &reverset_quit}
 };
 
 

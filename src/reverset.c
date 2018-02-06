@@ -9,7 +9,7 @@ reverset * reverset_init()
 	rev->disassembler = r_disassembler_init();
 	rev->anal = r_analyzer_init();
 	rev->status = rs_none;
-	//rev->pipe = NULL;
+	rev->pipe = r_pipe_init(1024);
 
 	return rev;
 }
@@ -21,6 +21,7 @@ void reverset_destroy(reverset * rev)
 	if (rev->file) r_file_destroy(rev->file);
 	if (rev->disassembler) r_disassembler_destroy(rev->disassembler);
 	if (rev->anal) r_analyzer_destroy(rev->anal);
+	if (rev->pipe) r_pipe_destroy(rev->pipe);
 
 	free(rev);
 }
@@ -48,14 +49,14 @@ void reverset_openfile(reverset * rev, char * file)
 	}
 }
 
-char * reverset_execute(reverset * rev, char * cmd)
+void reverset_execute(reverset * rev, char * cmd)
 {
 	int argc = 0;
 	char ** args = reverset_split_line(cmd, &argc);
-	return reverset_eval(rev, argc, args);
+	reverset_eval(rev, argc, args);
 }
 
-char * reverset_eval(reverset * rev, int argc, char ** argv)
+void reverset_eval(reverset * rev, int argc, char ** argv)
 {
 	for (int i = 0; i < argc; i++) {
 		char * arg = argv[i];
@@ -64,19 +65,11 @@ char * reverset_eval(reverset * rev, int argc, char ** argv)
 		for (int j = 0; j < (sizeof(r_commands)/sizeof(r_cmd)); j++) {
 
 			if (!strcmp(arg, r_commands[j].name)) {
-				i++;
-				int largs = argc - i;
-				if (largs < r_commands[j].argc) {
-					return strdup(r_commands[j].usage);
-				} else {
-					return r_commands[j].execute(rev, argv+f_arg);
-					i += r_commands[j].argc-1;
-				}
-
+				int used_args = r_commands[j].execute(rev, argv+f_arg, argc-i-1);
+				i += used_args;
 			}
 		}
 	}
-	return NULL;
 }
 
 void reverset_sh(reverset * rev)
@@ -93,10 +86,11 @@ void reverset_sh(reverset * rev)
 		input = reverset_readline();
 		args = reverset_split_line(input, &argc);
 
-		char * output = reverset_eval(rev, argc, args);
+		reverset_eval(rev, argc, args);
 
-		if (output) {
-			printf("%s\n", output);			
+		if (rev->pipe->len > 0) {
+			printf("%s\n", rev->pipe->buf);
+			r_pipe_clear(rev->pipe);
 		}
 
 		free(input);
@@ -104,7 +98,6 @@ void reverset_sh(reverset * rev)
 			free(args[i]);
 		}
 		free(args);
-		if (output) free(output);
 	} while (rev->status == rs_shell);
 
 }
@@ -217,16 +210,15 @@ uint64_t reverset_resolve_arg(reverset * rev, char * arg)
 	return addr;
 }
 
-char* reverset_analyze(reverset * rev, char ** args)
+int reverset_analyze(reverset * rev, char ** args, int num_args)
 {
-
-	return NULL;
+	return 0;
 }
 
-char* reverset_print(reverset * rev, char ** args)
+int reverset_print(reverset * rev, char ** args, int num_args)
 {
 	char * arg = args[0];
-	if (!arg) return NULL;
+	if (!arg) return 0;
 
 	uint64_t addr = 0;
 
@@ -236,42 +228,43 @@ char* reverset_print(reverset * rev, char ** args)
 		rev->anal->function = 1;
 		addr = reverset_resolve_arg(rev, arg);
 		if (addr == -1) {
-			char buf[256];
-			snprintf(buf, 256, "No address found for \"%s\"", arg);
-			return strdup(buf);
+			r_pipe_write(rev->pipe, "No address found for \"%s\"\n", arg);
+			return 1;
 		}
 	}
 	
-	char * print = r_formatted_printall(rev->disassembler, rev->anal, addr);
-	return print;
+	r_formatted_printall(rev->pipe, rev->disassembler, rev->anal, addr);
+
+	return 1;
 }
 
-char* reverset_disas(reverset * rev, char ** args)
+int reverset_disas(reverset * rev, char ** args, int num_args)
 {
 	char * arg = args[0];
-	if (!arg) return NULL;
+	if (!arg) return 0;
 
 	uint64_t addr = reverset_resolve_arg(rev, arg);
 	if (addr == -1) {
-		char buf[256];
-		snprintf(buf, 256, "No address found for \"%s\"", arg);
-		return strdup(buf);
+		r_pipe_write(rev->pipe, "No address found for \"%s\"\n", arg);
+		return 1;
 	}
 	rev->disassembler->overwrite = 1;
 	r_disassembler_pushaddr(rev->disassembler, addr);
 	r_disassemble(rev->disassembler, rev->file);
 	r_meta_analyze(rev->anal, rev->disassembler, rev->file);
 
-	return NULL;
+	return 1;
+
 }
 
-char * reverset_asm(reverset * rev, char ** args)
+int reverset_asm(reverset * rev, char ** args, int num_args)
 {
 	char * arg = args[0];
-	if (!arg) return NULL;
+	if (!arg) return 0;
 
 	if (!assemblers[rev->file->arch]) {
-		return strdup("Assembling is only currently available for 64 bit programs\n");
+		r_pipe_write(rev->pipe, "Assembling is only currently available for 64 bit programs\n");
+		return 1;
 	}
 	//Assemble 
 	int num_bytes = 0;
@@ -286,13 +279,15 @@ char * reverset_asm(reverset * rev, char ** args)
 		}
 		iter += snprintf(buf+iter, 256-iter, "\n");
 	}
-	return strdup(buf);
+	r_pipe_write(rev->pipe, "%s\n", buf);
+
+	return 1;
 }
 
-char* reverset_write(reverset * rev, char ** args)
+int reverset_write(reverset * rev, char ** args, int num_args)
 {
 	char * arg = args[0];
-	if (!arg) return NULL;
+	if (!arg) return 0;
 
 	int size = strlen(arg);
 	unsigned char byte_buf[256];
@@ -312,7 +307,8 @@ char* reverset_write(reverset * rev, char ** args)
 			b = arg[i+1];
 		} else {
 			write = 0;
-			return strdup("invalid bytes\n");
+			r_pipe_write(rev->pipe, "invalid bytes\n");
+			return 1;
 		}
 		b = (b >= 0x30 && b < 0x40) ? b - 0x30 : ((b <= 'f' && b >= 'a') ? (b -'a'+10) : ((b <= 'F' && b >= 'A' ? (b -'A'+10) : 0)));
 		unsigned char f = (a<<4) + (b&0x0f);
@@ -327,40 +323,110 @@ char* reverset_write(reverset * rev, char ** args)
 		r_meta_analyze(rev->anal, rev->disassembler, rev->file);
 	}
 
-	return NULL;
+	return 1;
 }
 
-char* reverset_goto(reverset * rev, char ** args)
+int reverset_goto(reverset * rev, char ** args, int num_args)
 {
 	char * arg = args[0];
-	if (!arg) return NULL;
+	if (!arg) return 0;
 
 	uint64_t addr = reverset_resolve_arg(rev, arg);
 	if (addr == -1) {
-		char buf[256];
-		snprintf(buf, 256, "No address found for \"%s\"", arg);
-		return strdup(buf);
+		r_pipe_write(rev->pipe, "No address found for \"%s\"\n", arg);
+		return 1;
 	}
 	rev->address = addr;
 
-	return NULL;
+	return 1;
 }
 
-char * reverset_quit(reverset * rev, char ** args)
+int reverset_strmod(reverset * rev, char ** args, int num_arg)
+{
+	int num_args = 0;
+	int reverse = 0;
+	int u_num = 0;
+	int num = -1;
+	char * tok = NULL;
+	for (int i = 0; i < num_arg; i++) {
+		if (!args[i]) continue;
+
+		if (args[i][0] == '-') {
+			num_args++;
+			int n = strlen(args[i]);
+			for (int j = 1; j < n; j++) {
+				switch (args[i][j]) {
+					case 'r':
+						reverse = 1;
+						break;
+					case 'n':
+						u_num = 1;
+						break;
+				}
+			}
+		} else if (!tok) tok = args[i];
+		else break;
+	}
+	if (!tok) return num_args;
+	num_args++;
+
+	if (u_num) num = strtol(tok, NULL, 0);
+
+	int str_len = strlen(tok);
+	int len = rev->pipe->len;
+	char * out = r_pipe_read(rev->pipe, 0, len);
+	
+	int line_num = 0;
+	for (int i = 0; i < len; ) {
+		if (u_num) {
+			if (out[i]=='\n') line_num++;
+			if (num != -1 && line_num >= num){
+				len = i-1;
+				out[i] = 0;
+				break;
+			}
+			i++;
+			continue;
+		}
+		int substring = 0;
+		int c = i;
+		while (out[c] != '\n' && out[c]) {
+			if (!substring && !strncmp(out+c, tok, str_len)) substring = 1;
+			c++;
+		}
+		if (!reverse && !substring) {
+			memset(out+i, 0, c-i + 1);
+		} else if (substring && reverse) {
+			memset(out+i, 0, c-i + 1);
+		}
+		line_num++;
+		i=c+1;
+
+	}
+	r_pipe_clear(rev->pipe);
+
+	for (int i = 0; i < len; i++) {
+		if (!out[i]) continue;
+		int old_len = rev->pipe->len;
+		r_pipe_write(rev->pipe, "%s", out+i);
+		int diff = rev->pipe->len - old_len;
+		i += diff;
+	}
+	free(out);
+
+	return num_args;
+}
+
+int reverset_quit(reverset * rev, char ** args, int num_args)
 {
 	rev->status = rs_none;
-	return NULL;
+	return 0;
 }
 
-char * reverset_list(reverset * rev, char ** args)
+int reverset_list(reverset * rev, char ** args, int num_args)
 {
 	char * arg = args[0];
-	if (!arg) return NULL;
-
-
-	int cnum = 0;
-	int onum = 0;
-	char * printed = NULL;
+	if (!arg) return 0;
 
 	int symbols = -1;
 	if (!strcmp(arg, "symbols") || !strcmp(arg, "symbol"))
@@ -371,49 +437,19 @@ char * reverset_list(reverset * rev, char ** args)
 	if (symbols != -1) {
 		for (int i = 0; i < rev->file->num_symbols; i++) {
 			rsymbol sym = rev->file->symbols[i];
-			char buf[256];
-			int iter = 0;
-
 			if (!symbols && sym.type == R_FUNC) {
-				iter += snprintf(buf+iter, 256-iter, "symbol: %s address: %#lx\n", sym.name, sym.addr64);
+				r_pipe_write(rev->pipe, "symbol: %s address: %#lx\n", sym.name, sym.addr64);
 			} else if (symbols) {
-				iter += snprintf(buf+iter, 256-iter, "symbol: %s address: %#lx\n", sym.name, sym.addr64);
-			}
-			if (iter > 0) {
-				cnum += iter;
-				if (onum == 0) {
-					printed = malloc(cnum);
-				} else {
-					printed = realloc(printed, cnum);
-				}
-				memcpy(printed+onum, buf, iter);
-				onum = cnum;
+				r_pipe_write(rev->pipe, "symbol: %s address: %#lx\n", sym.name, sym.addr64);
 			}
 		}
 	}
 	else if (!strcmp(arg, "string") || !strcmp(arg, "strings")) {
 		for (int i = 0; i < rev->file->num_strings; i++) {
 			rstring str = rev->file->strings[i];
-			char buf[256];
-			int iter = 0;
-
-			iter += snprintf(buf+iter, 256-iter, "address: %#lx str: \"%s\"\n", str.addr64, str.string);
-
-			if (iter > 0) {
-				cnum += iter;
-				if (onum == 0) {
-					printed = malloc(cnum);
-				} else {
-					printed = realloc(printed, cnum);
-				}
-				memcpy(printed+onum, buf, iter);
-				onum = cnum;
-			}
+			r_pipe_write(rev->pipe,  "section: %s address: %#lx str: \"%s\"\n", rev->file->sections[str.section].name, str.addr64, str.string);
 		}
 	}
 
-
-	if (printed) printed[cnum] = 0;
-	
-	return printed;
+	return 1;
 }
