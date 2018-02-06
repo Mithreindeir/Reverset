@@ -56,69 +56,69 @@ Example analysis
 ./reverset testrev
 0x400bc0>disas here
 Disassembling 0x400bc0
-Disassembling 0x410c60
-Disassembling 0x4398e1
-Disassembling 0x439953
-Disassembling 0x439db8
-Disassembling 0x439da8
-Disassembling 0x43994b
-Disassembling 0x43994a
-Disassembling 0x439948
-Disassembling 0x439942
-Disassembling 0x43993b
-Disassembling 0x439924
-Disassembling 0x4398fa
-Disassembling 0x4398ee
-Disassembling 0x4398eb
-Disassembling 0x4398e0
+Disassembling 0x40de50
+Disassembling 0x431821
+Disassembling 0x431893
+Disassembling 0x431b93
+Disassembling 0x43188b
+Disassembling 0x43188a
+Disassembling 0x431888
+Disassembling 0x431882
+Disassembling 0x43187b
+Disassembling 0x431864
+Disassembling 0x43183a
+Disassembling 0x43182e
+Disassembling 0x43182b
+Disassembling 0x431820
 Disassembling 0x4009d0
 Disassembling 0x400a40
 Disassembling 0x400a10
 Disassembling 0x400a00
 0x400bc0>goto main
-0x403cc2>print here
+0x40356c>print here
 //	sym.main
-0x403cc2:   55                      	       push   rbp
-0x403cc3:   48 89 e5                	       mov    rbp,rsp
-0x403cc6:   48 81 ec 30 01 00 00    	       sub    rsp,0x130
-0x403ccd:   89 bd dc fe ff ff       	       mov    dword [rbp-0x124],edi
-0x403cd3:   48 89 b5 d0 fe ff ff    	       mov    qword [rbp-0x130],rsi
-0x403cda:   64 48 8b 04 25 28 00 .   	       mov    rax,qword fs:[0x28]
-0x403ce3:   48 89 45 f8             	       mov    qword [rbp-0x8],rax
-0x403ce7:   31 c0                   	       xor    eax,eax
-0x403ce9:   83 bd dc fe ff ff 01    	       cmp    dword [rbp-0x124],0x1
-0x403cf0:   7f 23                   	       jg     0x403d15
-0x403cf2:   48 8b 85 d0 fe ff ff    	       mov    rax,qword [rbp-0x130]
-0x403cf9:   48 8b 00                	       mov    rax,qword [rax]
-0x403cfc:   48 89 c6                	       mov    rsi,rax
-0x403cff:   bf 40 48 42 00          	       mov    edi,0x424840
-0x403d04:   b8 00 00 00 00          	       mov    eax,0
-0x403d09:   e8 72 cd ff ff          	       call   printf	 # 0x400a80
-0x403d0e:   b8 01 00 00 00          	       mov    eax,0x1
-0x403d13:   eb 54                   	    ,< jmp    0x403d69
-0x403d15:   b8 00 00 00 00          	    |  mov    eax,0
-0x403d1a:   e8 97 cf ff ff          	    |  call   reverset_init	 # 0x400cb6
-0x403d1f:   48 89 85 e8 fe ff ff    	    |  mov    qword [rbp-0x118],rax
-0x403d26:   48 8b 85 d0 fe ff ff    	    |  mov    rax,qword [rbp-0x130]
-0x403d2d:   48 83 c0 08             	    |  add    rax,0x8
-0x403d31:   48 8b 10                	    |  mov    rdx,qword [rax]
-0x403d34:   48 8b 85 e8 fe ff ff    	    |  mov    rax,qword [rbp-0x118]
-0x403d3b:   48 89 d6                	    |  mov    rsi,rdx
-0x403d3e:   48 89 c7                	    |  mov    rdi,rax
-0x403d41:   e8 53 d0 ff ff          	    |  call   reverset_openfile	 # 0x400d99
-0x403d46:   48 8b 85 e8 fe ff ff    	    |  mov    rax,qword [rbp-0x118]
-0x403d4d:   48 89 c7                	    |  mov    rdi,rax
-0x403d50:   e8 dc d2 ff ff          	    |  call   reverset_sh	 # 0x401031
-0x403d55:   48 8b 85 e8 fe ff ff    	    |  mov    rax,qword [rbp-0x118]
-0x403d5c:   48 89 c7                	    |  mov    rdi,rax
-0x403d5f:   e8 ba cf ff ff          	    |  call   reverset_destroy	 # 0x400d1e
-0x403d64:   b8 00 00 00 00          	    |  mov    eax,0
-0x403d69:   48 8b 4d f8             	    `> mov    rcx,qword [rbp-0x8]
-0x403d6d:   64 48 33 0c 25 28 00 .   	       xor    rcx,qword fs:[0x28]
-0x403d76:   74 05                   	    ,< jz     0x403d7d
-0x403d78:   e8 f3 cc ff ff          	    |  call   __stack_chk_fail	 # 0x400a70
-0x403d7d:   c9                      	    `> leave  
-0x403d7e:   c3                      	       ret    
-0x403cc2>
+0x40356c:   55                      	       push   rbp
+0x40356d:   48 89 e5                	       mov    rbp,rsp
+0x403570:   48 81 ec 30 01 00 00    	       sub    rsp,0x130
+0x403577:   89 bd dc fe ff ff       	       mov    dword [rbp-0x124],edi
+0x40357d:   48 89 b5 d0 fe ff ff    	       mov    qword [rbp-0x130],rsi
+0x403584:   64 48 8b 04 25 28 00 .   	       mov    rax,qword fs:[0x28]
+0x40358d:   48 89 45 f8             	       mov    qword [rbp-0x8],rax
+0x403591:   31 c0                   	       xor    eax,eax
+0x403593:   83 bd dc fe ff ff 01    	       cmp    dword [rbp-0x124],0x1
+0x40359a:   7f 23                   	       jg     0x4035bf
+0x40359c:   48 8b 85 d0 fe ff ff    	       mov    rax,qword [rbp-0x130]
+0x4035a3:   48 8b 00                	       mov    rax,qword [rax]
+0x4035a6:   48 89 c6                	       mov    rsi,rax
+0x4035a9:   bf e0 18 42 00          	       mov    edi, "Usage: %s file"	 # 0x4218e0
+0x4035ae:   b8 00 00 00 00          	       mov    eax,0
+0x4035b3:   e8 c8 d4 ff ff          	       call   printf	 # 0x400a80
+0x4035b8:   b8 01 00 00 00          	       mov    eax,0x1
+0x4035bd:   eb 54                   	    ,< jmp    0x403613
+0x4035bf:   b8 00 00 00 00          	    |  mov    eax,0
+0x4035c4:   e8 ed d6 ff ff          	    |  call   reverset_init	 # 0x400cb6
+0x4035c9:   48 89 85 e8 fe ff ff    	    |  mov    qword [rbp-0x118],rax
+0x4035d0:   48 8b 85 d0 fe ff ff    	    |  mov    rax,qword [rbp-0x130]
+0x4035d7:   48 83 c0 08             	    |  add    rax,0x8
+0x4035db:   48 8b 10                	    |  mov    rdx,qword [rax]
+0x4035de:   48 8b 85 e8 fe ff ff    	    |  mov    rax,qword [rbp-0x118]
+0x4035e5:   48 89 d6                	    |  mov    rsi,rdx
+0x4035e8:   48 89 c7                	    |  mov    rdi,rax
+0x4035eb:   e8 a9 d7 ff ff          	    |  call   reverset_openfile	 # 0x400d99
+0x4035f0:   48 8b 85 e8 fe ff ff    	    |  mov    rax,qword [rbp-0x118]
+0x4035f7:   48 89 c7                	    |  mov    rdi,rax
+0x4035fa:   e8 2a da ff ff          	    |  call   reverset_sh	 # 0x401029
+0x4035ff:   48 8b 85 e8 fe ff ff    	    |  mov    rax,qword [rbp-0x118]
+0x403606:   48 89 c7                	    |  mov    rdi,rax
+0x403609:   e8 10 d7 ff ff          	    |  call   reverset_destroy	 # 0x400d1e
+0x40360e:   b8 00 00 00 00          	    |  mov    eax,0
+0x403613:   48 8b 4d f8             	    `> mov    rcx,qword [rbp-0x8]
+0x403617:   64 48 33 0c 25 28 00 .   	       xor    rcx,qword fs:[0x28]
+0x403620:   74 05                   	    ,< jz     0x403627
+0x403622:   e8 49 d4 ff ff          	    |  call   __stack_chk_fail	 # 0x400a70
+0x403627:   c9                      	    `> leave  
+0x403628:   c3                      	       ret    
+0x40356c>
+
 
 ```
