@@ -43,10 +43,12 @@ void r_meta_calculate_branches(r_analyzer * anal, r_disassembler * disassembler)
 			int status = 0;
 			for (int i = 0; i < disas->num_operands; i++) {				
 				branch.end = r_meta_get_address(disas->op[i], &status);
+
 				if (status == 2) branch.indirect = 1;
 				else if (!status) continue;
 				break;
 			}
+
 			if (branch.end > branch.start) {
 				branch.dir = 0;
 			} else {
@@ -69,27 +71,19 @@ void r_meta_calculate_branches(r_analyzer * anal, r_disassembler * disassembler)
 		}
 	}
 
+
+	/*Initial guess at nesting (TODO fix if nest overlaps 5 jumps with nest of 1 then jmp should be at nest of 2 not 5
+	Fix might be starting at jumps with a nest of 0 and working up, not allowing the nest of any jump to be greater than 1+the nest of the highest jmp that is overlapped.
+	*/
 	for (int i = 0; i < anal->num_branches; i++) {
 		r_branch b = anal->branches[i];
 
-		int bcase = 0;
 		for (int j = 0; j < anal->num_branches; j++) {
 			if (j==i) continue;
-
 			r_branch b2 = anal->branches[j];
-			bcase = 0;
-			if ((b2.start > b.start) && (b2.end < b.end)) bcase = 1;
-			else if ((b2.start > b.start) && (b2.start < b.end)) bcase = 2;
-			else if ((b2.end > b.start) && (b2.end < b.end)) bcase = 3;
 
-			switch (bcase) {
-				case 1:
-					anal->branches[i].nested++;
-					break;
-				case 2:
-					anal->branches[i].nested++;
-				default: break;
-			}
+			if ((b2.start >= b.start) && (b2.end <= b.end)) anal->branches[i].nested++;
+			else if ((b2.start >= b.start) && (b2.start <= b.end)) anal->branches[i].nested++;
 		}
 	}
 }
@@ -225,6 +219,7 @@ uint64_t r_meta_get_address(char * operand, int * status)
 				free(op2);
 				return n;
 			}
+			*status = 0;
 		}
 	}	
 	return 0;

@@ -242,7 +242,7 @@ x86_instr_operand *x86_decode_operand(char * operand, x86_disas_state *state)
 					memcpy(&opr->relative, state->stream+*state->iter, 2);
 					*state->iter += 2;
 				} else {
-					opr->relative = state->stream[(*state->iter)++];
+					opr->relative = (int64_t)(signed char)state->stream[(*state->iter)++];
 				}
 				break;
 			case X86_MEM://Mod/Rm but with register addressing disabled. Assuming the instruction is encoded correctly, a mod of 11 should not be encountered

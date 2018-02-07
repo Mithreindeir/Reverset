@@ -265,7 +265,8 @@ x64_instr_operand *x64_decode_operand(char * operand, x64_disas_state *state)
 					memcpy(&opr->relative, state->stream+*state->iter, 2);
 					*state->iter += 2;
 				} else {
-					opr->relative = state->stream[(*state->iter)++];
+					//Casting will change things like 0xf4 into the correct signed int
+					opr->relative = (int64_t)(signed char)state->stream[(*state->iter)++];
 				}
 				break;
 			case X64_MEM://Mod/Rm but with register addressing disabled. Assuming the instruction is encoded correctly, a mod of 11 should not be encountered
@@ -532,7 +533,7 @@ void x64_sign_extend(x64_instr_operand * op1, x64_instr_operand * op2, x64_instr
 uint64_t x64_resolve_address(uint64_t rel, uint64_t address, int used_bytes)
 {
 	address += used_bytes;
-	return address + rel;
+	return ((int64_t)address + (int64_t)rel);
 }
 
 void x64_disas_meta_type(r_disasm * disas)

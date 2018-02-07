@@ -5,11 +5,15 @@ void r_formatted_printjump(r_pipe * pipe, r_analyzer * anal, uint64_t addr, uint
 	int j_addr = 0;
 	int start = 0;
 	int dir = 0;
+	int buf_size = 6;
+
+	int startp = buf_size;
+	int endp = buf_size;
 
 	int p = 0;
-	char buf[7];
-	buf[6] = 0;
-	memset(buf, 0x20, 6);
+	char buf[7];//buf_size + 1
+	buf[buf_size] = 0;
+	memset(buf, 0x20, buf_size);
 
 	for (int i = 0; i < anal->num_branches; i++) {
 		if (anal->branches[i].start < sb || anal->branches[i].end > eb) continue;
@@ -27,42 +31,57 @@ void r_formatted_printjump(r_pipe * pipe, r_analyzer * anal, uint64_t addr, uint
 			p = anal->branches[i].nested;
 		}
 		if ((anal->branches[i].start <= addr) && (anal->branches[i].end >= addr)) {
+
+			char fill = '|';
+			if (anal->branches[i].start == addr) {
+				fill = ',';
+			} else if (anal->branches[i].end == addr){
+				fill = '`';
+			}
+
 			int op = p;
 			p = anal->branches[i].nested;
-			if (p >= 5) buf[0] = '|';
-			else buf[5-(p+1)] = '|';
+			int idx = 0;
+			if (p >= (buf_size-1)) {
+				idx = 0;
+			} else {
+				idx = (buf_size-1)-(p+1);
+			}
+			buf[idx] = fill;
+			idx++;
+			if (fill == '`')  startp = idx < startp ? idx : startp;
+			else if (fill == ',') endp = idx < endp ? idx : endp;
+
 			p = p > op ? p : op;
 		}
 	}
 
 	int total_lines = ((j_addr) ? 2+p : 0);
-	int iter = 6 - total_lines;
+	int iter = buf_size - total_lines;
 	while (iter < 0) {
 		p--;
 		total_lines = ((j_addr) ? 2+p : 0);
-		iter = 6 - total_lines;
-	}
-	if (j_addr) {
-		if (start) {
-			buf[iter++] = '`';
-			for (int i = 0; i < p; i++) {
-				if (dir) buf[iter++] = '=';
-				else buf[iter++] = '-';
-			}
-			if (dir) buf[iter++] = '<';
-			else buf[iter++] = '>';
-		} else {
-			buf[iter++] = ',';
-			for (int i = 0; i < p; i++) {
-				if (dir) buf[iter++] = '-';
-				else buf[iter++] = '=';
-			}
-			if (dir) buf[iter++] = '>';
-			else buf[iter++] = '<';			
-		}
+		iter = buf_size - total_lines;
 	}
 
-	buf[6] = 0;
+	if (j_addr) {
+		if (start) {
+			for (int i = startp; i < buf_size; i++) {
+				if (dir) buf[i] = '=';
+				else buf[i] = '-';
+			}
+			if (dir) buf[buf_size-1] = '<';
+			else buf[buf_size-1] = '>';
+		} else {
+			for (int i = endp; i < buf_size; i++) {
+				if (dir) buf[i] = '-';
+				else buf[i] = '=';
+			}
+			if (dir) buf[buf_size-1] = '>';
+			else buf[buf_size-1] = '<';			
+		}
+	}
+	buf[buf_size] = 0;
 	r_pipe_write(pipe, "%s" , buf);
 }
 
@@ -119,7 +138,7 @@ void r_formatted_printall(r_pipe * pipe, r_disassembler * disassembler, r_analyz
 		r_disasm * disas = disassembler->instructions[i];
 		if (disas->address < addr) continue;
 		end = disas->address + disas->used_bytes;
-		if (disas->metadata->type == r_tret) break;
+		if (anal->function && disas->metadata->type == r_tret) break;
 	}
 
 	for (int i = 0; i < disassembler->num_instructions; i++) {
