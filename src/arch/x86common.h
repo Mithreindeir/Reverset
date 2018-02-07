@@ -146,6 +146,7 @@ static const instr_pair instr_pairs[] = {
 	//
 	{"call", r_tcall},
 	//
+	{"hlt", r_tret},//hlt doesnt return but it does stop execution so its listed under ret
 	{"ret", r_tret},
 	{"retn", r_tret}
 };

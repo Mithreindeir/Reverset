@@ -11,7 +11,10 @@
 //Set bit if the symbol is a reloc
 #define R_RELOCBIT 0x80
 #define R_RELOC(v) (v & R_RELOCBIT)
-
+//Permissions
+#define R_EXEC 0x1
+#define R_WRITE 0x2
+#define R_READ 0x4
 
 typedef enum rarchitecture
 {
@@ -54,7 +57,6 @@ typedef enum rsection_t
 	r_other
 } rsection_t;
 
-
 typedef struct rsection
 {
 	//Offset is the offset in the raw file
@@ -65,6 +67,7 @@ typedef struct rsection
 
 	rsection_t type;
 	uint64_t start;
+	int perm;
 
 } rsection;
 

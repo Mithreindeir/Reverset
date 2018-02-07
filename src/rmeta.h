@@ -29,6 +29,13 @@ typedef enum r_meta_t
 	r_tnone		/*Not determined, other, or none */
 } r_meta_t;
 
+typedef struct r_xref
+{
+	uint64_t addr;
+	r_meta_t type;
+	int addr_type;
+} r_xref;
+
 
 typedef struct r_meta
 {
@@ -40,10 +47,10 @@ typedef struct r_meta
 	int num_addr;
 
 
-	r64addr * xref_to;
+	r_xref * xref_to;
 	int num_xrefto;
 
-	r64addr * xref_from;
+	r_xref * xref_from;
 	int num_xreffrom;
 
 	r_meta_t type;

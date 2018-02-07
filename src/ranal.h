@@ -11,10 +11,7 @@ typedef struct r_function
 	int argc;
 	char * name;
 	uint64_t start;
-	uint64_t end;
-
-	uint64_t * xrefs;
-	int num_xref;
+	int size;
 } r_function;
 
 /*Branches*/
@@ -45,6 +42,7 @@ typedef struct r_analyzer
 r_analyzer * r_analyzer_init();
 void r_analyzer_destroy(r_analyzer * anal);
 
+void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file);
 void r_meta_analyze(r_analyzer * anal, r_disassembler * disassembler, r_file * file);
 
 void r_meta_calculate_branches(r_analyzer * anal, r_disassembler * disassembler);
@@ -54,11 +52,12 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file);
 
 void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file);
 void r_meta_string_replace(r_disassembler * disassembler, r_file * file);
+void r_meta_func_replace(r_disassembler * disassembler, r_analyzer * anal);
 void r_meta_find_xrefs(r_disassembler * disassembler, r_file * file);
 
 uint64_t r_meta_get_address(char * operand, int * status);
 int r_meta_isaddr(char * operand, int * len);
 int r_meta_rip_relative(char * operand);
-void r_add_xref(r_disasm * to, r_disasm * from);
+void r_add_xref(r_disasm * to, r_disasm * from, int type);
 
 #endif

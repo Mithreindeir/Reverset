@@ -375,7 +375,7 @@ void x64_decode_sib(x64_instr_operand * opr, x64_disas_state *state)
 			opr->disp = 0x100000000 - opr->disp;
 		}
 	}
-	else if (mod == 0x0) {//4 byte
+	else if (mod == 0x0 && base == 0x5) {//4 byte
 		memcpy(&opr->disp, state->stream + *state->iter, 4);
 		(*state->iter) += 4;
 		opr->sign = 1;

@@ -1,7 +1,165 @@
 #include "ranal.h"
 
+void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file)
+{
+	/*Automatic analysis:
+	Start at entry point and all function symbols. Recursively every address found in the disassembly is jumped to and disassembled, and stops at rets. A bound is created between the call and ret.
+	Name these as function
+	*/
+	disassembler->recursive = 1;
+	disassembler->overwrite = 1;
+	disassembler->linear = 0;
+
+	for (int i = 0; i < file->num_symbols; i++) {
+		if (file->symbols[i].type != R_FUNC) continue;
+
+		r_disassembler_pushaddr(disassembler, file->symbols[i].addr64);
+	}
+	r_disassembler_pushaddr(disassembler, file->entry_point);
+	r_disassemble(disassembler, file);
+	/*Recursively disassemble all calls*/
+
+	/*Analyze after all disassembling is done */
+	r_meta_analyze(anal, disassembler, file);
+
+	/*Attempt to identify main by checking for "__libc_start_main" symbol, and finding the function that has an xref right above libc
+		...
+		mov rdi, 0x40356c <- this is main
+		call __libc_start_main
+	*/
+	uint64_t call_to_libc = 0;
+	uint64_t adjacent_libc = 0;
+	for (int i = 0; i < file->num_symbols; i++) {
+		if (!file->symbols[i].name) continue;
+		if (!strcmp(file->symbols[i].name, "__libc_start_main")) {
+			call_to_libc = file->symbols[i].addr64;
+		}
+	}
+	if (call_to_libc) {
+		for (int i = 0; i < disassembler->num_instructions; i++) {
+			r_disasm * disas = disassembler->instructions[i];
+			if (disas->address == call_to_libc) {
+				if (disas->metadata->num_xrefto > 0) adjacent_libc = disas->metadata->xref_to[0].addr;
+				break;
+			}
+		}
+	}
+	if (adjacent_libc) {
+		for (int i = 0; i < disassembler->num_instructions; i++) {
+			r_disasm * disas = disassembler->instructions[i];
+			if (disas->address == adjacent_libc && i > 0) {
+				adjacent_libc = disassembler->instructions[i-1]->address;
+				break;
+			}
+		}
+	}
+
+	/*Mark as function if they have xrefs to the start */
+	for (int i = 0; i < disassembler->num_bounds; i++) {
+		block_bounds b = disassembler->bounds[i];
+		if ((b.end-b.start)<1) continue;
+		/*Find disassembly with address*/
+		int found = 0;
+		r_disasm * disas = NULL;
+		for (int j = 0; j < disassembler->num_instructions; j++) {
+			disas = disassembler->instructions[j];
+			if (disas->address == b.start) {
+				found = 1;
+				break;
+			}
+		}
+		if (!found) continue;
+		/*Check if there are xrefs to it*/
+		int call = 0;
+		int main = 0;
+		for (int i = 0; i < disas->metadata->num_xrefto; i++) {
+			if (disas->metadata->xref_to[i].addr == adjacent_libc) {
+				main = 1;
+				break;
+			} else if (disas->metadata->xref_to[i].type == r_tcall) {
+				call = 1;
+				break;
+			}
+		}
+		if (!call && !main) continue;
+
+		/*Check if there is a symbol with the bound start address*/
+		char * name = NULL;
+
+		for (int j = 0; j < file->num_symbols; j++) {
+			if (!file->symbols[j].name) continue;
+			rsymbol sym = file->symbols[j];
+			if (sym.addr64 == b.start) {
+				int len = snprintf(NULL, 0, "sym.%s", sym.name);
+				name = malloc(len+1);
+				snprintf(name, len+1, "sym.%s", sym.name);
+				break;
+			}
+		}
+		if (!name && main) {
+			name = strdup("func.main");
+		} else if (!name) {
+			int len = snprintf(NULL, 0, "func.%x", b.start);
+			name = malloc(len+1);
+			snprintf(name, len+1, "func.%x", b.start);
+		}
 
 
+		anal->num_functions++;
+		if (anal->num_functions == 1) {
+			anal->functions = malloc(sizeof(r_function));
+		} else {
+			anal->functions = realloc(anal->functions, sizeof(r_function) * anal->num_functions);
+		}
+		r_function func;
+		func.name = name;
+		func.start = b.start;
+		func.size = b.end - b.start;
+		anal->functions[anal->num_functions-1] = func;
+	}
+
+	r_meta_func_replace(disassembler, anal);
+}
+
+void r_meta_func_replace(r_disassembler * disassembler, r_analyzer * anal)
+{
+	char buf[256];
+	memset(buf, 0, 256);
+	//Add labels for code that is the address of a file symbol
+	//And Find references to symbols and replace address with symbol name
+	for (int j = 0; j < disassembler->num_instructions; j++) {
+		r_disasm * disas = disassembler->instructions[j];
+		for (int i = 0; i < anal->num_functions; i++) {
+			r_function func = anal->functions[i];
+			if (!func.name) continue;
+			int idx = 0;
+			if ((idx=r_meta_find_addr(disas->metadata, func.start, META_ADDR_BOTH) != 0 && !disas->metadata->comment)) {
+				idx--;
+				int ridx = 0;
+				for (int k = 0; k < disas->num_operands; k++) {
+					int len = 0;
+					if (r_meta_isaddr(disas->op[k], &len)) {
+						if (idx==ridx) {
+							ridx = k;
+							break;
+						}
+						ridx++;
+					}
+				}
+				if (disas->op[ridx]) {
+					disas->metadata->comment = disas->op[ridx];
+					disas->op[ridx] = NULL;
+					//free(disas->op[0]);
+				}
+				disas->op[ridx] = strdup(func.name);
+			}
+			if (!disas->metadata->label && disas->address == func.start) {
+				snprintf(buf, 256, "%s", func.name);
+				disas->metadata->label = strdup(buf);
+			}
+		}
+	}
+}
 
 void r_meta_analyze(r_analyzer * anal, r_disassembler * disassembler, r_file * file)
 {
@@ -13,6 +171,8 @@ void r_meta_analyze(r_analyzer * anal, r_disassembler * disassembler, r_file * f
 
 	r_meta_symbol_replace(disassembler, file);
 	r_meta_string_replace(disassembler, file);
+	r_meta_find_xrefs(disassembler, file);
+	r_meta_func_replace(disassembler, anal);
 }
 
 void r_meta_calculate_branches(r_analyzer * anal, r_disassembler * disassembler)
@@ -147,16 +307,29 @@ void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file)
 		for (int i = 0; i < file->num_symbols; i++) {
 			rsymbol  sym = file->symbols[i];
 			if (!sym.name) continue;
-			if (disas->metadata->type == r_tcall && sym.type == R_FUNC && r_meta_find_addr(disas->metadata, sym.addr64, META_ADDR_BRANCH) && !disas->metadata->comment) {
-				if (disas->op[0]) {
-					disas->metadata->comment = disas->op[0];
-					disas->op[0] = NULL;
+			int idx = 0;
+			if ((idx=r_meta_find_addr(disas->metadata, sym.addr64, META_ADDR_BOTH) && !disas->metadata->comment)) {
+				idx--;
+				int ridx = 0;
+				for (int k = 0; k < disas->num_operands; k++) {
+					int len = 0;
+					if (r_meta_isaddr(disas->op[k], &len)) {
+						if (idx==ridx) {
+							ridx = k;
+							break;
+						}
+						ridx++;
+					}
+				}
+				if (disas->op[ridx]) {
+					disas->metadata->comment = disas->op[ridx];
+					disas->op[ridx] = NULL;
 					//free(disas->op[0]);
 				}
-				disas->op[0] = strdup(sym.name);
+				disas->op[ridx] = strdup(sym.name);
 			}
 			if (sym.type == R_FUNC && disas->address == sym.addr64) {
-				snprintf(buf, 256, "sym.%s", sym.name);
+				snprintf(buf, 256, "%s", sym.name);
 				disas->metadata->label = strdup(buf);
 			}
 		}
@@ -277,24 +450,35 @@ int r_meta_rip_relative(char * operand)
 }
 
 
-void r_add_xref(r_disasm * to, r_disasm * from)
+void r_add_xref(r_disasm * to, r_disasm * from, int type)
 {
-	from->metadata->num_xreffrom++;
-	if (from->metadata->num_xreffrom == 1) {
-		from->metadata->xref_from = malloc(sizeof(uint64_t));
-	} else {
-		from->metadata->xref_from = realloc(from->metadata->xref_from, sizeof(uint64_t) * from->metadata->num_xreffrom);
+	for (int i = 0; i < from->metadata->num_xreffrom; i++) {
+		if (from->metadata->xref_from[i].addr == to->address) return;
 	}
 
-	from->metadata->xref_from[from->metadata->num_xreffrom-1] = to->address;
+	from->metadata->num_xreffrom++;
+	if (from->metadata->num_xreffrom == 1) {
+		from->metadata->xref_from = malloc(sizeof(r_xref));
+	} else {
+		from->metadata->xref_from = realloc(from->metadata->xref_from, sizeof(r_xref) * from->metadata->num_xreffrom);
+	}
+	r_xref xfrom;
+	xfrom.addr = to->address;
+	xfrom.type = to->metadata->type;
+	xfrom.addr_type = type;
+	from->metadata->xref_from[from->metadata->num_xreffrom-1] = xfrom;
 
 	to->metadata->num_xrefto++;
 	if (to->metadata->num_xrefto == 1) {
-		to->metadata->xref_to = malloc(sizeof(uint64_t));
+		to->metadata->xref_to = malloc(sizeof(r_xref));
 	} else {
-		to->metadata->xref_to = realloc(to->metadata->xref_to, sizeof(uint64_t) * to->metadata->num_xrefto);
+		to->metadata->xref_to = realloc(to->metadata->xref_to, sizeof(r_xref) * to->metadata->num_xrefto);
 	}
-	to->metadata->xref_to[to->metadata->num_xrefto-1] = from->address;
+	r_xref xto;
+	xto.addr = from->address;
+	xto.type = from->metadata->type;
+	xto.addr_type = type;
+	to->metadata->xref_to[to->metadata->num_xrefto-1] = xto;
 }
 
 void r_meta_find_xrefs(r_disassembler * disassembler, r_file * file)
@@ -308,7 +492,8 @@ void r_meta_find_xrefs(r_disassembler * disassembler, r_file * file)
 
 			for (int k = 0; k < instr2->metadata->num_addr; k++) {
 				if (instr2->metadata->addresses[k] == instr1->address) {
-					r_add_xref(instr1, instr2);
+					//only use code xrefs
+					r_add_xref(instr1, instr2, instr2->metadata->address_types[k]);
 				}
 			}
 		}

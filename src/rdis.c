@@ -63,6 +63,7 @@ r_disassembler * r_disassembler_init()
 	disassembler->bounds = NULL;
 	disassembler->num_bounds = 0;
 
+	disassembler->linear = 0;
 	disassembler->recursive = 0;
 	disassembler->overwrite = 0;
 
@@ -96,9 +97,15 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 	uint64_t lbyte = 0;
 	int addr = start_addr;
 	int iter = 0;
+
+	//Copy bytes from section into buffer before use
+	char buf[32];
+	memset(buf, 0, 32);
 	while (iter < size) {
 		r_disasm * disas = NULL;
-		disas = disassembler->disassemble(raw_data + iter, addr+iter);
+		memcpy(buf, raw_data + iter, (size-iter) >= 32 ? 32 : (size-iter));
+		disas = disassembler->disassemble(buf, addr+iter);
+		memset(buf, 0, 32);
 		laddr = disas->address;
 		lbyte = disas->used_bytes;
 
@@ -111,7 +118,7 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 			instructions = realloc(instructions, sizeof(r_disasm*) * num_instructions);
 		}
 		instructions[num_instructions-1] = disas;
-		if (disassembler->recursive && disas->metadata->type == r_tret) {
+		if (!disassembler->linear && disas->metadata->type == r_tret) {
 			break;
 		}
 	}
@@ -186,10 +193,10 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 
 		if (!disassembler->overwrite && r_disassembler_getbound(disassembler, addr) != -1) continue;
 		rsection * section = r_file_section_addr(file, addr);
-		if (!section) {
+		if (!section || !(R_EXEC&section->perm)) {
 			continue;
 		} else {
-			printf("\rDisassembling %#lx\n", addr);
+			printf("\rDisassembling %#lx in %s\n", addr, section->name);
 		}
 
 		if (disassembler->overwrite) disassembler->overwrite = 0;
@@ -199,11 +206,13 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 
 		uint64_t laddr = r_disassemble_raw(disassembler, section->raw+offset, section->size - offset, section->start + offset);
 		if ((disassembler->num_instructions - tmp) > 0) r_disassembler_addbound(disassembler, section->start + offset,  laddr);
-	
+		
+		if (!disassembler->recursive) break;
 		for (int i = tmp; i < disassembler->num_instructions; i++) {
 			r_disasm * disasm = disassembler->instructions[i];
 			for (int j = 0; j < disasm->metadata->num_addr; j++) {
-				if (disasm->metadata->address_types[j] == META_ADDR_BRANCH && r_disassembler_getbound(disassembler, disasm->metadata->addresses[j]) == -1)
+				//disasm->metadata->address_types[j] == META_ADDR_BRANCH && 
+				if (r_disassembler_getbound(disassembler, disasm->metadata->addresses[j]) == -1)
 					r_disassembler_pushaddr(disassembler, disasm->metadata->addresses[j]);
 			}
 		}

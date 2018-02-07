@@ -54,8 +54,8 @@ void r_meta_add_addr(r_meta * meta, r64addr address, int type)
 int r_meta_find_addr(r_meta * meta, r64addr address, int type)
 {
 	for (int i = 0; i < meta->num_addr; i++) {
-		if (type == 2 && meta->addresses[i]==address) return 1;
-		else if (type == meta->address_types[i] && meta->addresses[i]==address) return 1;
+		if (type == 2 && meta->addresses[i]==address) return i+1;
+		else if (type == meta->address_types[i] && meta->addresses[i]==address) return i+1;
 	}
 	return 0;
 }

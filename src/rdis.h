@@ -39,6 +39,7 @@ typedef enum r_cconv {
 /*Disassembler structure. Holds values that allow recursive descent disassembling*/
 typedef struct r_disassembler
 {
+	int linear;
 	int overwrite;
 	r_disasm ** instructions;
 	int num_instructions;

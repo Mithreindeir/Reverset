@@ -185,12 +185,22 @@ uint64_t reverset_resolve_arg(reverset * rev, char * arg)
 {
 	uint64_t addr = 0;
 	int found = 0;
+	for (int i = 0; i < rev->anal->num_functions; i++) {
+		r_function func = rev->anal->functions[i];
+		if (!strcmp(func.name, arg)) {
+			found = 1;
+			addr = func.start;
+			break;
+		}
+	}
 	for (int i = 0; i < rev->file->num_symbols; i++) {
 		rsymbol sym = rev->file->symbols[i];
 		if (!sym.name) continue;
+		if (found) break;
 		if (sym.type == R_FUNC && !strcmp(sym.name, arg)) {
 			addr = sym.addr64;
 			found = 1;
+			break;
 		} 
 	}
 	if (!found) {
@@ -212,6 +222,7 @@ uint64_t reverset_resolve_arg(reverset * rev, char * arg)
 
 int reverset_analyze(reverset * rev, char ** args, int num_args)
 {
+	r_meta_auto(rev->anal, rev->disassembler, rev->file);
 	return 0;
 }
 
@@ -232,26 +243,72 @@ int reverset_print(reverset * rev, char ** args, int num_args)
 			return 1;
 		}
 	}
+
+	int found = 0;
+	for (int i = 0; i < rev->disassembler->num_instructions; i++ ) {
+		r_disasm * disas = rev->disassembler->instructions[i];
+		if (disas->address == addr) {
+			found = 1;
+			break;
+		} else if (disas->address > addr ) break;
+	}
 	
+	if (0 && !found) {
+		rev->disassembler->recursive = 1;
+		rev->disassembler->overwrite = 0;
+		r_disassembler_pushaddr(rev->disassembler, addr);
+		r_disassemble(rev->disassembler, rev->file);
+		r_meta_analyze(rev->anal, rev->disassembler, rev->file);
+	}
+
 	r_formatted_printall(rev->pipe, rev->disassembler, rev->anal, addr);
 
 	return 1;
 }
 
-int reverset_disas(reverset * rev, char ** args, int num_args)
+int reverset_disas(reverset * rev, char ** args, int num_arg)
 {
-	char * arg = args[0];
-	if (!arg) return 0;
+	r_pipe_write(rev->pipe, "For automatic analysis use anal\n");
+	
+	if (!args) return 0;
+	int all = 0;
+	int segment = 0;
+	int num_args = 0;
+	char * tok = NULL;
 
-	uint64_t addr = reverset_resolve_arg(rev, arg);
+	for (int i = 0; i < num_arg; i++) {
+		if (!args[i]) continue;
+
+		if (args[i][0] == '-') {
+			num_args++;
+			int n = strlen(args[i]);
+			for (int j = 1; j < n; j++) {
+				switch (args[i][j]) {
+					case 'a':
+						all = 1;
+						break;
+					case 'f':
+						all = 0;
+						break;
+				}
+			}
+		} else if (!tok) tok = args[i];
+		else break;
+	}
+	if (!tok) return num_args;
+
+	uint64_t addr = reverset_resolve_arg(rev, tok);
 	if (addr == -1) {
-		r_pipe_write(rev->pipe, "No address found for \"%s\"\n", arg);
+		r_pipe_write(rev->pipe, "No address found for \"%s\"\n", tok);
 		return 1;
 	}
-	rev->disassembler->overwrite = 1;
+	int r = rev->disassembler->recursive;
+	rev->disassembler->recursive = all;
+	rev->disassembler->overwrite = 0;
 	r_disassembler_pushaddr(rev->disassembler, addr);
 	r_disassemble(rev->disassembler, rev->file);
 	r_meta_analyze(rev->anal, rev->disassembler, rev->file);
+	rev->disassembler->recursive = r;
 
 	return 1;
 
@@ -429,12 +486,7 @@ int reverset_list(reverset * rev, char ** args, int num_args)
 	if (!arg) return 0;
 
 	int symbols = -1;
-	if (!strcmp(arg, "symbols") || !strcmp(arg, "symbol"))
-		symbols = 1;
-	else if (!strcmp(arg, "functions") || !strcmp(arg, "function"))
-		symbols = 0;
-
-	if (symbols != -1) {
+	if (!strcmp(arg, "symbols") || !strcmp(arg, "symbol")) {
 		for (int i = 0; i < rev->file->num_symbols; i++) {
 			rsymbol sym = rev->file->symbols[i];
 			if (!symbols && sym.type == R_FUNC) {
@@ -444,7 +496,12 @@ int reverset_list(reverset * rev, char ** args, int num_args)
 			}
 		}
 	}
-	else if (!strcmp(arg, "string") || !strcmp(arg, "strings")) {
+	else if (!strcmp(arg, "functions") || !strcmp(arg, "function")) {
+		for (int i = 0; i < rev->anal->num_functions; i++) {
+			r_function func = rev->anal->functions[i];
+			r_pipe_write(rev->pipe, "function: %s address: %#lx\n", func.name, func.start);
+		}
+	} else if (!strcmp(arg, "string") || !strcmp(arg, "strings")) {
 		for (int i = 0; i < rev->file->num_strings; i++) {
 			rstring str = rev->file->strings[i];
 			r_pipe_write(rev->pipe,  "section: %s address: %#lx str: \"%s\"\n", rev->file->sections[str.section].name, str.addr64, str.string);

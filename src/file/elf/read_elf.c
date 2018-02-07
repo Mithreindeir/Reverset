@@ -38,7 +38,13 @@ void elf_read32(FILE * f, r_file * file)
 			break;
 	}
 	file->entry_point = header.e_entry;
+	/*Find segments */
+	fseek(f, header.e_phoff, SEEK_SET);
+	Elf32_Phdr * segments = malloc(sizeof(Elf32_Phdr) * header.e_phnum);
+	fread(segments, sizeof(Elf32_Phdr) * header.e_phnum, 1, f);
+
 	file->num_sections = header.e_shnum;
+
 	file->sections = malloc(sizeof(rsection) * file->num_sections);
 	memset(file->sections, 0, sizeof(rsection) * file->num_sections);
 	//Seek to section header offset to read the section entries
@@ -59,6 +65,7 @@ void elf_read32(FILE * f, r_file * file)
 		r.size = sections[i].sh_size;
 		r.start = sections[i].sh_addr;
 		r.type = r_notype;
+		r.perm = 0;
 		if (sections[i].sh_type == SHT_PROGBITS) {
 			r.type = r_programdefined;
 		} else if (sections[i].sh_type == SHT_SYMTAB) {
@@ -86,8 +93,16 @@ void elf_read32(FILE * f, r_file * file)
 			buf[iter] = 0;
 			r.name = strdup(buf);
 		}
+		/*Find the segment its in and set permissions*/
+		for (int j = 0; j < header.e_phnum; j++) {
+			if (segments[j].p_vaddr <= r.start && (segments[j].p_vaddr + segments[j].p_memsz) >= (r.size + r.start)) {
+				r.perm = segments[j].p_flags;
+				break;
+			}
+		}
 		file->sections[i] = r;
 	}
+	free(segments);
 	int strtabidx = -1;
 	//Find STRTAB
 	for (int i = 0; i < header.e_shnum; i++) {
@@ -262,6 +277,11 @@ void elf_read64(FILE * f, r_file * file)
 			break;
 	}
 	file->entry_point = header.e_entry;
+	/*Find segments */
+	fseek(f, header.e_phoff, SEEK_SET);
+	Elf64_Phdr * segments = malloc(sizeof(Elf64_Phdr) * header.e_phnum);
+	fread(segments, sizeof(Elf64_Phdr) * header.e_phnum, 1, f);
+
 	file->num_sections = header.e_shnum;
 	file->sections = malloc(sizeof(rsection) * file->num_sections);
 	memset(file->sections, 0, sizeof(rsection) * file->num_sections);
@@ -282,6 +302,7 @@ void elf_read64(FILE * f, r_file * file)
 		r.offset = sections[i].sh_offset;
 		r.start = sections[i].sh_addr;
 		r.type = r_notype;
+		r.perm = 0;
 		if (sections[i].sh_type == SHT_PROGBITS) {
 			
 			r.type = r_programdefined;
@@ -310,8 +331,17 @@ void elf_read64(FILE * f, r_file * file)
 			buf[iter] = 0;
 			r.name = strdup(buf);
 		}
+		/*Find the segment its in and set permissions*/
+		for (int j = 0; j < header.e_phnum; j++) {
+			if (segments[j].p_vaddr <= r.start && (segments[j].p_vaddr + segments[j].p_memsz) >= (r.size + r.start)) {
+				r.perm = segments[j].p_flags;
+				break;
+			}
+		}
+
 		file->sections[i] = r;
 	}
+	free(segments);
 	int strtabidx = -1;
 	//Find STRTAB
 	for (int i = 0; i < header.e_shnum; i++) {

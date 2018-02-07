@@ -88,6 +88,15 @@ void r_formatted_printjump(r_pipe * pipe, r_analyzer * anal, uint64_t addr, uint
 void r_formatted_print(r_pipe * pipe, r_disasm * disas, r_analyzer * anal,  uint64_t start, uint64_t end)
 {
 	r_pipe_write(pipe, KBLU);
+	//Print all xrefs except those that where the xref froms location is within the bounds
+	for (int i = 0; i < disas->metadata->num_xrefto; i++) {
+		uint64_t addr = disas->metadata->xref_to[i].addr;
+		if (addr > start && addr <= end) continue;
+		r_pipe_write(pipe, ";\tXREF TO HERE FROM %#lx\n", addr);
+	}
+	for (int i = 0; i < disas->metadata->num_xreffrom; i++) {
+		//r_pipe_write(pipe, "XREF TO FROM HERE TO %lx\n", disas->metadata->xref_from[i]);
+	}
 	if (disas->metadata->label) r_pipe_write(pipe, "//\t%s\n", disas->metadata->label);
 	r_pipe_write(pipe, KRED);
 	r_pipe_write(pipe, "%#x:   ", disas->address);
