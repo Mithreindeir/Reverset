@@ -21,11 +21,11 @@ After building it, use ./reverset program to open the binary file and enter a re
 
 Commands:
 
+* anal				//Automatically disassembles and runs analyzes on program (wip)
 * disas here/function/address //Disassembles given start address
-* anal here/function/address //Analyzes given start address. This is done automatically after calling disas
 * write "bytes"		     //Writes the bytes given as an argument to the current address. Automatically redisassembles after patching.
 * asm   "assembly"	     //Assembles using intel format, and returns bytes
-* list symbols/functions     //Lists the symbols or symbols that are marked as functions (at this time there is no automatic function analysis)
+* list symbols/functions     //Lists the symbols or symbols that are marked as functions (limited auto function analysis right now)
 * goto address/symbol	     //Moves the current address to the new one specified. 
 * quit			     //Quits the reverset shell
 
