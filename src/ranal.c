@@ -19,10 +19,16 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 	r_disassemble(disassembler, file);
 	/*Recursively disassemble all calls*/
 
-	/*Analyze after all disassembling is done */
-	r_meta_analyze(anal, disassembler, file);
+	/*Analyze after all disassembling is done, but don't call analyzers that replace operands  */
+	if (file->arch == r_x86_64)
+		r_meta_rip_resolve(disassembler, file);
 
-	/*Attempt to identify main by checking for "__libc_start_main" symbol, and finding the function that has an xref right above libc
+	r_meta_calculate_branches(anal, disassembler);
+	r_meta_reloc_resolve(disassembler, file);
+	r_meta_find_xrefs(disassembler, file);
+
+	/*TODO add other ways to identify main when using a runtime other than libc
+	Attempt to identify main by checking for "__libc_start_main" symbol, and finding the function that has an xref right above libc
 		...
 		mov rdi, 0x40356c <- this is main
 		call __libc_start_main
@@ -53,6 +59,7 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 			}
 		}
 	}
+
 
 	/*Mark as function if they have xrefs to the start */
 	for (int i = 0; i < disassembler->num_bounds; i++) {
@@ -118,7 +125,10 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 		anal->functions[anal->num_functions-1] = func;
 	}
 
+	/*Lastly call replace functions with func first*/
+	r_meta_symbol_replace(disassembler, file);
 	r_meta_func_replace(disassembler, anal);
+	r_meta_string_replace(disassembler, file);
 }
 
 void r_meta_func_replace(r_disassembler * disassembler, r_analyzer * anal)
@@ -168,11 +178,11 @@ void r_meta_analyze(r_analyzer * anal, r_disassembler * disassembler, r_file * f
 
 	r_meta_calculate_branches(anal, disassembler);
 	r_meta_reloc_resolve(disassembler, file);
+	r_meta_find_xrefs(disassembler, file);
 
 	r_meta_symbol_replace(disassembler, file);
-	r_meta_string_replace(disassembler, file);
-	r_meta_find_xrefs(disassembler, file);
 	r_meta_func_replace(disassembler, anal);
+	r_meta_string_replace(disassembler, file);
 }
 
 void r_meta_calculate_branches(r_analyzer * anal, r_disassembler * disassembler)
@@ -328,7 +338,7 @@ void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file)
 				}
 				disas->op[ridx] = strdup(sym.name);
 			}
-			if (sym.type == R_FUNC && disas->address == sym.addr64) {
+			if (!disas->metadata->label && sym.type == R_FUNC && disas->address == sym.addr64) {
 				snprintf(buf, 256, "%s", sym.name);
 				disas->metadata->label = strdup(buf);
 			}
@@ -344,23 +354,31 @@ void r_meta_string_replace(r_disassembler * disassembler, r_file * file)
 		r_disasm * disas = disassembler->instructions[j];
 		//Find references to strings and insert them
 		for (int i = 0; i < file->num_strings; i++) {
-			if ((disas->metadata->type == r_tdata) && file->strings[i].addr64 != 0 && r_meta_find_addr(disas->metadata, file->strings[i].addr64, META_ADDR_DATA)) {
+			int idx = 0;
+			if ((disas->metadata->type == r_tdata) && file->strings[i].addr64 != 0 && (idx=r_meta_find_addr(disas->metadata, file->strings[i].addr64, META_ADDR_BOTH))) {
+				idx--;
+				int ridx = 0;
 				for (int k = 0; k < disas->num_operands; k++) {
 					int len = 0;
-					if (r_meta_isaddr(disas->op[k], &len)){
-						int base = 16;
-						if (strlen(disas->op[k]) > 2 && (disas->op[k][1] == 'x' || disas->op[k][1] == 'X')) base = 0;
-						uint64_t num = (uint64_t)strtol(disas->op[k], NULL, base);
-						if (num == file->strings[i].addr64) {
-							disas->metadata->comment = disas->op[k];
-							disas->op[k] = NULL;
-							//free(disas->op[k]);
-							snprintf(buf, 256, "\"%s\"", file->strings[i].string);
-							disas->op[k] = strdup(buf);
+					if (r_meta_isaddr(disas->op[k], &len)) {
+						if (idx==ridx) {
+							ridx = k;
+							int base = 16;
+							if (strlen(disas->op[k]) > 2 && (disas->op[k][1] == 'x' || disas->op[k][1] == 'X')) base = 0;
+							uint64_t num = (uint64_t)strtol(disas->op[k], NULL, base);
+							if (num == file->strings[i].addr64) {
+								disas->metadata->comment = disas->op[k];
+								disas->op[k] = NULL;
+								//free(disas->op[k]);
+								snprintf(buf, 256, "\"%s\"", file->strings[i].string);
+								disas->op[k] = strdup(buf);
+							}
+							break;
 						}
+						ridx++;
 					}
-					
 				}
+
 			}
 		}
 	}

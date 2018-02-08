@@ -44,7 +44,7 @@ enum x64_Operand_Size {
 	X64_PDESC	 = 's',	//6 byte pseudo descriptor
 	X64_WDWORD	 = 'v',	//Word dword or qword depending on operand size and rex
 	X64_WORD 	 = 'w',	//Word
-	X64_QWORD 	 = 'q'	//Word
+	X64_QWORD 	 = 'q'	//qword
 };
 
 //Follows above operand encoding, unless the first character is in lowercase then the operand becomes that
@@ -245,14 +245,14 @@ static const x64_instruction x64_instruction_table[] = {
 	{"mov", "ch", "Ib", ""},
 	{"mov", "dh", "Ib", ""},
 	{"mov", "bh", "Ib", ""},
-	{"mov", "eax", "Id", ""},
-	{"mov", "ecx", "Id", ""},
-	{"mov", "edx", "Id", ""},
-	{"mov", "ebx", "Id", ""},
-	{"mov", "esp", "Id", ""},
-	{"mov", "ebp", "Id", ""},
-	{"mov", "esi", "Id", ""},
-	{"mov", "edi", "Id", ""},
+	{"mov", "rax", "Iv", ""},
+	{"mov", "rcx", "Iv", ""},
+	{"mov", "rdx", "Iv", ""},
+	{"mov", "rbx", "Iv", ""},
+	{"mov", "rsp", "Iv", ""},
+	{"mov", "rbp", "Iv", ""},
+	{"mov", "rsi", "Iv", ""},
+	{"mov", "rdi", "Iv", ""},
 	//C
 	{"grp2d", "Eb", "Ib", ""},
 	{"grp2d", "Ev", "Ib", ""},
@@ -397,22 +397,22 @@ static const x64_instruction x64_instruction_extended_table[] = {
 	{"", "", "", ""},
 	{"", "", "", ""},
 	//4
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
+	{"cmovo", "Gv", "Ev", ""},
+	{"cmovno", "Gv", "Ev", ""},
+	{"cmovb", "Gv", "Ev", ""},
+	{"cmovnb", "Gv", "Ev", ""},
+	{"cmovz", "Gv", "Ev", ""},
+	{"cmovnz", "Gv", "Ev", ""},
+	{"cmovbe", "Gv", "Ev", ""},
+	{"cmova", "Gv", "Ev", ""},
+	{"cmovs", "Gv", "Ev", ""},
+	{"cmovns", "Gv", "Ev", ""},
+	{"cmovp", "Gv", "Ev", ""},
+	{"cmovnp", "Gv", "Ev", ""},
+	{"cmovl", "Gv", "Ev", ""},
+	{"cmovge", "Gv", "Ev", ""},
+	{"cmovng", "Gv", "Ev", ""},
+	{"cmovg", "Gv", "Ev", ""},
 	//5
 	{"", "", "", ""},
 	{"", "", "", ""},

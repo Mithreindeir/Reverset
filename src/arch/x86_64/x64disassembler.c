@@ -19,7 +19,7 @@ x64_instr_prefix x64_instruction_prefix(unsigned char * stream, int * len)
 			prefix_found = 1;
 			prefix.extended = 1;
 			(*len)++;
-			continue;
+			break;
 		}
 		//Check for rex
 		if (X64_REX_PREFIX(c)) {
@@ -55,7 +55,6 @@ x64_instr_prefix x64_instruction_prefix(unsigned char * stream, int * len)
 		}
 	} while (prefix_found);
 	//Check if override
-
 	return prefix;
 }
 
@@ -200,6 +199,7 @@ x64_instr_operand *x64_decode_operand(char * operand, x64_disas_state *state)
 				break;
 			case X64_QWORD:
 				operand_size = 4;
+				break;
 			default:
 				break;
 		}

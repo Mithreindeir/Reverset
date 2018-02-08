@@ -4,7 +4,7 @@ r_file* r_openfile(char * filename)
 {
 	r_file * file = r_file_init();
 
-	FILE * f = fopen(filename, "r+");
+	FILE * f = fopen(filename, "r");
 	if (!f) {
 		printf("Error opening file %s\n", filename);
 		exit(1);
@@ -128,17 +128,32 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 		disassembler->num_instructions = num_instructions;
 	} else  {
 		//Remove duplicates and merge
+		/*
 		int total_unique = disassembler->num_instructions + num_instructions;
 		for (int i = 0; i < disassembler->num_instructions; i++) {
+			r_disasm * disas1 = disassembler->instructions[i];
+			if (disas1->address < start_addr) continue;
+			if (disas1->address > laddr) break;
 			int rm = 0;
 			for (int j = 0; j < num_instructions; j++) {
-				if (disassembler->instructions[i]->address == instructions[j]->address) {
+				if (disas1->address == instructions[j]->address) {
 					rm = 1;
 					total_unique--;
 				}
 			}
 			if (!rm && disassembler->instructions[i]->address >= addr && disassembler->instructions[i]->address < (laddr + lbyte))
 				total_unique--;
+		}*/
+		int total_unique = disassembler->num_instructions + num_instructions;
+		for (int i = 0; i < disassembler->num_instructions; i++) {
+			r_disasm * disas1 = disassembler->instructions[i];
+			if (disas1->address < start_addr) continue;
+
+			if (disassembler->instructions[i]->address >= addr && disassembler->instructions[i]->address < (laddr + lbyte))
+				total_unique--;
+	
+			if (disas1->address >= (laddr + lbyte)) break;
+
 		}
 		r_disasm ** unique_instructions = malloc(sizeof(r_disasm*)*total_unique);
 		int di = 0;
@@ -191,9 +206,11 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 	while (disassembler->num_addresses > 0) {
 		addr = r_disassembler_popaddr(disassembler);
 
-		if (!disassembler->overwrite && r_disassembler_getbound(disassembler, addr) != -1) continue;
+		if (!disassembler->overwrite && r_disassembler_getbound(disassembler, addr) != -1) {
+			continue;
+		} 
 		rsection * section = r_file_section_addr(file, addr);
-		if (!section || !(R_EXEC&section->perm)) {
+		if (!section || !(R_EXEC&section->perm) || !strncmp(section->name, ".rodata", 7)) {
 			continue;
 		} else {
 			printf("\rDisassembling %#lx in %s\n", addr, section->name);
@@ -208,10 +225,11 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 		if ((disassembler->num_instructions - tmp) > 0) r_disassembler_addbound(disassembler, section->start + offset,  laddr);
 		
 		if (!disassembler->recursive) break;
-		for (int i = tmp; i < disassembler->num_instructions; i++) {
+		for (int i = 0; i < disassembler->num_instructions; i++) {
 			r_disasm * disasm = disassembler->instructions[i];
+			if (disasm->address < (section->start + offset)) continue;
+			if (disasm->address > laddr) break;
 			for (int j = 0; j < disasm->metadata->num_addr; j++) {
-				//disasm->metadata->address_types[j] == META_ADDR_BRANCH && 
 				if (r_disassembler_getbound(disassembler, disasm->metadata->addresses[j]) == -1)
 					r_disassembler_pushaddr(disassembler, disasm->metadata->addresses[j]);
 			}
