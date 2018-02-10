@@ -26,17 +26,17 @@ void reverset_destroy(reverset * rev)
 	free(rev);
 }
 
-void reverset_openfile(reverset * rev, char * file)
+void reverset_openfile(reverset * rev, char * file, char * perm)
 {
 	if (!rev->file) {
-		rev->file = r_openfile(file);
+		rev->file = r_openfile(file, perm);
 	} else {
 		r_file_destroy(rev->file);
 		if (rev->disassembler) r_disassembler_destroy(rev->disassembler);
 		if (rev->anal) r_analyzer_destroy(rev->anal);
 		rev->disassembler = r_disassembler_init();
 		rev->anal = r_analyzer_init();
-		rev->file = r_openfile(file);
+		rev->file = r_openfile(file, perm);
 	}
 	//At least find strings
 	r_file_find_strings(rev->file);
@@ -158,7 +158,7 @@ char * reverset_split(char * first)
 				dquotes = !dquotes;
 				if (!dquotes) new_str = 1;
 				else offset = i+1;
-			} else if (!quotes && !dquotes && (str[i] == ' ' || str[i] == '\n' || str[i] == '\t')) {
+			} else if (!quotes && !dquotes && (str[i] == ' ' || str[i] == '\n' || str[i] == '\t' || str[i] == ';')) {
 				new_str = 1;
 			} else if (i == len) {
 				new_str = 1;
@@ -220,6 +220,45 @@ uint64_t reverset_resolve_arg(reverset * rev, char * arg)
 	return addr;
 }
 
+int reverset_hex(reverset * rev, char ** args, int num_arg)
+{
+	if (num_arg == 0) return 0;
+	if (!args) return 0;
+
+	int num_args = 0;
+	char * tok = NULL;
+
+	for (int i = 0; i < num_arg; i++) {
+		if (!args[i]) continue;
+
+		if (args[i][0] == '-') {
+			num_args++;
+			int n = strlen(args[i]);
+			for (int j = 1; j < n; j++) {
+				switch (args[i][j]) {
+					case 'n':
+						break;
+					case 'f':
+						break;
+				}
+			}
+		} else if (!tok) tok = args[i];
+		else break;
+	}
+	if (!tok) return num_args;
+	num_args++;
+
+	int num = strtol(tok, NULL, 0);
+	uint64_t paddr = r_file_get_paddr(rev->file, rev->address);
+
+	for (int i = paddr; i < (paddr+num) && i < rev->file->size; i++) {
+		r_pipe_write(rev->pipe, "%02x ", rev->file->raw_file[i]);
+		if ((i % 32)==0 && i > 1)r_pipe_write(rev->pipe, "\n");
+	}
+
+	return num_args;
+}
+
 int reverset_analyze(reverset * rev, char ** args, int num_args)
 {
 	r_meta_auto(rev->anal, rev->disassembler, rev->file);
@@ -228,6 +267,7 @@ int reverset_analyze(reverset * rev, char ** args, int num_args)
 
 int reverset_print(reverset * rev, char ** args, int num_args)
 {
+	if (num_args == 0) return 0;
 	char * arg = args[0];
 	if (!arg) return 0;
 
@@ -268,6 +308,8 @@ int reverset_print(reverset * rev, char ** args, int num_args)
 
 int reverset_disas(reverset * rev, char ** args, int num_arg)
 {
+	if (num_arg == 0) return 0;
+
 	r_pipe_write(rev->pipe, "For automatic analysis use anal\n");
 	
 	if (!args) return 0;
@@ -316,6 +358,8 @@ int reverset_disas(reverset * rev, char ** args, int num_arg)
 
 int reverset_asm(reverset * rev, char ** args, int num_args)
 {
+	if (num_args == 0) return 0;
+
 	char * arg = args[0];
 	if (!arg) return 0;
 
@@ -343,6 +387,8 @@ int reverset_asm(reverset * rev, char ** args, int num_args)
 
 int reverset_write(reverset * rev, char ** args, int num_args)
 {
+	if (num_args == 0) return 0;
+
 	char * arg = args[0];
 	if (!arg) return 0;
 
@@ -385,6 +431,8 @@ int reverset_write(reverset * rev, char ** args, int num_args)
 
 int reverset_goto(reverset * rev, char ** args, int num_args)
 {
+	if (num_args == 0) return 0;
+
 	char * arg = args[0];
 	if (!arg) return 0;
 
@@ -400,6 +448,8 @@ int reverset_goto(reverset * rev, char ** args, int num_args)
 
 int reverset_strmod(reverset * rev, char ** args, int num_arg)
 {
+	if (num_arg == 0) return 0;
+
 	int num_args = 0;
 	int reverse = 0;
 	int u_num = 0;
@@ -476,12 +526,15 @@ int reverset_strmod(reverset * rev, char ** args, int num_arg)
 
 int reverset_quit(reverset * rev, char ** args, int num_args)
 {
+
 	rev->status = rs_none;
 	return 0;
 }
 
 int reverset_list(reverset * rev, char ** args, int num_args)
 {
+	if (num_args == 0) return 0;
+
 	char * arg = args[0];
 	if (!arg) return 0;
 

@@ -19,6 +19,7 @@ r_file * r_file_init()
 	file->num_strings = 0;
 
 	file->file = NULL;
+	file->abi = rc_other;
 
 	return file;
 }
@@ -86,6 +87,16 @@ void r_file_patch(r_file * file, uint64_t addr, unsigned char * bytes, int num_b
 	}
 
 	printf("%d bytes written\n", written);
+}
+
+uint64_t r_file_get_paddr(r_file * file, uint64_t vaddr)
+{
+	if (!file->file) return 0;
+	rsection * section = r_file_section_addr(file, vaddr);
+	if (!section) return 0;
+
+	uint64_t diff = vaddr - section->start;
+	return diff + section->offset;
 }
 
 void r_file_destroy(r_file * file)

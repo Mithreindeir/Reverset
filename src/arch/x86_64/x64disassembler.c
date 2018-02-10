@@ -325,6 +325,11 @@ x64_instr_operand *x64_decode_operand(char * operand, x64_disas_state *state)
 		}
 	} else {//Otherwise it is an implied or set operand (eg: eax is operand on a lot of opcodes)
 		opr->operand = operand;
+		int r = x_register_index(operand);
+		if (r!=-1) {
+			opr->operand = x64_get_register(r/4, state->opr_size,  X64_MASK_REX_B(state->rex));
+			opr->type = X64O_STR;
+		}
 	}
 	opr->size = operand_size;
 	return opr;

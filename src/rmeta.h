@@ -23,6 +23,8 @@ typedef enum r_meta_t
 	r_tujump,	/*Unconditional jump or branch*/
 	r_tarith,	/*Arithmetic instructions*/
 	r_tlogic,	/*Logical instructions*/
+	r_tpush,	/*Push Instructions */
+	r_tpop,		/*Pop instructions */
 	r_tdata,	/*Data instruction (like mov or lea) */
 	r_tcall,	/*Call instruction*/
 	r_tret,		/*Return from execution instruction */

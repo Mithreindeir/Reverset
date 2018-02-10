@@ -28,14 +28,6 @@ typedef struct block_bounds
 	int end;
 } block_bounds;
 
-//Calling convention
-typedef enum r_cconv {
-	rc_cdecl,
-	rc_unix64,
-	rc_microsoft64,
-	rc_other
-} r_cconv;
-
 /*Disassembler structure. Holds values that allow recursive descent disassembling*/
 typedef struct r_disassembler
 {
@@ -58,7 +50,7 @@ typedef struct r_disassembler
 	int recursive;
 } r_disassembler;
 
-r_file* r_openfile(char * filename);
+r_file* r_openfile(char * filename, char * perm);
 void r_disassemble(r_disassembler * disassembler, r_file * file);
 void r_disassemble_address(r_disassembler * disassembler, r_file * file,  uint64_t addr);
 /*Returns address of last disassembled*/
@@ -73,7 +65,6 @@ void r_disassembler_pushaddr(r_disassembler * disassembler, uint64_t addr);
 uint64_t r_disassembler_popaddr(r_disassembler * disassembler);
 void r_disassembler_addbound(r_disassembler * disassembler, uint64_t s, uint64_t e);
 uint64_t r_disassembler_getbound(r_disassembler * disassembler, uint64_t addr);
-void r_disassembler_find_functions(r_disassembler * disassembler, r_file * file, r_cconv convention);
 void r_disassembler_add_symbols(r_disassembler * disassembler, r_file * file);
 
 #endif

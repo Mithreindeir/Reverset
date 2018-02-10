@@ -52,7 +52,7 @@ typedef struct r_cmd
 reverset * reverset_init();
 void reverset_destroy(reverset * rev);
 
-void reverset_openfile(reverset * rev, char * file);
+void reverset_openfile(reverset * rev, char * file, char * perm);
 void reverset_execute(reverset * rev, char * cmd);
 void reverset_eval(reverset * rev, int argc, char ** argv);
 void reverset_sh(reverset * rev);
@@ -73,6 +73,7 @@ int reverset_asm(reverset * rev, char ** args, int num_args);
 int reverset_quit(reverset * rev, char ** args, int num_args);
 int reverset_list(reverset * rev, char ** args, int num_args);
 int reverset_strmod(reverset * rev, char ** args, int num_args);
+int reverset_hex(reverset * rev, char ** args, int num_args);
 
 const static r_cmd r_commands[] = {
 	{"print","print all/here/function/address\n", &reverset_print},
@@ -83,6 +84,7 @@ const static r_cmd r_commands[] = {
 	{"asm", "asm \"assembly\"\n", &reverset_asm},
 	{"list", "list symbols/functions/flags\n", &reverset_list},
 	{"/", "/ token\n", &reverset_strmod},
+	{"hex", "hex num_bytes\n", &reverset_hex},
 	{"quit", "quit\n", &reverset_quit}
 };
 

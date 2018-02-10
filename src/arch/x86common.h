@@ -25,6 +25,8 @@
 #define SIB_NO_BASE(mod, base) (base == 5 && (mod == 0 || mod == 1 || mod == 2))
 
 
+#define X_REG_BIN(idx) (idx/4)
+
 #define GROUP_OFFSET 8
 
 enum x86_modrm_modes
@@ -135,9 +137,10 @@ static const instr_pair instr_pairs[] = {
 	{"jle", r_tcjump},
 	{"jnle", r_tcjump},
 	//
+	{"push", r_tpush},
+	{"pop", r_tpop},
+	//
 	{"mov", r_tdata},
-	{"push", r_tdata},
-	{"pop", r_tdata},
 	{"lea", r_tdata},
 	{"movs", r_tdata},
 	{"movz", r_tdata},
@@ -154,5 +157,6 @@ static const instr_pair instr_pairs[] = {
 r_meta_t instr_type(char * mnemonic);
 char * no_space_strdup(char * str);
 char * strtok_dup(char * string, char * delim, int last);
+int x_register_index(char * reg);
 
 #endif

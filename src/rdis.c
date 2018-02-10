@@ -1,10 +1,10 @@
 #include "rdis.h"
 
-r_file* r_openfile(char * filename)
+r_file* r_openfile(char * filename, char * perm)
 {
 	r_file * file = r_file_init();
 
-	FILE * f = fopen(filename, "r");
+	FILE * f = fopen(filename, perm);
 	if (!f) {
 		printf("Error opening file %s\n", filename);
 		exit(1);
@@ -120,6 +120,10 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 		instructions[num_instructions-1] = disas;
 		if (!disassembler->linear && disas->metadata->type == r_tret) {
 			break;
+		}
+		//Also return if current instruction is a unconditional jump and cannot be skipped 
+		if (!disassembler->linear && disas->metadata->type == r_tujump) {
+			//for (int i = 0; i < )
 		}
 	}
 	//Merge arrays if existing, otherwise just set it
@@ -318,19 +322,4 @@ uint64_t r_disassembler_getbound(r_disassembler * disassembler, uint64_t addr)
 	}
 
 	return -1;
-}
-
-void r_disassembler_find_functions(r_disassembler * disassembler, r_file * file, r_cconv convention)
-{
-	switch (convention) {
-		case rc_cdecl:
-
-			break;
-		case rc_unix64:
-			break;
-		default:
-			printf("Only cdecl and unix64 calling conventions supported\n");
-			return;
-			break;
-	}
 }

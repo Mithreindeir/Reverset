@@ -13,14 +13,39 @@
 
 int main(int argc, char ** argv)
 {
-	if (argc < 2) {
-		printf("Usage: %s file\n", argv[0]);
-		return 1;
+	char * file = NULL;
+	int write = 0;
+	for (int i = 1; i < argc; i++) {
+		if (argv[i][0] == '-') {
+			int len = strlen(argv[i]);
+			for (int j = 1; j < len; j++) {
+				switch (argv[i][j]) {
+					case 'w':
+						write = 1;
+						break;
+					case 'h':
+						printf("Reverset: Reverse engineering and Binary Analysis Tool\n");
+						printf("Usage: %s file options\n", argv[0]);
+						printf("Option: -h for help\n");
+						printf("Option: -w to open the file with write permissions\n");
+						break;
+				}
+			}
+		} else if (!file) {
+			file = argv[i];
+		} else {
+			printf("Unwanted parameter: %s\n", argv[i]);
+		}
 	}
-	reverset * rev = reverset_init();
-	reverset_openfile(rev, argv[1]);
-	reverset_sh(rev);
+	char perm[] = "r+";
+	if (!write) perm[1] = 0;
 
-	reverset_destroy(rev);
+	if (file) {
+		reverset * rev = reverset_init();
+		reverset_openfile(rev, file, perm);
+		reverset_sh(rev);
+
+		reverset_destroy(rev);
+	}
 	return 0;
 }

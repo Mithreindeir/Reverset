@@ -66,3 +66,12 @@ char * strtok_dup(char * string, char *delim, int last)
 	str += i+1;
 	return str2;
 }
+
+int x_register_index(char * reg)
+{
+	for (int i = 0; i < sizeof(x64_general_registers)/sizeof(char*); i++) {
+		if (!strncmp(reg, x64_general_registers[i], strlen(x64_general_registers[i])))
+			return i;
+	}
+	return -1;
+}

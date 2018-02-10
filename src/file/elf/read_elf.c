@@ -14,6 +14,7 @@ void elf_read_file(FILE * f, r_file * file)
 	int len = ftell(f);
 	rewind(f);
 	file->raw_file = malloc(len);
+	file->size = len;
 	fread(file->raw_file, len, 1, f);
 }
 
@@ -36,6 +37,14 @@ void elf_read32(FILE * f, r_file * file)
 			printf("Architecture unsupported\n");
 			return;
 			break;
+	}
+	//Set the ABI
+	switch (header.e_ident[8]) {
+		case ELFOSABI_NONE://abi_none = sysv
+			file->abi = rc_sysv32;
+			break;
+		default:
+			file->abi = rc_other;
 	}
 	file->entry_point = header.e_entry;
 	/*Find segments */
@@ -275,6 +284,14 @@ void elf_read64(FILE * f, r_file * file)
 			printf("Architecture unsupported\n");
 			return;
 			break;
+	}
+	//Set the ABI
+	switch (header.e_ident[8]) {
+		case ELFOSABI_NONE://abi_none = sysv
+			file->abi = rc_sysv64;
+			break;
+		default:
+			file->abi = rc_other;
 	}
 	file->entry_point = header.e_entry;
 	/*Find segments */

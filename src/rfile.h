@@ -16,6 +16,14 @@
 #define R_WRITE 0x2
 #define R_READ 0x4
 
+
+//Calling convention
+typedef enum r_abi {
+	rc_sysv32,
+	rc_sysv64,
+	rc_other
+} r_abi;
+
 typedef enum rarchitecture
 {
 	r_noarch,
@@ -73,6 +81,8 @@ typedef struct rsection
 
 typedef struct r_file
 {
+	//The file abi
+	r_abi abi;
 	//1 for 32 2 for 64
 	int bits;
 	rsymbol * symbols;
@@ -84,7 +94,7 @@ typedef struct r_file
 	rsection * sections;
 	int num_sections;
 
-	char * raw_file;
+	unsigned char * raw_file;
 	int size;
 
 	FILE * file;
@@ -98,6 +108,7 @@ r_file * r_file_read(char * filename);
 void r_file_destroy(r_file * file);
 rsection * r_file_get_section(r_file * file, char * name);
 void r_file_find_strings(r_file * file);
+uint64_t r_file_get_paddr(r_file * file, uint64_t vaddr);
 
 void r_file_patch(r_file * file, uint64_t addr, unsigned char * bytes, int num_bytes);
 //Returns the section that contains addr

@@ -65,6 +65,7 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 	for (int i = 0; i < disassembler->num_bounds; i++) {
 		block_bounds b = disassembler->bounds[i];
 		if ((b.end-b.start)<1) continue;
+
 		/*Find disassembly with address*/
 		int found = 0;
 		r_disasm * disas = NULL;
@@ -76,6 +77,7 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 			}
 		}
 		if (!found) continue;
+
 		/*Check if there are xrefs to it*/
 		int call = 0;
 		int main = 0;
@@ -83,7 +85,9 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 			if (disas->metadata->xref_to[i].addr == adjacent_libc) {
 				main = 1;
 				break;
-			} else if (disas->metadata->xref_to[i].type == r_tcall) {
+			}
+
+			if (disas->metadata->xref_to[i].type == r_tcall) {
 				call = 1;
 				break;
 			}
@@ -122,17 +126,21 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 		func.name = name;
 		func.start = b.start;
 		func.size = b.end - b.start;
+		func.argc = 0;
+		func.args = NULL;
 		anal->functions[anal->num_functions-1] = func;
+		r_function_arguments(disassembler, anal, &anal->functions[anal->num_functions-1], file->abi);
 	}
 
 	/*Lastly call replace functions with func first*/
+	r_meta_func_replace(disassembler, file, anal);
 	r_meta_symbol_replace(disassembler, file);
-	r_meta_func_replace(disassembler, anal);
 	r_meta_string_replace(disassembler, file);
 }
 
-void r_meta_func_replace(r_disassembler * disassembler, r_analyzer * anal)
+void r_meta_func_replace(r_disassembler * disassembler, r_file * file, r_analyzer * anal)
 {
+	if (file->abi != rc_sysv64 && file->abi != rc_sysv32) return;
 	char buf[256];
 	memset(buf, 0, 256);
 	//Add labels for code that is the address of a file symbol
@@ -161,10 +169,21 @@ void r_meta_func_replace(r_disassembler * disassembler, r_analyzer * anal)
 					disas->op[ridx] = NULL;
 					//free(disas->op[0]);
 				}
-				disas->op[ridx] = strdup(func.name);
+				//Go back and look for arguments
+				if (disas->metadata->type == r_tcall) {
+					r_function_arg_replacer(disassembler, j, &anal->functions[i], file->abi);
+				} else {
+					disas->op[ridx] = strdup(func.name);
+				}
 			}
 			if (!disas->metadata->label && disas->address == func.start) {
-				snprintf(buf, 256, "%s", func.name);
+				int iter = 0;
+				iter += snprintf(buf+iter, 256-iter, "%s(", func.name);
+				for (int k = 0; k < func.argc; k++) {
+					if (k!=0) iter += snprintf(buf+iter, 256-iter, ", ");
+					iter += snprintf(buf+iter, 256-iter, "%s", func.args[k]);
+				}
+				iter += snprintf(buf+iter, 256-iter, ")");
 				disas->metadata->label = strdup(buf);
 			}
 		}
@@ -180,8 +199,8 @@ void r_meta_analyze(r_analyzer * anal, r_disassembler * disassembler, r_file * f
 	r_meta_reloc_resolve(disassembler, file);
 	r_meta_find_xrefs(disassembler, file);
 
+	r_meta_func_replace(disassembler,file, anal);
 	r_meta_symbol_replace(disassembler, file);
-	r_meta_func_replace(disassembler, anal);
 	r_meta_string_replace(disassembler, file);
 }
 
@@ -331,12 +350,14 @@ void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file)
 						ridx++;
 					}
 				}
+				//sym. means func replaced with symbol name already
 				if (disas->op[ridx]) {
 					disas->metadata->comment = disas->op[ridx];
 					disas->op[ridx] = NULL;
 					//free(disas->op[0]);
 				}
 				disas->op[ridx] = strdup(sym.name);
+				
 			}
 			if (!disas->metadata->label && sym.type == R_FUNC && disas->address == sym.addr64) {
 				snprintf(buf, 256, "%s", sym.name);
@@ -538,6 +559,10 @@ void r_analyzer_destroy(r_analyzer * anal)
 	
 	for (int i = 0; i < anal->num_functions; i++) {
 		free(anal->functions[i].name);
+		for (int j = 0; j < anal->functions[i].argc; j++) {
+			free(anal->functions[i].args[j]);
+		}
+		free(anal->functions[i].args);
 	}
 	for (int i = 0; i < anal->num_branches; i++) {
 
@@ -546,4 +571,216 @@ void r_analyzer_destroy(r_analyzer * anal)
 	free(anal->functions);
 	free(anal->branches);
 	free(anal);
+}
+
+void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_function * func, r_abi abi)
+{
+	/*
+	CALLING CONVENTIONS: unix64
+	RDI=arg1
+	RSI=arg2
+	RDX=arg3
+	RCX=arg4
+	R8 =arg5
+	R9 =arg6
+	STCK= other args
+	IDENTIFYING USED ARGS:
+	
+	mov rsi, 1
+	mov rdi, 0
+	call func
+	...
+	func:
+	push rbp
+	mov rbp, rsp
+	sub rsp, 0x20
+	mov qword [rbp-0x14], rdi
+	mov qword [rbp-0x20], rsi
+	..
+	ARGS = func(0, 1)
+	
+	Goto Function and identify what possible registers that hold arguments are used.
+	*/
+
+	//Only using 
+	if (abi != rc_sysv64 && abi != rc_sysv32) {
+		printf("Argument recognition is wip and only supports System V ABI right now\n");
+		return;
+	}
+
+	int rdist = 10;
+	int argc = 0;
+	int * args = NULL;
+
+	/*Goto the function address*/
+	for (int i = 0; i < disassembler->num_instructions; i++) {
+		r_disasm * disas = disassembler->instructions[i];
+		if (disas->address < func->start) continue;
+		if (disas->address > (func->start + func->size)) break;
+		rdist--;
+		if (disas->metadata->type != r_tdata && disas->metadata->type != r_tpush && disas->metadata->type != r_tpop) continue;
+
+		int arg = 0;
+		//source is farthest right operand so use next to last
+		for (int j = (disas->num_operands-1); j < disas->num_operands; j++) {
+			int b = x_register_index(disas->op[j]);
+			//if (b==-1) continue;
+			for (int k = 0; k < (sizeof(unix64_cc)/sizeof(char*)); k++) {
+				int a = x_register_index(unix64_cc[k]);
+				if (a==-1 && b == -1) {//Works for i386 SysV too if you ignore the 64 bit register parameter
+					//Perhaps on the stack
+					int d = r_function_get_stack_args(disas->op[j], abi);
+					if (d!=-1) {
+						int used = 0;
+						for (int n = 0; n < argc; n++) {
+							if (args[n]==-d) {
+								used = 1;
+								break;
+							}
+						}
+						if (used) break;
+						arg = k;					
+						argc++;
+						if (argc == 1) {
+							args = malloc(sizeof(int));
+						} else {
+							args = realloc(args, sizeof(int)*argc);
+						}
+						args[argc-1] = -d;
+					}
+				} else if (a==-1 || rdist < 0) continue; //After rdist assume that register are used for other reason
+				else if (abi == rc_sysv64 && X_REG_BIN(a) == X_REG_BIN(b)) {//X86_64 SysV only
+					int used = 0;
+					for (int n = 0; n < argc; n++) {
+						if (X_REG_BIN(args[n])==X_REG_BIN(b)) {
+							used = 1;
+							break;
+						}
+					}
+					if (used) break;
+					arg = k;					
+					argc++;
+					if (argc == 1) {
+						args = malloc(sizeof(int));
+					} else {
+						args = realloc(args, sizeof(int)*argc);
+					}
+					args[argc-1] = (b);
+					break;
+				}
+			}
+		}
+	}
+	/*For now only supporting register arguments*/
+	func->argc = argc;
+	func->args = malloc(argc * sizeof(char*));
+	for (int i = 0; i < argc; i++) {
+		int r = args[i];
+		if (r<0) {
+			char buf[32];
+			snprintf(buf, 32, "%#x", -r);
+			func->args[i] = strdup(buf);
+			continue;
+		} else {
+			func->args[i] = strdup(x64_general_registers[r]);
+		}
+	}
+	free(args);
+}
+
+//This function determines if the current instruction is using an argument on the stack
+//Returns the displacment if it is otherwise returns -1
+int r_function_get_stack_args(char * operand, r_abi abi)
+{
+	if (abi != rc_sysv64 && abi != rc_sysv32) return -1;
+
+	int m_disp = abi==rc_sysv64?8:4;
+	int disp = 0;
+	int s = strlen(operand);
+	for (int i = 0; i < s; i++) {
+		/*According to systemV abi the return address is directly ontop of the stack (4 bytes for 32 bit systems and 8 bytes for 64 bit)
+		Then above that are arguments
+		*/
+		if (!strncmp(operand + i, "ebp", 3) || !strncmp(operand + i, "rbp", 3)) {
+			char c = operand[i+3];
+			if (c != '+') continue;
+			char * opaddr = strdup(operand+i+4);
+			//rip operands are usually like [rip+0xaddr] so remove ']' at the end
+			int len = 0;////
+			r_meta_isaddr(opaddr, &len);
+			//It is a valid address up until the ']' indirect part
+			if (opaddr[len]==']') {
+				opaddr[len] = 0;
+				int base = 16;
+				if (strlen(opaddr) > 2 && (opaddr[1] == 'x' || opaddr[1] == 'X')) base = 0;
+				
+				uint64_t num = (uint64_t)strtol(opaddr, NULL, base);
+				free(opaddr);
+				//Check if above return address
+				if (num <= m_disp) continue;
+				return num;
+			}
+			free(opaddr);
+		}
+	}
+
+	return -1;
+}
+
+void r_function_arg_replacer(r_disassembler * disassembler, int idx, r_function * func, r_abi abi)
+{
+	/*
+	Attempt to find parameters of call instruction by using function data and the calling convention
+	*/
+	if (abi != rc_sysv64 && abi != rc_sysv32) {
+		printf("Argument recognition is very much wip and only supported using unix64 calling convention\n");
+		disassembler->instructions[idx]->op[0] = strdup("()");
+		return;
+	}
+	int ret_addr = abi==rc_sysv64?8:4;
+	char buf[256];
+	int iter = 0;
+	memset(buf, 0, 256);
+	int search_len = 10;
+	iter += snprintf(buf+iter, 256-iter, "%s(", func->name);
+	int nargc = 0;
+	r_disasm * disas = NULL;
+	/*Goto the function address*/
+	for (int i = (idx-1); i >=0 && i > (idx-search_len);i--) {
+		disas = disassembler->instructions[i];
+		if (disas->metadata->type != r_tdata && disas->metadata->type != r_tpush && disas->metadata->type != r_tpop) continue;
+
+		int found = 0;
+		//destination is farthest left operand so use next to last
+		for (int j = 0; j < disas->num_operands && j < 1; j++) {
+			int b = x_register_index(disas->op[j]);
+			//if (b==-1) continue;
+			for (int k = 0; k < func->argc; k++) {
+				int a = x_register_index(func->args[k]);
+				if (a==-1 && disas->metadata->type == r_tpush) {
+					found = 1;
+					int n = (j+1)<disas->num_operands ? j+1 : j;
+					if (nargc != 0) iter += snprintf(buf+iter, 256-iter, ", ");
+					iter += snprintf(buf+iter, 256-iter, "%s", disas->op[n]);
+					nargc++;
+					break;				
+				} else if (disas->metadata->type != r_tpush && X_REG_BIN(a) == X_REG_BIN(b)) {
+					found = 1;
+					int n = (j+1)<disas->num_operands ? j+1 : j;
+					if (nargc != 0) iter += snprintf(buf+iter, 256-iter, ", ");
+					iter += snprintf(buf+iter, 256-iter, "%s", disas->op[n]);
+					nargc++;
+					break;
+				}
+			}
+		}
+		if (nargc == func->argc) break;
+		if (!found) break;
+	}
+	disas = disassembler->instructions[idx];
+	iter += snprintf(buf+iter, 256-iter, ")");
+	if (disas->num_operands > 0) {
+		if (disas->op[0]) free(disas->op[0]);
+		disas->op[0] = strdup(buf);
+	}
 }
