@@ -184,7 +184,7 @@ x64_instr_operand *x64_decode_operand(char * operand, x64_disas_state *state)
 				operand_size = 1 + state->size_override;
 				break;
 			case X64_DWORD:
-				operand_size = 3;
+				operand_size = 3 - state->size_override;
 				address_size = 3;
 				break;
 			case X64_PTR:
