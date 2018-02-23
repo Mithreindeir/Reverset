@@ -15,22 +15,18 @@ static char * unix64_cc[] = {
 	"r9",
 	"stk"
 };
-
-/*Using heuristics and assuming calling conventions, reverset will attempt to recognize arguments
-typedef struct r_arg 
-{
-	char * arg;
-	int type;
-} r_arg;*/
-
 /*Function struct. Holds start address, end address, name, and xrefs*/
 typedef struct r_function
 {
-	char ** args;
 	int argc;
+	char ** args;
+	
 	char * name;
 	uint64_t start;
 	int size;
+
+	int num_locals;
+	char ** locals;
 } r_function;
 
 /*Branches*/
@@ -77,11 +73,16 @@ void r_meta_find_xrefs(r_disassembler * disassembler, r_file * file);
 uint64_t r_meta_get_address(char * operand, int * status);
 int r_meta_isaddr(char * operand, int * len);
 int r_meta_rip_relative(char * operand);
+int r_meta_indirect_address(char * operand);
 void r_add_xref(r_disasm * to, r_disasm * from, int type);
 
 /*Very Rudimentary Argument Recognition by using the current ABI's calling convention*/
 void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_function * func, r_abi abi);
 void r_function_arg_replacer(r_disassembler * disassembler, int idx, r_function * func, r_abi abi);
 int r_function_get_stack_args(char * operand, r_abi abi);
+int r_function_get_stack_locals(char * operand, r_abi abi);
+
+/*Local Naming through finding stack offsets*/
+void r_function_locals(r_disassembler * disassembler, r_function * func, r_abi abi);
 
 #endif

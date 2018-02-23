@@ -9,12 +9,11 @@
 #include "arch/x86_64/x64disassembler.h"
 #include "reverset.h"
 
-//48 2d 38 10 60 00
-
 int main(int argc, char ** argv)
 {
 	char * file = NULL;
 	int write = 0;
+
 	for (int i = 1; i < argc; i++) {
 		if (argv[i][0] == '-') {
 			int len = strlen(argv[i]);

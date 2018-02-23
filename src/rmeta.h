@@ -31,6 +31,7 @@ typedef enum r_meta_t
 	r_tnone		/*Not determined, other, or none */
 } r_meta_t;
 
+//A code reference
 typedef struct r_xref
 {
 	uint64_t addr;
@@ -39,6 +40,9 @@ typedef struct r_xref
 } r_xref;
 
 
+/* Metadata Structure
+ * Holds architecture independent information about the instruction it is attached to
+*/
 typedef struct r_meta
 {
 	char * comment;

@@ -6,12 +6,12 @@
 #include <stdarg.h>
 #include <string.h>
 
+//Pipe-like interface to allow interaction between modules
 typedef struct r_pipe
 {
 	char * buf;
 	int len;
 	int buf_size;
-
 } r_pipe;
 
 r_pipe * r_pipe_init();

@@ -14,7 +14,6 @@
 #define KCYN  "\x1B[36m"
 #define KWHT  "\x1B[37m"
 
-
 void r_formatted_print(r_pipe * pipe, r_disasm * disas, r_analyzer * anal, uint64_t start, uint64_t end);
 void r_formatted_printall(r_pipe * pipe, r_disassembler * disassembler, r_analyzer * anal, uint64_t addr);
 void r_formatted_printjump(r_pipe * pipe, r_analyzer * anal, uint64_t addr, uint64_t sb, uint64_t eb);

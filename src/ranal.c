@@ -128,13 +128,17 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 		func.size = b.end - b.start;
 		func.argc = 0;
 		func.args = NULL;
+		func.num_locals = 0;
+		func.locals = NULL;
 		anal->functions[anal->num_functions-1] = func;
 		r_function_arguments(disassembler, anal, &anal->functions[anal->num_functions-1], file->abi);
+		r_function_locals(disassembler, &anal->functions[anal->num_functions-1], file->abi);	
 	}
 
 	/*Lastly call replace functions with func first*/
 	r_meta_func_replace(disassembler, file, anal);
 	r_meta_symbol_replace(disassembler, file);
+
 	r_meta_string_replace(disassembler, file);
 }
 
@@ -151,12 +155,12 @@ void r_meta_func_replace(r_disassembler * disassembler, r_file * file, r_analyze
 			r_function func = anal->functions[i];
 			if (!func.name) continue;
 			int idx = 0;
-			if ((idx=r_meta_find_addr(disas->metadata, func.start, META_ADDR_BOTH) != 0 && !disas->metadata->comment)) {
+			if ((idx=r_meta_find_addr(disas->metadata, func.start, META_ADDR_BOTH) != 0)) {
 				idx--;
 				int ridx = 0;
 				for (int k = 0; k < disas->num_operands; k++) {
 					int len = 0;
-					if (r_meta_isaddr(disas->op[k], &len)) {
+					if (r_meta_isaddr(disas->op[k], &len)|| r_meta_indirect_address(disas->op[k])) {
 						if (idx==ridx) {
 							ridx = k;
 							break;
@@ -165,7 +169,14 @@ void r_meta_func_replace(r_disassembler * disassembler, r_file * file, r_analyze
 					}
 				}
 				if (disas->op[ridx]) {
-					disas->metadata->comment = disas->op[ridx];
+					if (!disas->metadata->comment)
+						disas->metadata->comment = disas->op[ridx];
+					else {
+						char buf[128];
+						snprintf(buf, 128, "%s # %s", disas->metadata->comment, disas->op[ridx]);
+						free(disas->metadata->comment);
+						disas->metadata->comment = strdup(buf);
+					}
 					disas->op[ridx] = NULL;
 					//free(disas->op[0]);
 				}
@@ -287,9 +298,19 @@ void r_meta_rip_resolve(r_disassembler * disassembler, r_file * file)
 		for (int k = 0; k < disas->num_operands; k++) {
 			int n = r_meta_rip_relative(disas->op[k]);
 			if (n != 0) {
+				int len = strlen(disas->op[k]);
+				int i = 0;
+				for (i = 0; i < len; i++) {
+					if (disas->op[k][i]=='[') break;
+				}
+				char sc = disas->op[k][i];
+				disas->op[k][i] = 0;
+
 				memset(buf, 0, 20);
-				snprintf(buf, 20, "%#x", n + disas->address+disas->used_bytes);
-				disas->metadata->comment = strdup(buf);
+				snprintf(buf, 20, "%s[%#x]", disas->op[k], n + disas->address+disas->used_bytes);
+				disas->op[k][i] = sc;
+				disas->metadata->comment = disas->op[k];
+				disas->op[k] = strdup(buf);
 				break;
 			}
 		} 
@@ -298,7 +319,6 @@ void r_meta_rip_resolve(r_disassembler * disassembler, r_file * file)
 
 void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file)
 {
-
 	//Find reloc symbols are correct the addresses
 	for (int i = 0; i < file->num_symbols; i++) {
 		rsymbol sym = file->symbols[i];
@@ -306,6 +326,7 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file)
 		for (int j = 0; j < disassembler->num_instructions; j++) {
 			r_disasm * disas = disassembler->instructions[j];
 			int len = 0;
+			//
 			if (r_meta_find_addr(disas->metadata, sym.addr64, META_ADDR_DATA)) {
 				sym.addr64 = disas->address;
 				sym.type = R_FUNC;
@@ -327,6 +348,7 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file)
 
 void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file)
 {
+
 	char buf[256];
 	memset(buf, 0, 256);
 	//Add labels for code that is the address of a file symbol
@@ -342,7 +364,7 @@ void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file)
 				int ridx = 0;
 				for (int k = 0; k < disas->num_operands; k++) {
 					int len = 0;
-					if (r_meta_isaddr(disas->op[k], &len)) {
+					if (r_meta_isaddr(disas->op[k], &len) || r_meta_indirect_address(disas->op[k])) {
 						if (idx==ridx) {
 							ridx = k;
 							break;
@@ -435,6 +457,31 @@ uint64_t r_meta_get_address(char * operand, int * status)
 		}
 	}	
 	return 0;
+}
+
+int r_meta_indirect_address(char * operand)
+{
+	char * op = strdup(operand);
+	int len = strlen(operand);
+	int f = 0;
+	int n = 0;
+	for (;f < len; f++) {
+		if (op[f]=='[') {
+			op[f] = 0;
+			n = f;
+		}
+		if (op[f]==']') {
+			op[f] = 0;
+		}
+	}
+	int l = 0;
+	int num = r_meta_isaddr(op+n, &l);
+	if (!num) {
+		free(op);
+		return 0;
+	}
+	free(op);
+	return 1;
 }
 
 //Returns 1 if the string is an address, 0 if it is not. Sets length to the number of characters that are a valid string
@@ -562,6 +609,10 @@ void r_analyzer_destroy(r_analyzer * anal)
 		for (int j = 0; j < anal->functions[i].argc; j++) {
 			free(anal->functions[i].args[j]);
 		}
+		for (int j = 0; j < anal->functions[i].num_locals; j++) {
+			free(anal->functions[i].locals[j]);
+		}
+		free(anal->functions[i].locals);
 		free(anal->functions[i].args);
 	}
 	for (int i = 0; i < anal->num_branches; i++) {
@@ -678,7 +729,7 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 		int r = args[i];
 		if (r<0) {
 			char buf[32];
-			snprintf(buf, 32, "%#x", -r);
+			snprintf(buf, 32, "arg_%xh", -r);
 			func->args[i] = strdup(buf);
 			continue;
 		} else {
@@ -686,6 +737,93 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 		}
 	}
 	free(args);
+}
+
+void r_function_locals(r_disassembler * disassembler, r_function * func, r_abi abi)
+{
+	if (abi != rc_sysv64 && abi != rc_sysv32) return;
+	int num_locals = 0;
+	int * locals = NULL;
+	
+	for (int i = 0; i < disassembler->num_instructions; i++) {
+		r_disasm * disas = disassembler->instructions[i];
+		if (disas->address < func->start) continue;
+		if (disas->address > (func->start + func->size)) break;
+		for (int j = 0; j < disas->num_operands; j++) {
+			int n = r_function_get_stack_locals(disas->op[j], abi);
+			if (n != -1) {
+				int len = strlen(disas->op[j]);
+				int fbrk = 0;
+				for (; fbrk < len; fbrk++) {
+					if (disas->op[j][fbrk]=='[') {
+						break;
+					}
+				}
+				disas->op[j][fbrk] = 0;
+
+				char buf[32];
+				snprintf(buf, 32, "%s[local_%xh]", disas->op[j], n);
+				free(disas->op[j]);
+				disas->op[j] = strdup(buf);
+				int found = 0;
+				for (int k = 0; k < num_locals; k++) {
+					if (locals[k]==n) {
+						found = 1;
+						break;
+					}
+				}
+				if (found) continue;
+
+				num_locals++;
+				if (num_locals == 1) {
+					locals = malloc(sizeof(int));
+				} else {
+					locals = realloc(locals, sizeof(int) * num_locals);
+				}
+				locals[num_locals-1] = n;
+			}
+		}
+	}
+
+	func->num_locals = num_locals;
+	func->locals = malloc(num_locals * sizeof(char*));
+	for (int i = 0; i < num_locals; i++) {
+		char buf[32];
+		snprintf(buf, 32, "local_%xh", locals[i]);
+		func->locals[i] = strdup(buf);
+	}
+	free(locals);
+
+}
+
+int r_function_get_stack_locals(char * operand, r_abi abi)
+{
+	if (abi != rc_sysv64 && abi != rc_sysv32) return -1;
+
+	int disp = 0;
+	int s = strlen(operand);
+	for (int i = 0; i < s; i++) {
+		if (!strncmp(operand + i, "ebp", 3) || !strncmp(operand + i, "rbp", 3)) {
+			char c = operand[i+3];
+			if (c != '-') continue;
+			char * opaddr = strdup(operand+i+4);
+			int len = 0;
+			r_meta_isaddr(opaddr, &len);
+			if (opaddr[len]==']') {
+				opaddr[len] = 0;
+				int base = 16;
+				if (strlen(opaddr) > 2 && (opaddr[1] == 'x' || opaddr[1] == 'X')) base = 0;
+				
+				uint64_t num = (uint64_t)strtol(opaddr, NULL, base);
+				free(opaddr);
+
+				return num;
+			}
+			free(opaddr);
+		}
+	}
+
+	return -1;
 }
 
 //This function determines if the current instruction is using an argument on the stack
@@ -705,7 +843,6 @@ int r_function_get_stack_args(char * operand, r_abi abi)
 			char c = operand[i+3];
 			if (c != '+') continue;
 			char * opaddr = strdup(operand+i+4);
-			//rip operands are usually like [rip+0xaddr] so remove ']' at the end
 			int len = 0;////
 			r_meta_isaddr(opaddr, &len);
 			//It is a valid address up until the ']' indirect part
