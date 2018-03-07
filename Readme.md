@@ -35,7 +35,7 @@ Not tested on Windows yet. Use make to compile.
 
 # Example
 The main function of reverset:
-```
+```C
 int main(int argc, char ** argv)
 {
 	if (argc < 2) {
