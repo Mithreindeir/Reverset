@@ -1,0 +1,3 @@
+[submodule "src/dish"]
+	path = src/dish
+	url = https://github.com/mithreindeir/dish.git

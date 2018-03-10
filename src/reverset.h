@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "dish/dshell.h"
 #include "rfile.h"
 #include "rdis.h"
 #include "ranal.h"
@@ -35,10 +36,12 @@ typedef struct reverset
 	r_disassembler * disassembler;
 	//The analyzer
 	r_analyzer * anal;
-	//Status 
+	//Status
 	r_state status;
 	//output pipe
 	r_pipe * pipe;
+	//The shell
+	dshell *shell;
 } reverset;
 
 typedef struct r_cmd
@@ -53,40 +56,26 @@ reverset * reverset_init();
 void reverset_destroy(reverset * rev);
 
 void reverset_openfile(reverset * rev, char * file, char * perm);
-void reverset_execute(reverset * rev, char * cmd);
-void reverset_eval(reverset * rev, int argc, char ** argv);
 void reverset_sh(reverset * rev);
-
-/*Private Functions for reverset shell*/
-char * reverset_readline();
-char ** reverset_split_line(char * line, int * num_args);
-char * reverset_split(char * first);
 
 /*Wrapper functions*/
 uint64_t reverset_resolve_arg(reverset * rev, char * arg);
-int reverset_analyze(reverset * rev, char ** args, int num_args);
-int reverset_print(reverset * rev, char ** args, int num_args);
+int reverset_analyze(struct text_buffer*buf,int argc, char**argv, void*data);
+int reverset_print(struct text_buffer*buf, int argc, char**argv, void*data);
 int reverset_disas(reverset * rev, char ** args, int num_args);
 int reverset_write(reverset * rev, char ** args, int num_args);
-int reverset_goto(reverset * rev, char ** args, int num_args);
-int reverset_asm(reverset * rev, char ** args, int num_args);
-int reverset_quit(reverset * rev, char ** args, int num_args);
-int reverset_list(reverset * rev, char ** args, int num_args);
+int reverset_goto(struct text_buffer*buf, int argc, char **argv, void*data);
+int reverset_asm(struct text_buffer*buf, int argc, char**argv, void*data);
+int reverset_quit(struct text_buffer*buf,int argc, char**argv, void*data);
+int reverset_list(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_strmod(reverset * rev, char ** args, int num_args);
 int reverset_hex(reverset * rev, char ** args, int num_args);
 
 const static r_cmd r_commands[] = {
-	{"print","print all/here/function/address\n", &reverset_print},
-	{"anal", "anal here/function/address\n", &reverset_analyze},
 	{"disas", "disas here/function/address\n", &reverset_disas},
 	{"write", "write \"bytes\"\n", &reverset_write},
-	{"goto", "goto address/symbol\n", &reverset_goto},
-	{"asm", "asm \"assembly\"\n", &reverset_asm},
-	{"list", "list symbols/functions/flags\n", &reverset_list},
 	{"/", "/ token\n", &reverset_strmod},
 	{"hex", "hex num_bytes\n", &reverset_hex},
-	{"quit", "quit\n", &reverset_quit}
 };
-
 
 #endif

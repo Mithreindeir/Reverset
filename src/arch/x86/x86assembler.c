@@ -391,8 +391,8 @@ struct x86_assemble_op x86_assembler_type(char * operand)
 int x86_relative_size(char * operand, uint32_t address)
 {
 	uint32_t rel = strtol(operand, NULL, 0) - address;
-	if (!(rel >> 8)) return X86_BYTE;
-	if (!(rel >> 16)) return X86_WORD;
+	if ((signed int)(rel >> 8) <= 0) return X86_BYTE;
+	if ((signed int)(rel >> 16) <= 0) return X86_WORD;
 
 	return X86_WDWORD;
 }

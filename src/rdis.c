@@ -9,7 +9,7 @@ r_file* r_openfile(char * filename, char * perm)
 		printf("Error opening file %s\n", filename);
 		exit(1);
 	}
-	
+
 	if (check_elf(f)) {
 		elf_read_file(f, file);
 	}
@@ -155,7 +155,7 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 
 			if (disassembler->instructions[i]->address >= addr && disassembler->instructions[i]->address < (laddr + lbyte))
 				total_unique--;
-	
+
 			if (disas1->address >= (laddr + lbyte)) break;
 
 		}

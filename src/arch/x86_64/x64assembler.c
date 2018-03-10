@@ -76,7 +76,7 @@ unsigned char * x64_assemble(char * instr, uint64_t addr, int * num_bytes)
 			chars = -1;
 		} else if (chars == -1) chars = i;
 	}
-	
+
 	struct x64_assemble_op * modes = malloc(sizeof(struct x64_assemble_op) * num_operands);
 	//printf("mnenomic: \"%s\"\n", mnemonic);
 	for (int i = 0; i < num_operands; i++) {
@@ -237,7 +237,7 @@ void x64_encode_modrm(struct x64_asm_bytes * asm_op, struct x64_assemble_op * op
 				else if (indir.base != -1 && indir.disp_size == 4) modrm |= MODRM_FOURBYTE << 6;
 				if (indir.rip) {
 					//RIP is represented by mod of 0 and rm of 5
-					//force disp32 
+					//force disp32
 					if (indir.disp_size != 4) {
 						indir.disp_size = 4;
 					}
@@ -453,8 +453,8 @@ struct x64_assemble_op x64_assembler_type(char * operand)
 int x64_relative_size(char * operand, uint64_t address)
 {
 	uint64_t rel = strtol(operand, NULL, 0) - address;
-	if (!(rel >> 8)) return X64_BYTE;
-	if (!(rel >> 16)) return X64_WORD;
+	if ((signed int)(rel >> 8) <= 0) return X64_BYTE;
+	if ((signed int)(rel >> 16) <= 0) return X64_WORD;
 
 	return X64_WDWORD;
 }
@@ -558,8 +558,6 @@ int x64_find_instruction( struct x64_asm_bytes * asm_op, char * mnemonic, uint64
 
 		}
 	}
-										
-
 	return -1;
 }
 
@@ -607,7 +605,7 @@ int x64_operands_compatible(x64_instruction instr, uint64_t addr, struct x64_ass
 				}
 				if (other_e) return 0;
 			} else if ((X64_NUMBER_OP(operands[i].mode) && X64_NUMBER_OP(m2)));//Immediate, relative and moffset are all same string so make them all compatible
-			else return 0;		
+			else return 0;
 		}
 		int size = operands[i].size;
 		if (m2 == X64_REL) {

@@ -1,6 +1,6 @@
 CXX = gcc
 EXE = reverset
-SOURCES = $(wildcard src/*.c src/arch/*.c src/arch/x86/*.c src/arch/x86_64/*.c src/file/elf/*.c)
+SOURCES = $(wildcard src/*.c src/arch/*.c src/arch/x86/*.c src/arch/x86_64/*.c src/file/elf/*.c src/dish/*.c src/dish/ascii/*.c)
 OBJS = $(SOURCES:.c=.o)
 UNAME_S := $(shell uname -s)
 
