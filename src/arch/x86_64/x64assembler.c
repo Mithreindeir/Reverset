@@ -613,7 +613,6 @@ int x64_operands_compatible(x64_instruction instr, uint64_t addr, struct x64_ass
 			operands[i].relative_size = x64_relative_size(operands[i].operand, addr+1+a_size);
 			size = operands[i].relative_size;
 		}
-		
 		if (s2 && !x64_size_compatible(m2, size, s2)) return 0;
 	}
 
