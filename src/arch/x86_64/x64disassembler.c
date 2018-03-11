@@ -40,9 +40,9 @@ x64_instr_prefix x64_instruction_prefix(unsigned char * stream, int * len)
 			}
 		}
 		if (prefix_found) {
-			prefix.instr_prefix =  x86_instr_prefix_str[type]; 
+			prefix.instr_prefix =  x86_instr_prefix_str[type];
 			if (type == X64_ADDR_SIZE_OVERRIDE) prefix.addr_override = 1;
-			if (type == X64_OPERAND_SIZE_OVERRIDE) prefix.size_override = 1;		
+			if (type == X64_OPERAND_SIZE_OVERRIDE) prefix.size_override = 1;
 		}
 		//Check segment override TODO FIX
 		for (int i = 0; i < (sizeof(x86_segment_register_byte)); i++ ) {
@@ -64,7 +64,7 @@ r_disasm * x64_decode_instruction(unsigned char * stream, int address)
 	x64_instr_prefix prefix = x64_instruction_prefix(stream, &len);
 	unsigned char instrb = stream[len];
 	len++;
-	
+
 	x64_disas_state state;
 	state.addr_override = prefix.addr_override;
 	state.size_override = prefix.size_override;
@@ -104,13 +104,13 @@ r_disasm * x64_decode_instruction(unsigned char * stream, int address)
 	op3 = x64_decode_operand(instr.op3, &state);
 	int ub = len;
 	/*Intermediate functions: Resolve relative addresses and sign extend*/
-	if (op1 && op1->type == X64O_REL) op1->relative = x64_resolve_address(op1->relative,address,ub); 
-	if (op2 && op2->type == X64O_REL) op2->relative = x64_resolve_address(op2->relative,address,ub); 
-	if (op3 && op3->type == X64O_REL) op3->relative = x64_resolve_address(op3->relative,address,ub); 
+	if (op1 && op1->type == X64O_REL) op1->relative = x64_resolve_address(op1->relative,address,ub);
+	if (op2 && op2->type == X64O_REL) op2->relative = x64_resolve_address(op2->relative,address,ub);
+	if (op3 && op3->type == X64O_REL) op3->relative = x64_resolve_address(op3->relative,address,ub);
 
 	x64_sign_extend(op1, op2, op3);
 
-	//Convert instructions to strings 
+	//Convert instructions to strings
 	int iter = 0;
 	char buf[32];
 	if (prefix.instr_prefix) iter += snprintf(buf+iter, 32-iter, "%s ", prefix.instr_prefix);
@@ -207,7 +207,7 @@ x64_instr_operand *x64_decode_operand(char * operand, x64_disas_state *state)
 		state->opr_size = operand_size;
 		state->addr_size = address_size;
 		//Decode the addressing modes
-		char reg; //May be needed 
+		char reg; //May be needed
 		switch(operand[0]) {
 			case X64_DIRECT_ADDRESSING:
 				opr->type = X64O_REL;
@@ -287,7 +287,7 @@ x64_instr_operand *x64_decode_operand(char * operand, x64_disas_state *state)
 					*state->iter += 2;
 				} else {
 					opr->moffset = state->stream[(*state->iter)++];
-				}	
+				}
 				break;
 			case X64_MOD_REG://As far as I can tell only affects encoding (mod field of modrm byte only can refer to a general register)
 				//Forced mod of 11 (register)
@@ -327,7 +327,11 @@ x64_instr_operand *x64_decode_operand(char * operand, x64_disas_state *state)
 	} else {//Otherwise it is an implied or set operand (eg: eax is operand on a lot of opcodes)
 		opr->operand = operand;
 		int r = x_register_index(operand);
+		//Keep 16 bit registers
+		if ((r%4+1)==1)
+			state->opr_size = 1;
 		if (r!=-1) {
+
 			opr->operand = x64_get_register(r/4, state->opr_size,  X64_MASK_REX_B(state->rex));
 			opr->type = X64O_STR;
 		}

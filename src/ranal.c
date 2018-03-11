@@ -101,9 +101,9 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 			if (!file->symbols[j].name) continue;
 			rsymbol sym = file->symbols[j];
 			if (sym.addr64 == b.start) {
-				int len = snprintf(NULL, 0, "sym.%s", sym.name);
+				int len = snprintf(NULL, 0, "func.%s", sym.name);
 				name = malloc(len+1);
-				snprintf(name, len+1, "sym.%s", sym.name);
+				snprintf(name, len+1, "func.%s", sym.name);
 				break;
 			}
 		}
@@ -132,7 +132,7 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 		func.locals = NULL;
 		anal->functions[anal->num_functions-1] = func;
 		r_function_arguments(disassembler, anal, &anal->functions[anal->num_functions-1], file->abi);
-		r_function_locals(disassembler, &anal->functions[anal->num_functions-1], file->abi);	
+		r_function_locals(disassembler, &anal->functions[anal->num_functions-1], file->abi);
 	}
 
 	/*Lastly call replace functions with func first*/
@@ -241,7 +241,7 @@ void r_meta_calculate_branches(r_analyzer * anal, r_disassembler * disassembler)
 			branch.conditional = disas->metadata->type == r_tujump;
 
 			int status = 0;
-			for (int i = 0; i < disas->num_operands; i++) {				
+			for (int i = 0; i < disas->num_operands; i++) {
 				branch.end = r_meta_get_address(disas->op[i], &status);
 
 				if (status == 2) branch.indirect = 1;
@@ -313,7 +313,7 @@ void r_meta_rip_resolve(r_disassembler * disassembler, r_file * file)
 				disas->op[k] = strdup(buf);
 				break;
 			}
-		} 
+		}
 	}
 }
 
@@ -342,7 +342,7 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file)
 					file->symbols[i] = sym;
 				}
 			}
-		}				
+		}
 	}
 }
 
@@ -378,11 +378,17 @@ void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file)
 					disas->op[ridx] = NULL;
 					//free(disas->op[0]);
 				}
-				disas->op[ridx] = strdup(sym.name);
-				
+				int slen = strlen(sym.name);
+				int len = slen+4;
+				char * sname = malloc(len+1);
+				memcpy(sname, "sym.", 4);
+				memcpy(sname+4, sym.name, slen);
+				sname[len] = 0;
+				disas->op[ridx] = sname;
+
 			}
 			if (!disas->metadata->label && sym.type == R_FUNC && disas->address == sym.addr64) {
-				snprintf(buf, 256, "%s", sym.name);
+				snprintf(buf, 256, "sym.%s", sym.name);
 				disas->metadata->label = strdup(buf);
 			}
 		}
@@ -455,7 +461,7 @@ uint64_t r_meta_get_address(char * operand, int * status)
 			}
 			*status = 0;
 		}
-	}	
+	}
 	return 0;
 }
 
@@ -522,7 +528,7 @@ int r_meta_rip_relative(char * operand)
 				opaddr[len] = 0;
 				int base = 16;
 				if (strlen(opaddr) > 2 && (opaddr[1] == 'x' || opaddr[1] == 'X')) base = 0;
-				
+
 				uint64_t num = (uint64_t)strtol(opaddr, NULL, base);
 				free(opaddr);
 				if (c == '-') num = -num;
@@ -583,7 +589,7 @@ void r_meta_find_xrefs(r_disassembler * disassembler, r_file * file)
 				}
 			}
 		}
-	}	
+	}
 }
 
 r_analyzer * r_analyzer_init()
@@ -603,7 +609,7 @@ r_analyzer * r_analyzer_init()
 void r_analyzer_destroy(r_analyzer * anal)
 {
 	if (!anal) return;
-	
+
 	for (int i = 0; i < anal->num_functions; i++) {
 		free(anal->functions[i].name);
 		for (int j = 0; j < anal->functions[i].argc; j++) {
@@ -636,7 +642,7 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 	R9 =arg6
 	STCK= other args
 	IDENTIFYING USED ARGS:
-	
+
 	mov rsi, 1
 	mov rdi, 0
 	call func
@@ -649,11 +655,11 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 	mov qword [rbp-0x20], rsi
 	..
 	ARGS = func(0, 1)
-	
+
 	Goto Function and identify what possible registers that hold arguments are used.
 	*/
 
-	//Only using 
+	//Only using
 	if (abi != rc_sysv64 && abi != rc_sysv32) {
 		printf("Argument recognition is wip and only supports System V ABI right now\n");
 		return;
@@ -690,7 +696,7 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 							}
 						}
 						if (used) break;
-						arg = k;					
+						arg = k;
 						argc++;
 						if (argc == 1) {
 							args = malloc(sizeof(int));
@@ -709,7 +715,7 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 						}
 					}
 					if (used) break;
-					arg = k;					
+					arg = k;
 					argc++;
 					if (argc == 1) {
 						args = malloc(sizeof(int));
@@ -744,7 +750,7 @@ void r_function_locals(r_disassembler * disassembler, r_function * func, r_abi a
 	if (abi != rc_sysv64 && abi != rc_sysv32) return;
 	int num_locals = 0;
 	int * locals = NULL;
-	
+
 	for (int i = 0; i < disassembler->num_instructions; i++) {
 		r_disasm * disas = disassembler->instructions[i];
 		if (disas->address < func->start) continue;
@@ -813,7 +819,7 @@ int r_function_get_stack_locals(char * operand, r_abi abi)
 				opaddr[len] = 0;
 				int base = 16;
 				if (strlen(opaddr) > 2 && (opaddr[1] == 'x' || opaddr[1] == 'X')) base = 0;
-				
+
 				uint64_t num = (uint64_t)strtol(opaddr, NULL, base);
 				free(opaddr);
 
@@ -850,7 +856,7 @@ int r_function_get_stack_args(char * operand, r_abi abi)
 				opaddr[len] = 0;
 				int base = 16;
 				if (strlen(opaddr) > 2 && (opaddr[1] == 'x' || opaddr[1] == 'X')) base = 0;
-				
+
 				uint64_t num = (uint64_t)strtol(opaddr, NULL, base);
 				free(opaddr);
 				//Check if above return address
@@ -900,7 +906,7 @@ void r_function_arg_replacer(r_disassembler * disassembler, int idx, r_function 
 					if (nargc != 0) iter += snprintf(buf+iter, 256-iter, ", ");
 					iter += snprintf(buf+iter, 256-iter, "%s", disas->op[n]);
 					nargc++;
-					break;				
+					break;
 				} else if (disas->metadata->type != r_tpush && X_REG_BIN(a) == X_REG_BIN(b)) {
 					found = 1;
 					int n = (j+1)<disas->num_operands ? j+1 : j;

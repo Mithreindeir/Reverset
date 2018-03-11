@@ -20,7 +20,7 @@ typedef struct r_function
 {
 	int argc;
 	char ** args;
-	
+
 	char * name;
 	uint64_t start;
 	int size;
@@ -38,7 +38,7 @@ typedef struct r_branch
 	int indirect;
 	//For ease of analysis, start is always the earlier address. Dir specifies if it is the start (0) or the end(1)
 	int dir;
-	//How many branches overlap this one. 
+	//How many branches overlap this one.
 	int nested;
 } r_branch;
 

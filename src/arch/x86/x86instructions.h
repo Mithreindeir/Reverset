@@ -105,7 +105,7 @@ static const x86_instruction x86_instruction_table[] = {
 	{"xor", "Gb", "Eb", ""},
 	{"xor", "Gv", "Ev", ""},
 	{"xor", "al", "Ib", ""},
-	{"xor", "eax", "Iv", ""},	
+	{"xor", "eax", "Iv", ""},
 	{"", "", "", ""}, //SS segment register override
 	{"aaa", "", "", ""},
 	{"cmp", "Eb", "Gb", ""},

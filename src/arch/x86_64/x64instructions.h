@@ -37,9 +37,9 @@ enum x64_Addressing_Mode {
 enum x64_Operand_Size {
 	X64_INVALID_SIZE,
 	X64_TWO_WORD = 'a', //Two one word operands or two double word operands depending on operand size attribute
-	X64_BYTE	 = 'b', //Byte 
+	X64_BYTE	 = 'b', //Byte
 	X64_BWORD	 = 'c', //Byte or word depending on operand size
-	X64_DWORD	 = 'd', //Double word 
+	X64_DWORD	 = 'd', //Double word
 	X64_PTR		 = 'p', //32 or 48 bit pointer depending on operand size
 	X64_PDESC	 = 's',	//6 byte pseudo descriptor
 	X64_WDWORD	 = 'v',	//Word dword or qword depending on operand size and rex
@@ -106,7 +106,7 @@ static const x64_instruction x64_instruction_table[] = {
 	{"xor", "Gb", "Eb", ""},
 	{"xor", "Gv", "Ev", ""},
 	{"xor", "al", "Ib", ""},
-	{"xor", "eax", "Id", ""},	
+	{"xor", "eax", "Id", ""},
 	{"", "", "", ""}, //SS segment register override
 	{"", "", "", ""},
 	{"cmp", "Eb", "Gb", ""},
@@ -118,7 +118,7 @@ static const x64_instruction x64_instruction_table[] = {
 	{"", "", "", ""}, //DS segment register override
 	{"", "", "", ""},
 	//4
-	{"", "", "", ""},	//Rex 	 
+	{"", "", "", ""},	//Rex
 	{"", "", "", ""},	//Rex.b
 	{"", "", "", ""},	//Rex.x
 	{"", "", "", ""},	//Rex.xb
