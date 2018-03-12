@@ -1,5 +1,6 @@
 ^"*"^ 							= magenta
-{!A-Za-z}^mov{s}{z}{x}^{!A-Za-z}			= green
+{!A-Za-z}^mov{s}{z}{x}{d}^{!A-Za-z}			= green
+{!A-Za-z}^set{n}{l}{e}{z}^{A-Za-z} 			= green
 {!A-Za-z}^leave^{!A-Za-z} 				= yellow
 {!A-Za-z}^imul^{!A-Za-z} 				= green
 {!A-Za-z}^ret^{!A-Za-z} 				= yellow
@@ -42,14 +43,15 @@
 {!A-Za-z}^[re]si^{!A-Za-z} 				= red
 {!A-Za-z}^[re]di^{!A-Za-z} 				= red
 {!A-Za-z}^[re]ip^{!A-Za-z} 				= red
-{!A-Za-z}^[acd][lx]^{!A-Za-z} 				= red
+{!A-Za-z}^[acd]l^{!A-Za-z} 				= red
+{!A-Za-z}^[acd]x^{!A-Za-z} 				= red
 {!A-Za-z}^[ca]h^{!A-Za-z} 	 				= red
 {!A-Za-z}^[bd]h^{!A-Za-z} 				= red
 {!A-Za-z}^[sd]i^{!A-Za-z} 				= red
 {!A-Za-z}^d[lx]^{!A-Za-z} 				= red
-^local_{0-9a-f}$h^ 					= green
+{!A-Za-z}^local_{0-9a-f}$h^{!A-Za-z}			= green
 {!A-Za-z}^r{1}{0-9}{dwb}^{!A-Za-z} 			= red
-^[A-z]$(*)^	 				= green
+^[A-Za-z]$(*)^	 				= green
 ^//*\r\n^ 					= red
 ^#*\r\n^ 					= green
 ^0x{0-9a-f}$^ 					= cyan
