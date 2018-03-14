@@ -34,24 +34,19 @@ Commands:
 Not tested on Windows yet. Use make to compile.
 
 # Example
-The main function of reverset:
+An example function to analyze:
 ```C
-int main(int argc, char ** argv)
+int main()
 {
-	if (argc < 2) {
-		printf("Usage: %s file\n", argv[0]);
-		return 1;
+	int x = 0;
+	for (int i = 0; i < 10; i++) {
+		x += foo(x+i, i, i-x);
 	}
-	reverset * rev = reverset_init();
-	reverset_openfile(rev, argv[1]);
-	reverset_sh(rev);
-
-	reverset_destroy(rev);
 	return 0;
 }
 ```
 
-Example analysis
+Output From reverset
 ```ASM
 ;	XREF TO HERE FROM 0x50d
 0x614:   55                      	      push   ebp
