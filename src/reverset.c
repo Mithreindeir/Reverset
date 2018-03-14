@@ -19,6 +19,8 @@ reverset * reverset_init()
 	dshell_addfunc(rev->shell, "quit", &reverset_quit, rev);
 	dshell_addfunc(rev->shell, "list", &reverset_list, rev);
 	dshell_addfunc(rev->shell, "asm", &reverset_asm, rev);
+	dshell_addfunc(rev->shell, "disas", &reverset_disas, rev);
+	//rev->shell->buffer->cur_color = 37;
 
 	return rev;
 }
@@ -199,26 +201,30 @@ int reverset_print(struct text_buffer*buf, int argc,char ** args,void*data)
 	return 1;
 }
 
-int reverset_disas(reverset * rev, char ** args, int num_arg)
+int reverset_disas(struct text_buffer *buf, int argc, char **argv, void*data)
 {
-	if (num_arg == 0) return 0;
+	reverset * rev = data;
+	if (argc < 2) return 0;
 
-	r_pipe_write(rev->pipe, "For automatic analysis use anal\n");
+	int oc = buf->cur_color;
+	buf->cur_color = 37;
+	text_buffer_print(buf, "For most files you will want to use anal\r\n");
+	buf->cur_color = oc;
 
-	if (!args) return 0;
+	if (!argv) return 0;
 	int all = 0;
 	int segment = 0;
 	int num_args = 0;
 	char * tok = NULL;
 
-	for (int i = 0; i < num_arg; i++) {
-		if (!args[i]) continue;
+	for (int i = 1; i <argc; i++) {
+		if (!argv[i]) continue;
 
-		if (args[i][0] == '-') {
+		if (argv[i][0] == '-') {
 			num_args++;
-			int n = strlen(args[i]);
+			int n = strlen(argv[i]);
 			for (int j = 1; j < n; j++) {
-				switch (args[i][j]) {
+				switch (argv[i][j]) {
 					case 'a':
 						all = 1;
 						break;
@@ -227,14 +233,14 @@ int reverset_disas(reverset * rev, char ** args, int num_arg)
 						break;
 				}
 			}
-		} else if (!tok) tok = args[i];
+		} else if (!tok) tok = argv[i];
 		else break;
 	}
 	if (!tok) return num_args;
 
 	uint64_t addr = reverset_resolve_arg(rev, tok);
 	if (addr == -1) {
-		r_pipe_write(rev->pipe, "No address found for \"%s\"\n", tok);
+		text_buffer_print(buf, "No address found for \"%s\"\r\n", tok);
 		return 1;
 	}
 	int r = rev->disassembler->recursive;
@@ -434,6 +440,7 @@ int reverset_list(struct text_buffer *buf, int argc, char**argv, void*data)
 	if (!arg) return 0;
 
 	int symbols = -1;
+	int oc = buf->cur_color;
 	buf->cur_color = 37;
 	if (!strcmp(arg, "symbols") || !strcmp(arg, "symbol")) {
 		for (int i = 0; i < rev->file->num_symbols; i++) {
@@ -456,6 +463,6 @@ int reverset_list(struct text_buffer *buf, int argc, char**argv, void*data)
 			text_buffer_print(buf,  "section: %s address: %#lx str: \"%s\"\r\n", rev->file->sections[str.section].name, str.addr64, str.string);
 		}
 	}
-	buf->cur_color = 0;
+	buf->cur_color = oc;
 	return 1;
 }

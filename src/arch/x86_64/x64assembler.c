@@ -204,7 +204,7 @@ void x64_encode_modrm(struct x64_asm_bytes * asm_op, struct x64_assemble_op * op
 			if (indir.sib) {
 				modrm |= MODRM_SIB;
 				if (indir.disp_size == 1) modrm |= 0x1<<6;
-				else if (indir.disp_size == 4) modrm |= 0x2<<6; 
+				else if (indir.disp_size == 4) modrm |= 0x2<<6;
 				char sib = 0;
 				if (indir.scale != -1)
 					sib |= x64_scale(indir.scale)<<6;
@@ -224,7 +224,9 @@ void x64_encode_modrm(struct x64_asm_bytes * asm_op, struct x64_assemble_op * op
 					//1100 0000 = 0xc0
 					modrm ^= modrm&0xc0;
 				}
-
+				operands[modop].rexb = indir.rexb;
+				operands[modop].rexx = indir.rexx;
+				operands[modop].addr_size = indir.addr_size;
 				x64_add_byte(asm_op, modrm);
 				x64_add_byte(asm_op, sib);
 				if (indir.disp_size==1) x64_add_byte(asm_op, (unsigned char)indir.disp);
@@ -359,11 +361,11 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 				indir->rexx = 1;
 			}
 		} else indir->index = -1;
-		
+
 		if (scale) {
 			indir->scale = strtol(scale,NULL,16);
 		} else indir->scale = -1;
-		
+
 		if (displacement) {
 			if (size == 3) {
 				indir->disp_size = 4;
@@ -385,6 +387,7 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 				indir->rexb = 1;
 			}
 			indir->rip = X64_IS_RIP(base);
+			if (indir->rip) indir->sib = 0;
 			//ESP forced sib
 			if (X64_REG_BIN(b) == 0x4) indir->sib = 1;
 			//There is no [ebp] mode so use a [ebp+0x0] if needed
@@ -513,7 +516,7 @@ int x64_find_instruction( struct x64_asm_bytes * asm_op, char * mnemonic, uint64
 				}
 			}
 		}
-		if (!strcmp(mnemonic, instr.mnemonic)) {			
+		if (!strcmp(mnemonic, instr.mnemonic)) {
 			if (x64_operands_compatible(instr, addr, operands, num_operands)) {
 				return i;
 			}
@@ -665,7 +668,7 @@ void x64_add_byte_prefix(struct x64_asm_bytes * op, unsigned char byte)
 	} else {
 		op->bytes = realloc(op->bytes, op->num_bytes);
 		for (int i = (op->num_bytes-1); i >= 0; i--) {
-			op->bytes[i+1] = op->bytes[i]; 
+			op->bytes[i+1] = op->bytes[i];
 		}
 	}
 	op->bytes[0] = byte;
@@ -676,5 +679,5 @@ void x64_add_int32(struct x64_asm_bytes * op, uint32_t bint)
 	unsigned char * dchar = (unsigned char*)&bint;
 	for (int i = 0; i < 4; i++) {
 		x64_add_byte(op, dchar[i]);
-	}	
+	}
 }

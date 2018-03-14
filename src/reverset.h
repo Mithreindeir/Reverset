@@ -62,7 +62,7 @@ void reverset_sh(reverset * rev);
 uint64_t reverset_resolve_arg(reverset * rev, char * arg);
 int reverset_analyze(struct text_buffer*buf,int argc, char**argv, void*data);
 int reverset_print(struct text_buffer*buf, int argc, char**argv, void*data);
-int reverset_disas(reverset * rev, char ** args, int num_args);
+int reverset_disas(struct text_buffer*buf, int argc, char**argv, void*data);
 int reverset_write(reverset * rev, char ** args, int num_args);
 int reverset_goto(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_asm(struct text_buffer*buf, int argc, char**argv, void*data);
@@ -72,7 +72,6 @@ int reverset_strmod(reverset * rev, char ** args, int num_args);
 int reverset_hex(reverset * rev, char ** args, int num_args);
 
 const static r_cmd r_commands[] = {
-	{"disas", "disas here/function/address\n", &reverset_disas},
 	{"write", "write \"bytes\"\n", &reverset_write},
 	{"/", "/ token\n", &reverset_strmod},
 	{"hex", "hex num_bytes\n", &reverset_hex},
