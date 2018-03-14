@@ -35,25 +35,37 @@ void r_meta_destroy(r_meta * meta)
 
 void r_meta_add_addr(r_meta * meta, r64addr address, int type)
 {
+	//Insertion sort
 	meta->num_addr++;
 	if (meta->num_addr == 1) {
 		meta->addresses = malloc(sizeof(r64addr));
 	} else {
 		meta->addresses = realloc(meta->addresses, meta->num_addr * (sizeof(r64addr)));
 	}
-	meta->addresses[meta->num_addr-1] = address;
-
 	if (meta->num_addr == 1) {
 		meta->address_types = malloc(1);
 	} else {
 		meta->address_types = realloc(meta->address_types, meta->num_addr);
 	}
-	meta->address_types[meta->num_addr-1] = type;
+	int start = 0;
+	for (int i = 0; i < meta->num_addr; i++) {
+		if (meta->addresses[i] < address)
+			start++;
+		else break;
+	}
+	if ((start+1) < meta->num_addr) {
+		memmove(meta->addresses+start+1, meta->addresses+start, meta->num_addr-start);
+		memmove(meta->address_types+start+1,meta->address_types+start, meta->num_addr-start);
+	}
+
+	meta->addresses[start] = address;
+	meta->address_types[start] = type;
 }
 
 int r_meta_find_addr(r_meta * meta, r64addr address, int type)
 {
 	for (int i = 0; i < meta->num_addr; i++) {
+		if (meta->addresses[i]>address) return 0;
 		if (type == 2 && meta->addresses[i]==address) return i+1;
 		else if (type == meta->address_types[i] && meta->addresses[i]==address) return i+1;
 	}

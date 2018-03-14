@@ -327,16 +327,18 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file)
 	for (int j = 0; j < disassembler->num_instructions; j++) {
 		disas = disassembler->instructions[j];
 		all = 0;
+		if (disas->metadata->num_addr <= 0) continue;
 		for (int i = 0; i < file->num_symbols; i++) {
+			if (!R_RELOC(file->symbols[i].type)) continue;
+			if (file->symbols[i].type == -1) continue;
 			sym = file->symbols[i];
-			if (!R_RELOC(sym.type)) continue;
-			if (sym.type == -1) continue;
 			all = 1;
 			int len = 0;
 			if (r_meta_find_addr(disas->metadata, sym.addr64, META_ADDR_DATA)) {
 				sym.addr64 = disas->address;
 				sym.type = -1;
 				file->symbols[i] = sym;
+				break;
 			} else if (r_meta_isaddr(disas->metadata->comment, &len)) {
 				uint64_t num = strtol(disas->metadata->comment, NULL, 0);
 				if (num==sym.addr64) {
@@ -344,6 +346,7 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file)
 					sym.type = -1;
 					file->symbols[i] = sym;
 				}
+				break;
 			}
 		}
 		if (!all) break;
@@ -358,14 +361,18 @@ void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file)
 {
 	char buf[256];
 	memset(buf, 0, 256);
+
+	r_disasm * disas;
+	rsymbol sym;
 	//Add labels for code that is the address of a file symbol
 	//And Find references to symbols and replace address with symbol name
 	for (int j = 0; j < disassembler->num_instructions; j++) {
-		r_disasm * disas = disassembler->instructions[j];
+		disas = disassembler->instructions[j];
+		if (disas->metadata->num_addr <= 0) continue;
 		for (int i = 0; i < file->num_symbols; i++) {
-			rsymbol  sym = file->symbols[i];
-			if (!sym.name) continue;
-			if (sym.type <= 0) continue;
+			if (!file->symbols[i].name) continue;
+			if (file->symbols[i].type <= 0) continue;
+			sym = file->symbols[i];
 			int idx = 0;
 			int indirect = 0;
 			if ((idx=r_meta_find_addr(disas->metadata, sym.addr64, META_ADDR_BOTH))){
@@ -416,6 +423,7 @@ void r_meta_string_replace(r_disassembler * disassembler, r_file * file)
 	memset(buf, 0, 256);
 	for (int j = 0; j < disassembler->num_instructions; j++) {
 		r_disasm * disas = disassembler->instructions[j];
+		if (disas->metadata->num_addr <= 0) continue;
 		//Find references to strings and insert them
 		for (int i = 0; i < file->num_strings; i++) {
 			int idx = 0;

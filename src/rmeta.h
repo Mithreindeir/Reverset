@@ -4,6 +4,7 @@
 #include "rtype.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /*The context addresses are used in*/
 #define META_ADDR_BOTH 2
@@ -47,7 +48,7 @@ typedef struct r_meta
 {
 	char * comment;
 	char * label;
-	
+
 	r64addr * addresses;
 	char * address_types;
 	int num_addr;
