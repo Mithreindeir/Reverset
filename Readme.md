@@ -31,7 +31,13 @@ Commands:
 
 # Building
 
-Not tested on Windows yet. Use make to compile.
+Uses several other of my projects on github as submodules.
+```
+git clone --recurse-submodules https://github.com/mithreindeir/reverset.git
+cd reverset
+make
+```
+Not tested on Windows yet. 
 
 # Example
 An example function to analyze:
