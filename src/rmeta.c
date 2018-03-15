@@ -42,13 +42,15 @@ void r_meta_add_addr(r_meta * meta, r64addr address, int type)
 	} else {
 		meta->addresses = realloc(meta->addresses, meta->num_addr * (sizeof(r64addr)));
 	}
+	//meta->addresses[meta->num_addr-1] = address;
 	if (meta->num_addr == 1) {
 		meta->address_types = malloc(1);
 	} else {
 		meta->address_types = realloc(meta->address_types, meta->num_addr);
 	}
+	//meta->address_types[meta->num_addr-1] = type;
 	int start = 0;
-	for (int i = 0; i < meta->num_addr; i++) {
+	for (int i = 0; i < (meta->num_addr-1); i++) {
 		if (meta->addresses[i] < address)
 			start++;
 		else break;
