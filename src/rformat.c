@@ -90,7 +90,7 @@ void r_formatted_print(struct text_buffer *textb, r_disasm * disas, r_analyzer *
 	//Print all xrefs except those that where the xref froms location is within the bounds
 	for (int i = 0; i < disas->metadata->num_xrefto; i++) {
 		uint64_t addr = disas->metadata->xref_to[i].addr;
-		if (addr > start && addr <= end) continue;
+		//if (addr > start && addr <= end) continue;
 		text_buffer_print(textb, ";\tXREF TO HERE FROM %#lx\r\n", addr);
 	}
 	for (int i = 0; i < disas->metadata->num_xreffrom; i++) {

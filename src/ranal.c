@@ -15,18 +15,21 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 
 		r_disassembler_pushaddr(disassembler, file->symbols[i].addr64);
 	}
+	writef("Disassembling recursively from entry point\r\n");
 	r_disassembler_pushaddr(disassembler, file->entry_point);
 	r_disassemble(disassembler, file);
+	printf("\r\n");
 	/*Recursively disassemble all calls*/
-
 	/*Analyze after all disassembling is done, but don't call analyzers that replace operands  */
 	if (file->arch == r_x86_64)
 		r_meta_rip_resolve(disassembler, file);
-
+	writef("Calculating branches\r\n");
 	r_meta_calculate_branches(anal, disassembler);
+	writef("Resolving relocatable symbols\r\n");
 	r_meta_reloc_resolve(disassembler, file);
+	writef("Finding XREFs\r\n");
 	r_meta_find_xrefs(disassembler, file);
-
+	writef("Function analysis\r\n");
 	/*TODO add other ways to identify main when using a runtime other than libc
 	Attempt to identify main by checking for "__libc_start_main" symbol, and finding the function that has an xref right above libc
 		...
@@ -615,17 +618,33 @@ void r_meta_find_xrefs(r_disassembler * disassembler, r_file * file)
 	r_disasm *instr1, *instr2;
 	for (int i = 0; i < disassembler->num_instructions; i++) {
 		instr1 = disassembler->instructions[i];
-		for (int j = 0; j < disassembler->num_instructions; j++) {
-			if (j==i) continue;
-			instr2 = disassembler->instructions[j];
-			for (int k = 0; k < instr2->metadata->num_addr; k++) {
-				if (instr2->metadata->addresses[k] == instr1->address) {
-					//only use code xrefs
-					r_add_xref(instr1, instr2, instr2->metadata->address_types[k]);
-				}
+		for (int j = 0; j < instr1->metadata->num_addr; j++) {
+			uint64_t addr = instr1->metadata->addresses[j];
+			instr2 = r_meta_find_disas(disassembler, addr);
+			if (instr2) {
+				r_add_xref(instr2, instr1, instr1->metadata->address_types[j]);
 			}
 		}
 	}
+}
+
+r_disasm *r_meta_find_disas(r_disassembler *disassembler, uint64_t addr)
+{
+	return r_meta_find_recursive(disassembler, addr, 0, disassembler->num_instructions);
+}
+
+r_disasm *r_meta_find_recursive(r_disassembler *disassembler,uint64_t a,int s, int e)
+{
+	int half = (e-s)/2 + s;
+	r_disasm * disas = disassembler->instructions[half];
+	if (disas->address == a)
+		return disas;
+	else if ((e-s)<= 1)
+		return NULL;
+	else if (disas->address > a)
+		return r_meta_find_recursive(disassembler, a, s, half);
+	else if (disas->address < a)
+		return r_meta_find_recursive(disassembler,a, half, e);
 }
 
 r_analyzer * r_analyzer_init()

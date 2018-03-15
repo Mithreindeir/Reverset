@@ -74,6 +74,8 @@ uint64_t r_meta_get_address(char * operand, int * status);
 int r_meta_isaddr(char * operand, int * len);
 int r_meta_rip_relative(char * operand);
 int r_meta_indirect_address(char * operand);
+r_disasm *r_meta_find_disas(r_disassembler *disassembler, uint64_t address);
+r_disasm *r_meta_find_recursive(r_disassembler *disassembler, uint64_t a, int s, int e);
 void r_add_xref(r_disasm * to, r_disasm * from, int type);
 
 /*Very Rudimentary Argument Recognition by using the current ABI's calling convention*/

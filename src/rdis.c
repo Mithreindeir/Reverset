@@ -121,7 +121,7 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 		if (!disassembler->linear && disas->metadata->type == r_tret) {
 			break;
 		}
-		//Also return if current instruction is a unconditional jump and cannot be skipped 
+		//Also return if current instruction is a unconditional jump and cannot be skipped
 		if (!disassembler->linear && disas->metadata->type == r_tujump) {
 			//for (int i = 0; i < )
 		}
@@ -174,7 +174,7 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 				} else {
 					unique_instructions[i] = instructions[ni++];
 					instructions[ni-1] = NULL;
-				} 
+				}
 			} else if (di < disassembler->num_instructions) {
 				unique_instructions[i] = disassembler->instructions[di++];
 				disassembler->instructions[di-1] = NULL;
@@ -198,7 +198,7 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 		free(instructions);
 
 		disassembler->num_instructions = total_unique;
-		disassembler->instructions = unique_instructions;		
+		disassembler->instructions = unique_instructions;
 	}
 	return laddr;
 }
@@ -206,18 +206,26 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 void r_disassemble(r_disassembler * disassembler, r_file * file)
 {
 	uint64_t addr = 0;
+	int num_dis = 0;
 	//If the end of the section is reached return
 	while (disassembler->num_addresses > 0) {
 		addr = r_disassembler_popaddr(disassembler);
 
 		if (!disassembler->overwrite && r_disassembler_getbound(disassembler, addr) != -1) {
 			continue;
-		} 
+		}
 		rsection * section = r_file_section_addr(file, addr);
 		if (!section || !(R_EXEC&section->perm) || !strncmp(section->name, ".rodata", 7)) {
 			continue;
 		} else {
-			printf("\rDisassembling %#lx in %s\n", addr, section->name);
+			clear_line();
+			char progress[16];
+			memset(progress, ' ', 15);
+			float prg = (num_dis / (float)(1+num_dis+disassembler->num_addresses*2));
+			for (int i = 0; i < (1+prg*15); i++) progress[i] = '#';
+			progress[15] = 0;
+			writef("\r[%s] Disassembling %s:[%#lx]", progress, section->name, addr);
+			num_dis++;
 		}
 
 		if (disassembler->overwrite) disassembler->overwrite = 0;
@@ -227,7 +235,7 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 
 		uint64_t laddr = r_disassemble_raw(disassembler, section->raw+offset, section->size - offset, section->start + offset);
 		if ((disassembler->num_instructions - tmp) > 0) r_disassembler_addbound(disassembler, section->start + offset,  laddr);
-		
+
 		if (!disassembler->recursive) break;
 		for (int i = 0; i < disassembler->num_instructions; i++) {
 			r_disasm * disasm = disassembler->instructions[i];
@@ -239,7 +247,6 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 			}
 		}
 	}
-
 }
 
 void r_disassembler_add_symbols(r_disassembler * disassembler, r_file * file)
@@ -261,7 +268,7 @@ void r_disassembler_pushaddr(r_disassembler * disassembler, uint64_t addr)
 			if (disassembler->used_addrstack[i] == addr) return;
 		}
 	}
-	
+
 	disassembler->num_addresses++;
 	if (disassembler->num_addresses == 1) {
 		disassembler->addrstack = malloc(sizeof(uint64_t));
@@ -277,7 +284,7 @@ uint64_t r_disassembler_popaddr(r_disassembler * disassembler)
 	if (disassembler->num_addresses <= 0) return 0;
 
 	disassembler->num_addresses--;
-	int addr = disassembler->addrstack[disassembler->num_addresses]; 
+	int addr = disassembler->addrstack[disassembler->num_addresses];
 	if (disassembler->num_addresses == 0) {
 		free(disassembler->addrstack);
 		disassembler->addrstack = NULL;
@@ -308,11 +315,11 @@ void r_disassembler_addbound(r_disassembler * disassembler, uint64_t s, uint64_t
 	} else {
 		disassembler->bounds = realloc(disassembler->bounds, sizeof(block_bounds) * disassembler->num_bounds);
 	}
-	
+
 	block_bounds bound;
 	bound.start = s;
 	bound.end = e;
-	disassembler->bounds[disassembler->num_bounds-1] = bound; 
+	disassembler->bounds[disassembler->num_bounds-1] = bound;
 }
 
 uint64_t r_disassembler_getbound(r_disassembler * disassembler, uint64_t addr)
