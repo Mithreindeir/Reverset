@@ -137,6 +137,7 @@ void r_formatted_printall(struct text_buffer *textb, r_disassembler * disassembl
 		if (anal->function && disas->metadata->type == r_tret) break;
 	}
 	max = max==-1 ? disassembler->num_instructions : start + max;
+	if (start == -1) return;
 
 	for (int i = start; i < max; i++) {
 		r_disasm * disas = disassembler->instructions[i];

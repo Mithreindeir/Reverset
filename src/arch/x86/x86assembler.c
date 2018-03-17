@@ -77,7 +77,7 @@ unsigned char * x86_assemble(char * instr, uint64_t addr_s, int * num_bytes)
 			chars = -1;
 		} else if (chars == -1) chars = i;
 	}
-	
+
 	struct x86_assemble_op * modes = malloc(sizeof(struct x86_assemble_op) * num_operands);
 
 	for (int i = 0; i < num_operands; i++) {
@@ -90,6 +90,9 @@ unsigned char * x86_assemble(char * instr, uint64_t addr_s, int * num_bytes)
 		x86_instruction instr = x86_instruction_table[opc];
 	} else {
 		free(xasm);
+		for (int i = 0; i < num_operands; i++) {
+			free(modes[i].operand);
+		}
 		free(operands);
 		free(mnemonic);
 		free(modes);
@@ -172,7 +175,7 @@ void x86_encode_modrm(struct x86_asm_bytes * asm_op, struct x86_assemble_op * op
 			if (indir.sib) {
 				modrm |= MODRM_SIB;
 				if (indir.disp_size == 1) modrm |= 0x1<<6;
-				else if (indir.disp_size == 4) modrm |= 0x2<<6; 
+				else if (indir.disp_size == 4) modrm |= 0x2<<6;
 				char sib = 0;
 				if (indir.scale != -1)
 					sib |= x86_scale(indir.scale)<<6;
@@ -239,6 +242,7 @@ void x86_retrieve_indirect(char * operand, struct x86_indirect * indir)
 	int size = 0;
 	char * prefix = strtok_dup(operand, "[", 0);
 	indir->disp = 0;
+	indir->sib = 0;
 
 	if (prefix) {
 		char * body = strtok_dup(NULL, "]", 0);
@@ -310,11 +314,11 @@ void x86_retrieve_indirect(char * operand, struct x86_indirect * indir)
 			else indir->index = X86_REG_BIN(i);
 			indir->addr_size = X86_REG_SIZE(i);
 		} else indir->index = -1;
-		
+
 		if (scale) {
 			indir->scale = strtol(scale,NULL,16);
 		} else indir->scale = -1;
-		
+
 		if (base) {
 			int b = x86_register_index(base);
 
@@ -341,6 +345,7 @@ void x86_retrieve_indirect(char * operand, struct x86_indirect * indir)
 		if (base) free(base);
 		if (before) free(before);
 		if (displacement) free(displacement);
+		if (body) free(body);
 		free(prefix);
 	}
 	//printf("%x %x %x %x", indir->base, indir->index, indir->scale, indir->disp);
@@ -496,7 +501,7 @@ int x86_find_instruction(struct x86_asm_bytes * asm_op, char * mnemonic, uint32_
 
 		}
 	}
-										
+
 
 	return -1;
 }
@@ -535,7 +540,7 @@ int x86_operands_compatible(x86_instruction instr, uint32_t addr, struct x86_ass
 				}
 				if (other_e) return 0;
 			} else if ((X86_NUMBER_OP(operands[i].mode) && X86_NUMBER_OP(m2)));//Immediate, relative and moffset are all same string so make them all compatible
-			else return 0;		
+			else return 0;
 		}
 		int size = operands[i].size;
 		if (m2 == X86_REL) {
@@ -543,7 +548,7 @@ int x86_operands_compatible(x86_instruction instr, uint32_t addr, struct x86_ass
 			operands[i].relative_size = x86_relative_size(operands[i].operand, addr+1+a_size);
 			size = operands[i].relative_size;
 		}
-		
+
 		if (s2 && !x86_size_compatible(m2, size, s2)) return 0;
 	}
 
@@ -592,9 +597,7 @@ void x86_add_byte_prefix(struct x86_asm_bytes * op, unsigned char byte)
 		op->bytes = malloc(1);
 	} else {
 		op->bytes = realloc(op->bytes, op->num_bytes);
-		for (int i = (op->num_bytes-1); i >= 0; i--) {
-			op->bytes[i+1] = op->bytes[i]; 
-		}
+		memmove(op->bytes+1, op->bytes, op->num_bytes-1);
 	}
 	op->bytes[0] = byte;
 }
@@ -604,5 +607,5 @@ void x86_add_int32(struct x86_asm_bytes * op, uint32_t bint)
 	unsigned char * dchar = (unsigned char*)&bint;
 	for (int i = 0; i < 4; i++) {
 		x86_add_byte(op, dchar[i]);
-	}	
+	}
 }

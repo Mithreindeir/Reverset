@@ -285,6 +285,7 @@ int reverset_asm(struct text_buffer*tbuf,int argc, char**argv, void*data)
 	int num_bytes = 0;
 	unsigned char * bytes = assemblers[rev->file->arch](arg, rev->address, &num_bytes);
 	char buf[256];
+	memset(buf, 0, 255);
 	int iter = 0;
 
 	if (bytes) {
@@ -295,6 +296,7 @@ int reverset_asm(struct text_buffer*tbuf,int argc, char**argv, void*data)
 		iter += snprintf(buf+iter, 256-iter, "\r\n");
 	}
 	text_buffer_print(tbuf, "%s -> %s\n", arg, buf);
+	free(bytes);
 
 	return 1;
 }

@@ -7,6 +7,8 @@
 {!A-Za-z}^push^{!A-Za-z} 				= green
 {!A-Za-z}^pop^{!A-Za-z} 				= yellow
 {!A-Za-z}^add^{!A-Za-z} 				= green
+{!A-Za-z}^inc^{!A-Za-z} 				= green
+{!A-Za-z}^sbb^{!A-Za-z} 				= green
 {!A-Za-z}^sar^{!A-Za-z} 				= green
 {!A-Za-z}^shl^{!A-Za-z} 				= green
 {!A-Za-z}^cbw^{!A-Za-z} 				= green
@@ -33,6 +35,7 @@
 {!A-Za-z}^je^{!A-Za-z} 					= yellow
 {!A-Za-z}^jge^{!A-Za-z} 				= yellow
 {!A-Za-z}^jg^{!A-Za-z} 					= yellow
+{!A-Za-z}^jnp^{!A-Za-z} 					= yellow
 {!A-Za-z}^jz^{!A-Za-z} 					= yellow
 {!A-Za-z}^jnz^{!A-Za-z} 				= yellow
 {!A-Za-z}^jb^{!A-Za-z} 				= yellow
@@ -55,13 +58,14 @@
 {!A-Za-z}^[sd]i^{!A-Za-z} 				= red
 {!A-Za-z}^d[lx]^{!A-Za-z} 				= red
 {!A-Za-z}^local_{0-9a-f}$h^{!A-Za-z}			= green
+{!A-Za-z}^arg_{0-9a-f}$h^{!A-Za-z}			= green
 {!A-Za-z}^r{1}{0-9}{dwb}^{!A-Za-z} 			= red
 ^[A-Za-z]$(*)^	 				= green
 ^//*\r\n^ 					= red
 ^;*\r\n^ 					= red
 ^#*\r\n^ 					= blue
 ^0x{0-9a-f}$^ 					= cyan
-^func.[A-Za-z0-9_]$^ 				= green
+^func.[A-Za-z0-9_.]$^ 				= green
 ^sym.[A-Za-z0-0_]$^ 				= green
 symbol: ^[A-z]$^ 				= green
 function: sym.^[A-z0-9.]$^ 			= green

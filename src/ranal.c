@@ -7,7 +7,7 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 	Name these as function
 	*/
 	disassembler->recursive = 1;
-	disassembler->overwrite = 1;
+	disassembler->overwrite = 0;
 	disassembler->linear = 0;
 
 	for (int i = 0; i < file->num_symbols; i++) {
@@ -15,8 +15,14 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 
 		r_disassembler_pushaddr(disassembler, file->symbols[i].addr64);
 	}
-	writef("Disassembling recursively from entry point\r\n");
-	r_disassembler_pushaddr(disassembler, file->entry_point);
+	writef("Disassembling recursively from entry point %lx\r\n", file->entry_point);
+	/*The entry point must be the top of the stack so force it*/
+	int old_size = disassembler->num_addresses;
+	int cnt = 0;
+	while (old_size == disassembler->num_addresses) {
+		r_disassembler_pushaddr(disassembler, cnt++);
+	}
+	disassembler->addrstack[old_size] = file->entry_point;
 	r_disassemble(disassembler, file);
 	printf("\r\n");
 	/*Recursively disassemble all calls*/
@@ -178,10 +184,10 @@ void r_meta_func_replace(r_disassembler * disassembler, r_file * file, r_analyze
 						char buf2[128];
 						snprintf(buf2, 127, "%s # %s", disas->metadata->comment, disas->op[ridx]);
 						free(disas->metadata->comment);
+						free(disas->op[ridx]);
 						disas->metadata->comment = strdup(buf2);
 					}
 					disas->op[ridx] = NULL;
-					//free(disas->op[0]);
 				}
 				//Go back and look for arguments
 				if (disas->metadata->type == r_tcall) {
@@ -394,6 +400,7 @@ void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file)
 						ridx++;
 					}
 				}
+				if (ridx >= disas->num_operands) continue;
 				//sym. means func replaced with symbol name already
 				if (disas->op[ridx]) {
 					disas->metadata->comment = disas->op[ridx];
@@ -722,7 +729,7 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 		return;
 	}
 
-	int rdist = 10;
+	int rdist = 20;
 	int argc = 0;
 	int * args = NULL;
 	/*Goto the function address*/
@@ -731,7 +738,7 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 		if (disas->address < func->start) continue;
 		if (disas->address > (func->start + func->size)) break;
 		rdist--;
-		if (disas->metadata->type != r_tdata && disas->metadata->type != r_tpush && disas->metadata->type != r_tpop) continue;
+		//if (disas->metadata->type != r_tdata && disas->metadata->type != r_tpush && disas->metadata->type != r_tpop) continue;
 
 		int arg = 0;
 		//source is farthest right operand so use next to last
@@ -816,9 +823,8 @@ void r_function_locals(r_disassembler * disassembler, r_function * func, r_abi a
 				int len = strlen(disas->op[j]);
 				int fbrk = 0;
 				for (; fbrk < len; fbrk++) {
-					if (disas->op[j][fbrk]=='[') {
+					if (disas->op[j][fbrk]=='[')
 						break;
-					}
 				}
 				disas->op[j][fbrk] = 0;
 
@@ -842,6 +848,21 @@ void r_function_locals(r_disassembler * disassembler, r_function * func, r_abi a
 					locals = realloc(locals, sizeof(int) * num_locals);
 				}
 				locals[num_locals-1] = n;
+				continue;
+			}
+			n = r_function_get_stack_args(disas->op[j], abi);
+			if (n != -1) {
+				int len = strlen(disas->op[j]);
+				int fbrk = 0;
+				for (; fbrk < len; fbrk++) {
+					if (disas->op[j][fbrk]=='[')
+						break;
+				}
+				disas->op[j][fbrk] = 0;
+				char buf[32];
+				snprintf(buf, 32, "%s[arg_%xh]", disas->op[j], n);
+				free(disas->op[j]);
+				disas->op[j] = strdup(buf);
 			}
 		}
 	}
@@ -892,7 +913,6 @@ int r_function_get_stack_locals(char * operand, r_abi abi)
 int r_function_get_stack_args(char * operand, r_abi abi)
 {
 	if (abi != rc_sysv64 && abi != rc_sysv32) return -1;
-
 	int m_disp = abi==rc_sysv64?8:4;
 	int disp = 0;
 	int s = strlen(operand);
@@ -909,10 +929,7 @@ int r_function_get_stack_args(char * operand, r_abi abi)
 			//It is a valid address up until the ']' indirect part
 			if (opaddr[len]==']') {
 				opaddr[len] = 0;
-				int base = 16;
-				if (strlen(opaddr) > 2 && (opaddr[1] == 'x' || opaddr[1] == 'X')) base = 0;
-
-				uint64_t num = (uint64_t)strtol(opaddr, NULL, base);
+				uint64_t num = (uint64_t)strtol(opaddr, NULL, 0);
 				free(opaddr);
 				//Check if above return address
 				if (num <= m_disp) continue;

@@ -215,22 +215,23 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 			continue;
 		}
 		rsection * section = r_file_section_addr(file, addr);
-		if (!section || !(R_EXEC&section->perm) || !strncmp(section->name, ".rodata", 7)) {
-			continue;
-		} else {
-			clear_line();
-			char progress[16];
-			memset(progress, ' ', 15);
-			float prg = (num_dis / (float)(1+num_dis+disassembler->num_addresses*2));
-			for (int i = 0; i < (1+prg*15); i++) progress[i] = '#';
-			progress[15] = 0;
-			writef("\r[%s] Disassembling %s:[%#lx]", progress, section->name, addr);
-			num_dis++;
-		}
+		if (!section) continue;
+		if (!(R_EXEC&section->perm)) continue;
+		int allowed  = !strncmp(section->name, ".text", 7);
+		allowed = allowed || !strncmp(section->name, ".got", 3);
+		allowed = allowed || !strncmp(section->name, ".plt", 3);
+		if (!allowed) continue;
+		clear_line();
+		char progress[16];
+		memset(progress, ' ', 15);
+		float prg = (num_dis / (float)(1+num_dis+disassembler->num_addresses*2));
+		for (int i = 0; i < (1+prg*15); i++) progress[i] = '#';
+		progress[15] = 0;
+		writef("\r[%s] Disassembling %s:[%#lx]", progress, section->name, addr);
+		num_dis++;
 
 		if (disassembler->overwrite) disassembler->overwrite = 0;
 		int offset = addr - section->start;
-
 		int tmp = disassembler->num_instructions;
 
 		uint64_t laddr = r_disassemble_raw(disassembler, section->raw+offset, section->size - offset, section->start + offset);

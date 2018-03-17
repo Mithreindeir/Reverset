@@ -90,6 +90,9 @@ unsigned char * x64_assemble(char * instr, uint64_t addr, int * num_bytes)
 		//printf("%s %s %s %s\n", instr.mnemonic, instr.op[0], instr.op[1], instr.op[2]);
 	} else {
 		free(xasm);
+		for (int i = 0; i < num_operands; i++) {
+			free(modes[i].operand);
+		}
 		free(operands);
 		free(mnemonic);
 		free(modes);
@@ -285,6 +288,7 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 	indir->rexx = 0;
 	indir->rip = 0;
 	indir->disp = 0;
+	indir->sib = 0;
 
 	if (prefix) {
 		char * body = strtok_dup(NULL, "]", 0);
@@ -402,6 +406,7 @@ void x64_retrieve_indirect(char * operand, struct x64_indirect * indir)
 		if (base) free(base);
 		if (before) free(before);
 		if (displacement) free(displacement);
+		if (body) free(body);
 		free(prefix);
 	}
 	//printf("%x %x %x %x", indir->base, indir->index, indir->scale, indir->disp);
@@ -415,6 +420,7 @@ struct x64_assemble_op x64_assembler_type(char * operand)
 	op.rexx = 0;
 	op.rexb = 0;
 	op.rexr = 0;
+	op.opr_size = 0;
 	op.addr_size = 0;
 	op.mode = 0;
 	op.size = 0;
@@ -667,9 +673,7 @@ void x64_add_byte_prefix(struct x64_asm_bytes * op, unsigned char byte)
 		op->bytes = malloc(1);
 	} else {
 		op->bytes = realloc(op->bytes, op->num_bytes);
-		for (int i = (op->num_bytes-1); i >= 0; i--) {
-			op->bytes[i+1] = op->bytes[i];
-		}
+		memmove(op->bytes+1, op->bytes, op->num_bytes-1);
 	}
 	op->bytes[0] = byte;
 }

@@ -17,13 +17,13 @@ r_meta_t instr_type(char * mnemonic)
 	for (int i = 0; i < (sizeof(instr_pairs)/sizeof(instr_pair)); i++) {
 		if (!strcmp(mnemonic, instr_pairs[i].mnemonic)){
 			return instr_pairs[i].type;
-		} 
+		}
 	}
 
 	return r_tnone;
 }
 
-//Removes whitespace 
+//Removes whitespace
 char * no_space_strdup(char * str)
 {
 	int len2 = 0;
@@ -32,7 +32,7 @@ char * no_space_strdup(char * str)
 		if (str[len] != ' ') len2++;
 	}
 	len2++;
-	char * str2 = malloc(len2);
+	char * str2 = malloc(len2+1);
 	for (int i = 0, j = 0; i < len && j < len2; i++) {
 		if (str[i] != ' ')
 			str2[j++] = str[i];
@@ -58,7 +58,7 @@ char * strtok_dup(char * string, char *delim, int last)
 		//str += i+1;
 		return NULL;
 	}
-	char * str2 = malloc(i);
+	char * str2 = malloc(i+1);
 	for (int j = 0; j < i; j++) {
 		str2[j] = str[j];
 	}
