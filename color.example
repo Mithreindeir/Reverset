@@ -53,6 +53,7 @@
 {!A-Za-z}^r{1}{0-9}{dwb}^{!A-Za-z} 			= red
 ^[A-Za-z]$(*)^	 				= green
 ^//*\r\n^ 					= red
+^;*\r\n^ 					= red
 ^#*\r\n^ 					= blue
 ^0x{0-9a-f}$^ 					= cyan
 ^func.[A-Za-z0-9_]$^ 				= green

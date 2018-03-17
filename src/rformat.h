@@ -16,7 +16,7 @@
 #define KWHT  "\x1B[37m"
 
 void r_formatted_print(struct text_buffer *textb, r_disasm * disas, r_analyzer * anal, uint64_t start, uint64_t end);
-void r_formatted_printall(struct text_buffer *textb, r_disassembler * disassembler, r_analyzer * anal, uint64_t addr);
+void r_formatted_printall(struct text_buffer *textb, r_disassembler * disassembler, r_analyzer * anal, uint64_t addr, int max);
 void r_formatted_printjump(struct text_buffer *textb, r_analyzer * anal, uint64_t addr, uint64_t sb, uint64_t eb);
 
 #endif

@@ -4,6 +4,7 @@
 #include "rfile.h"
 #include "file/elf/read_elf.h"
 #include "rmeta.h"
+#include "dish/dshell.h"
 
 /*Generic disassembly format for printing. Supports up to 3 operands
 Instruction op1, op2, op3

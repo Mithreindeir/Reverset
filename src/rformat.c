@@ -125,20 +125,21 @@ void r_formatted_print(struct text_buffer *textb, r_disasm * disas, r_analyzer *
 	text_buffer_print(textb, "\r\n");
 }
 
-void r_formatted_printall(struct text_buffer *textb, r_disassembler * disassembler, r_analyzer * anal, uint64_t addr)
+void r_formatted_printall(struct text_buffer *textb, r_disassembler * disassembler, r_analyzer * anal, uint64_t addr, int max)
 {
 	uint64_t end = 0;
+	int start = -1;
 	for (int i = 0; i < disassembler->num_instructions; i++) {
 		r_disasm * disas = disassembler->instructions[i];
 		if (disas->address < addr) continue;
+		if (start==-1) start = i;
 		end = disas->address + disas->used_bytes;
 		if (anal->function && disas->metadata->type == r_tret) break;
 	}
+	max = max==-1 ? disassembler->num_instructions : start + max;
 
-	for (int i = 0; i < disassembler->num_instructions; i++) {
+	for (int i = start; i < max; i++) {
 		r_disasm * disas = disassembler->instructions[i];
-		if (disas->address < addr) continue;
-
 		r_formatted_print(textb, disas, anal, addr, end);
 		if (anal->function && disas->metadata->type == r_tret) break;
 	}

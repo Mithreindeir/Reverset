@@ -149,7 +149,7 @@ void r_meta_func_replace(r_disassembler * disassembler, r_file * file, r_analyze
 {
 	if (file->abi != rc_sysv64 && file->abi != rc_sysv32) return;
 	char buf[256];
-	memset(buf, 0, 256);
+	memset(buf, 0, 255);
 	//Add labels for code that is the address of a file symbol
 	//And Find references to symbols and replace address with symbol name
 	for (int j = 0; j < disassembler->num_instructions; j++) {
@@ -175,10 +175,10 @@ void r_meta_func_replace(r_disassembler * disassembler, r_file * file, r_analyze
 					if (!disas->metadata->comment)
 						disas->metadata->comment = disas->op[ridx];
 					else {
-						char buf[128];
-						snprintf(buf, 128, "%s # %s", disas->metadata->comment, disas->op[ridx]);
+						char buf2[128];
+						snprintf(buf2, 127, "%s # %s", disas->metadata->comment, disas->op[ridx]);
 						free(disas->metadata->comment);
-						disas->metadata->comment = strdup(buf);
+						disas->metadata->comment = strdup(buf2);
 					}
 					disas->op[ridx] = NULL;
 					//free(disas->op[0]);
@@ -194,12 +194,12 @@ void r_meta_func_replace(r_disassembler * disassembler, r_file * file, r_analyze
 				int iter = 0;
 				if (disas->metadata->label)
 					free(disas->metadata->label);
-				iter += snprintf(buf+iter, 256-iter, "%s(", func.name);
+				iter += snprintf(buf+iter, 255-iter > 0 ? 255-iter : 0, "%s(", func.name);
 				for (int k = 0; k < func.argc; k++) {
-					if (k!=0) iter += snprintf(buf+iter, 256-iter, ", ");
-					iter += snprintf(buf+iter, 256-iter, "%s", func.args[k]);
+					if (k!=0) iter += snprintf(buf+iter, 255-iter > 0? 255-iter : 0, ", ");
+					iter += snprintf(buf+iter, 255-iter > 0 ? 255-iter : 0, "%s", func.args[k]);
 				}
-				iter += snprintf(buf+iter, 256-iter, ")");
+				iter += snprintf(buf+iter, 255-iter > 0 ? 255-iter : 0, ")");
 				disas->metadata->label = strdup(buf);
 			}
 		}
@@ -331,6 +331,8 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file)
 		disas = disassembler->instructions[j];
 		all = 0;
 		if (disas->metadata->num_addr <= 0) continue;
+		int len = 0;
+		int comment_addr = r_meta_isaddr(disas->metadata->comment, &len);
 		for (int i = 0; i < file->num_symbols; i++) {
 			if (!R_RELOC(file->symbols[i].type)) continue;
 			if (file->symbols[i].type == -1) continue;
@@ -342,7 +344,7 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file)
 				sym.type = -1;
 				file->symbols[i] = sym;
 				break;
-			} else if (r_meta_isaddr(disas->metadata->comment, &len)) {
+			} else if (comment_addr) {
 				uint64_t num = strtol(disas->metadata->comment, NULL, 0);
 				if (num==sym.addr64) {
 					sym.addr64 = disas->address;

@@ -163,21 +163,35 @@ int reverset_analyze(struct text_buffer*buf,int argc, char**argv, void*data)
 int reverset_print(struct text_buffer*buf, int argc,char ** args,void*data)
 {
 	reverset *rev = data;
-	if (argc == 0) return 0;
+	if (argc < 2) return 0;
 	char * arg = args[1];
 	if (!arg) return 0;
+	int num = 0;
+	for (int i = 1; i < argc; i++) {
+		if (args[i][0]=='-') {
+			if (args[i][1]=='n')
+				num = 1;
+		}
+	}
 
-	uint64_t addr = 0;
+	uint64_t addr = rev->address;
+	int max = -1;
 
 	if (!strcmp(arg, "all")) {
 		rev->anal->function = 0;
-	} else {
+	} else if (!num) {
 		rev->anal->function = 1;
 		addr = reverset_resolve_arg(rev, arg);
 		if (addr == -1) {
 			text_buffer_print(buf, "No address found for \"%s\"\r\n", arg);
 			return 1;
 		}
+	} else {
+		if (argc < 3) {
+			text_buffer_print(buf, "No number specified \r\n");
+			return 1;
+		}
+		max = strtol(args[2], NULL, 10);
 	}
 
 	int found = 0;
@@ -196,7 +210,7 @@ int reverset_print(struct text_buffer*buf, int argc,char ** args,void*data)
 		r_disassemble(rev->disassembler, rev->file);
 		r_meta_analyze(rev->anal, rev->disassembler, rev->file);
 	}
-	r_formatted_printall(buf, rev->disassembler, rev->anal, addr);
+	r_formatted_printall(buf, rev->disassembler, rev->anal, addr, max);
 
 	return 1;
 }
