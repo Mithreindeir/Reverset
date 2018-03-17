@@ -10,6 +10,11 @@
 {!A-Za-z}^sar^{!A-Za-z} 				= green
 {!A-Za-z}^shl^{!A-Za-z} 				= green
 {!A-Za-z}^cbw^{!A-Za-z} 				= green
+{!A-Za-z}^stc^{!A-Za-z} 				= green
+{!A-Za-z}^wait^{!A-Za-z} 				= green
+{!A-Za-z}^xchg^{!A-Za-z} 				= green
+{!A-Za-z}^ror^{!A-Za-z} 				= green
+{!A-Za-z}^rol^{!A-Za-z} 				= green
 {!A-Za-z}^test^{!A-Za-z} 				= green
 {!A-Za-z}^repz^{!A-Za-z} 				= green
 {!A-Za-z}^add^{!A-Za-z} 				= green
