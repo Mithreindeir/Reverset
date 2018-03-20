@@ -77,10 +77,12 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 
 		/*Find disassembly with address*/
 		int found = 0;
+		int sidx = 0;
 		r_disasm * disas = NULL;
 		for (int j = 0; j < disassembler->num_instructions; j++) {
 			disas = disassembler->instructions[j];
 			if (disas->address == b.start) {
+				sidx = j;
 				found = 1;
 				break;
 			}
@@ -139,6 +141,12 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 		func.args = NULL;
 		func.num_locals = 0;
 		func.locals = NULL;
+		func.bbs = NULL;
+		func.nbbs = 0;
+		func.bbs = rbb_anal(disassembler, anal->branches, anal->num_branches, sidx, func.start, b.end, &func.nbbs);
+		for (int k = 0; k < func.nbbs; k++) {
+			//writef("BBS %#x-%#x %d\r\n", func.bbs[k]->start, func.bbs[k]->end, func.bbs[k]->size);
+		}
 		anal->functions[anal->num_functions-1] = func;
 		r_function_arguments(disassembler, anal, &anal->functions[anal->num_functions-1], file->abi);
 		r_function_locals(disassembler, &anal->functions[anal->num_functions-1], file->abi);
@@ -403,6 +411,8 @@ void r_meta_symbol_replace(r_disassembler * disassembler, r_file * file)
 				if (ridx >= disas->num_operands) continue;
 				//sym. means func replaced with symbol name already
 				if (disas->op[ridx]) {
+					if (disas->metadata->comment)
+						free(disas->metadata->comment);
 					disas->metadata->comment = disas->op[ridx];
 					disas->op[ridx] = NULL;
 					//free(disas->op[0]);
@@ -682,6 +692,12 @@ void r_analyzer_destroy(r_analyzer * anal)
 		for (int j = 0; j < anal->functions[i].num_locals; j++) {
 			free(anal->functions[i].locals[j]);
 		}
+		for (int j = 0; j < anal->functions[i].nbbs; j++) {
+			free(anal->functions[i].bbs[j]->prev);
+			free(anal->functions[i].bbs[j]->next);
+			free(anal->functions[i].bbs[j]);
+		}
+		free(anal->functions[i].bbs);
 		free(anal->functions[i].locals);
 		free(anal->functions[i].args);
 	}

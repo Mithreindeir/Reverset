@@ -5,6 +5,8 @@
 #include "rfile.h"
 #include "rmeta.h"
 #include "arch/x86common.h"
+#include "rinfo.h"
+#include "rbb.h"
 
 static char * unix64_cc[] = {
 	"rdi",
@@ -15,32 +17,6 @@ static char * unix64_cc[] = {
 	"r9",
 	"stk"
 };
-/*Function struct. Holds start address, end address, name, and xrefs*/
-typedef struct r_function
-{
-	int argc;
-	char ** args;
-
-	char * name;
-	uint64_t start;
-	int size;
-
-	int num_locals;
-	char ** locals;
-} r_function;
-
-/*Branches*/
-typedef struct r_branch
-{
-	uint64_t start;
-	uint64_t end;
-	int conditional;
-	int indirect;
-	//For ease of analysis, start is always the earlier address. Dir specifies if it is the start (0) or the end(1)
-	int dir;
-	//How many branches overlap this one.
-	int nested;
-} r_branch;
 
 typedef struct r_analyzer
 {
