@@ -131,23 +131,6 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 		disassembler->instructions = instructions;
 		disassembler->num_instructions = num_instructions;
 	} else  {
-		//Remove duplicates and merge
-		/*
-		int total_unique = disassembler->num_instructions + num_instructions;
-		for (int i = 0; i < disassembler->num_instructions; i++) {
-			r_disasm * disas1 = disassembler->instructions[i];
-			if (disas1->address < start_addr) continue;
-			if (disas1->address > laddr) break;
-			int rm = 0;
-			for (int j = 0; j < num_instructions; j++) {
-				if (disas1->address == instructions[j]->address) {
-					rm = 1;
-					total_unique--;
-				}
-			}
-			if (!rm && disassembler->instructions[i]->address >= addr && disassembler->instructions[i]->address < (laddr + lbyte))
-				total_unique--;
-		}*/
 		int total_unique = disassembler->num_instructions + num_instructions;
 		for (int i = 0; i < disassembler->num_instructions; i++) {
 			r_disasm * disas1 = disassembler->instructions[i];
@@ -216,10 +199,11 @@ void r_disassemble(r_disassembler * disassembler, r_file * file)
 		}
 		rsection * section = r_file_section_addr(file, addr);
 		if (!section) continue;
-		if (!(R_EXEC&section->perm)) continue;
+		//if (!(R_EXEC&section->perm)) continue;
 		int allowed  = !strncmp(section->name, ".text", 7);
-		allowed = allowed || !strncmp(section->name, ".got", 3);
-		allowed = allowed || !strncmp(section->name, ".plt", 3);
+		allowed = allowed || !strncmp(section->name, ".got", 4);
+		allowed = allowed || !strncmp(section->name, ".plt", 4);
+		allowed = allowed || !strncmp(section->name, ".rela", 5);
 		if (!allowed) continue;
 		clear_line();
 		char progress[16];

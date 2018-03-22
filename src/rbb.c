@@ -47,7 +47,12 @@ rbb** rbb_anal(r_disassembler *disblr, r_branch*branches, int num_branches, int 
 	rbb**bbs = NULL;
 	int nbb = 0;
 
+	uint64_t *pedge = NULL;
+	uint64_t *nedge = NULL;
+	int num_edges = 0;
+
 	int lasts = sidx;
+	int lbbend = 0;
 	for (int i = sidx; i < disblr->num_instructions; i++) {
 		r_disasm *disas = disblr->instructions[i];
 		if (disas->address > max) break;
@@ -55,26 +60,87 @@ rbb** rbb_anal(r_disassembler *disblr, r_branch*branches, int num_branches, int 
 		int bb_end = ret;
 		int jump = 0;
 		int jumpe = 0;
-		for (int j = 0;!bb_end &&  j < num_branches; j++) {
+		int include = 1;
+		for (int j = 0;!bb_end && j < num_branches; j++) {
 			r_branch b = branches[j];
-			jump = b.start == disas->address;
-			jumpe = b.end == disas->address;
-			if (b.dir && jump) {
-				int tmp = jump;
-				jump = jumpe;
-				jumpe = tmp;
+			int s = b.dir?b.end:b.start;
+			int e = b.dir?b.start:b.end;
+			jump = s == disas->address;
+			jumpe = e == disas->address;
+			if (jump || (jumpe && !lbbend))
+				include=!jumpe, bb_end = 1;
+			//Add edge
+			if (jump) {
+				int more = !b.conditional&&((i+1)<disblr->num_instructions);
+				num_edges+=1+more;
+				if (!pedge&&!nedge) {
+					pedge = malloc(sizeof(uint64_t)*num_edges);
+					nedge = malloc(sizeof(uint64_t)*num_edges);
+				} else {
+					pedge=realloc(pedge,sizeof(uint64_t)*num_edges);
+					nedge=realloc(nedge,sizeof(uint64_t)*num_edges);
+				}
+				pedge[num_edges-1]=b.dir?b.end:b.start;
+				nedge[num_edges-1]=b.dir?b.start:b.end;
+				if (more) {
+					pedge[num_edges-2]=b.dir?b.end:b.start;
+					nedge[num_edges-2]=disblr->instructions[i+1]->address+disblr->instructions[i+1]->used_bytes;
+				}
 			}
-			if (jump || (jumpe && lasts!=i))
-				bb_end = 1;
 		}
 		if (bb_end) {
-			rbb * bb=rbb_init(disblr->instructions[lasts]->address, disas->address + disas->used_bytes);
+			uint64_t end = disas->address + (include?disas->used_bytes:0);
+			rbb * bb=rbb_init(disblr->instructions[lasts]->address, end);
 			rbb_add(&bbs, &nbb, bb);
-			lasts = i+1;
+			lasts = i+include;
 		}
+		lbbend = bb_end;
 		if (ret) break;
 	}
-
+	/*After calculating all basic blocks, attempt to connect edges using jumps*/
+	for (int i = 0; i < num_edges; i++) {
+		rbb *next=NULL,*prev=NULL;
+		for (int j = 0; j < nbb; j++) {
+			if (pedge[i] >= bbs[j]->start && pedge[i] < bbs[j]->end) {
+				prev=bbs[j];
+				break;
+			}
+		}
+		for (int j = 0; j < nbb; j++) {
+			if (nedge[i] >= bbs[j]->start && nedge[i] < bbs[j]->end) {
+				next=bbs[j];
+			}
+		}
+		if (!next || !prev || (next==prev)) {
+			continue;
+		}
+		prev->num_next++;
+		next->num_prev++;
+		if (!next->prev) {
+			next->prev=malloc(sizeof(rbb*));
+		} else {
+			next->prev=realloc(next->prev,sizeof(rbb*)*next->num_prev);
+		}
+		if (!prev->next) {
+			prev->next=malloc(sizeof(rbb*));
+		} else {
+			prev->next=realloc(prev->next,sizeof(rbb*)*prev->num_next);
+		}
+		next->prev[next->num_prev-1] = prev;
+		prev->next[prev->num_next-1] = next;
+	}
+	free(nedge);
+	free(pedge);
 	*size = nbb;
 	return bbs;
+}
+
+void dump_rbb(rbb *bb)
+{
+
+	writef("(BB %#x %#x %d %d)<", bb->start, bb->end, bb->num_next, bb->num_prev);
+	for (int i = 0; i < bb->num_next; i++) {
+		dump_rbb(bb->next[i]);
+	}
+	writef(">\r\n");
 }

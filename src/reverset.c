@@ -471,7 +471,7 @@ int reverset_list(struct text_buffer *buf, int argc, char**argv, void*data)
 	else if (!strcmp(arg, "functions") || !strcmp(arg, "function")) {
 		for (int i = 0; i < rev->anal->num_functions; i++) {
 			r_function func = rev->anal->functions[i];
-			text_buffer_print(buf, "function: %s address: %#lx\r\n", func.name, func.start);
+			text_buffer_print(buf, "function: %s addr: %#lx end: %#lx size: %d\r\n", func.name, func.start, func.start + func.size, func.size);
 		}
 	} else if (!strcmp(arg, "string") || !strcmp(arg, "strings")) {
 		for (int i = 0; i < rev->file->num_strings; i++) {

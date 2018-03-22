@@ -44,6 +44,7 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 	*/
 	uint64_t call_to_libc = 0;
 	uint64_t adjacent_libc = 0;
+	r_disasm * adj_lc = NULL;
 	for (int i = 0; i < file->num_symbols; i++) {
 		if (!file->symbols[i].name) continue;
 		if (!strcmp(file->symbols[i].name, "__libc_start_main")) {
@@ -54,12 +55,15 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 		for (int i = 0; i < disassembler->num_instructions; i++) {
 			r_disasm * disas = disassembler->instructions[i];
 			if (disas->address == call_to_libc) {
-				if (disas->metadata->num_xrefto > 0) adjacent_libc = disas->metadata->xref_to[0].addr;
+				if (i>0)
+					adjacent_libc = disassembler->instructions[i-1]->address;
+					adj_lc = disassembler->instructions[i-1];
+				//if (disas->metadata->num_xrefto > 0) adjacent_libc = disas->metadata->xref_to[0].addr;
 				break;
 			}
 		}
 	}
-	if (adjacent_libc) {
+	if (adjacent_libc&&0) {
 		for (int i = 0; i < disassembler->num_instructions; i++) {
 			r_disasm * disas = disassembler->instructions[i];
 			if (disas->address == adjacent_libc && i > 0) {
@@ -68,10 +72,73 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 			}
 		}
 	}
+	writef("%#lx %#lx\r\n", adjacent_libc, call_to_libc);
+	/*Experimental function detection*/
+	for (int i = 0; i < disassembler->num_instructions; i++) {
+		r_disasm * disas = disassembler->instructions[i];
+		int called = 0;
+		int main = 0;
+		for (int j = 0; (!called&&!main) && j < disas->metadata->num_xrefto; j++) {
+			called = disas->metadata->xref_to[j].type == r_tcall;
+			main = disas->metadata->xref_to[j].addr == adjacent_libc;
+		}
+		if (!called&&!main) continue;
+		/*Check if there is a symbol with same start address*/
+		char *name = NULL;
+		for (int j = 0; j < file->num_symbols; j++) {
+			if (!file->symbols[j].name) continue;
+			rsymbol sym = file->symbols[j];
+			if (sym.addr64 == disas->address) {
+				int len = snprintf(NULL, 0, "func.%s", sym.name)+1;
+				name = malloc(len);
+				snprintf(name, len, "func.%s", sym.name);
+				break;
+			}
+		}
+		if (!name&& main) {
+			name = strdup("func.main");
+		}
+		if (!name) {
+			int len = snprintf(NULL, 0, "func.%x", disas->address);
+			name = malloc(len+1);
+			snprintf(name, len+1, "func.%x", disas->address);
+		}
+		anal->num_functions++;
+		if (anal->num_functions == 1) {
+			anal->functions = malloc(sizeof(r_function));
+		} else {
+			anal->functions = realloc(anal->functions, sizeof(r_function) * anal->num_functions);
+		}
+		rsection *section = r_file_section_addr(file, disas->address);
+		uint64_t end = 0;
+		if (section)
+			end = section->start + section->size;
+		r_function func;
+		func.name = name;
+		func.start = disas->address;
+		func.size = 0;
+		func.argc = 0;
+		func.args = NULL;
+		func.num_locals = 0;
+		func.locals = NULL;
+		func.bbs = NULL;
+		func.nbbs = 0;
+		func.bbs = rbb_anal(disassembler, anal->branches, anal->num_branches, i, func.start, end, &func.nbbs);
+		//if (func.nbbs)
+		//	dump_rbb(func.bbs[0]);
+		for (int k = 0; k < func.nbbs; k++) {
+			//writef("BBS %#x-%#x %d\r\n", func.bbs[k]->start, func.bbs[k]->end, func.bbs[k]->size);
+			if ((func.bbs[k]->end-func.start) > func.size)
+				func.size = func.bbs[k]->end-func.start;
+		}
+		anal->functions[anal->num_functions-1] = func;
+		r_function_arguments(disassembler, anal, &anal->functions[anal->num_functions-1], file->abi);
+		r_function_locals(disassembler, &anal->functions[anal->num_functions-1], file->abi);
+	}
 
 
 	/*Mark as function if they have xrefs to the start */
-	for (int i = 0; i < disassembler->num_bounds; i++) {
+	for (int i = 0; 0 && i < disassembler->num_bounds; i++) {
 		block_bounds b = disassembler->bounds[i];
 		if ((b.end-b.start)<1) continue;
 
@@ -748,6 +815,8 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 	int rdist = 20;
 	int argc = 0;
 	int * args = NULL;
+	int * burn = NULL;
+	int nburn = 0;
 	/*Goto the function address*/
 	for (int i = 0; i < disassembler->num_instructions; i++) {
 		r_disasm * disas = disassembler->instructions[i];
@@ -757,7 +826,17 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 		//if (disas->metadata->type != r_tdata && disas->metadata->type != r_tpush && disas->metadata->type != r_tpop) continue;
 
 		int arg = 0;
-		//source is farthest right operand so use next to last
+		//if register is used as destination add it to burn list
+		if (disas->num_operands > 0) {
+			int b = x_register_index(disas->op[0]);
+			if (b!=-1) {
+				nburn++;
+				if (!burn) burn = malloc(sizeof(int));
+				else burn=realloc(burn,sizeof(int)*nburn);
+				burn[nburn-1] = b;
+			}
+		}
+		//source is farthest right operand
 		for (int j = (disas->num_operands-1); j < disas->num_operands; j++) {
 			int b = x_register_index(disas->op[j]);
 			//if (b==-1) continue;
@@ -786,6 +865,12 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 					}
 				} else if (a==-1 || rdist < 0) continue; //After rdist assume that register are used for other reason
 				else if (abi == rc_sysv64 && X_REG_BIN(a) == X_REG_BIN(b)) {//X86_64 SysV only
+					int burned = 0;
+					for (int n = 0; n < nburn; n++) {
+						if (X_REG_BIN(burn[n])==X_REG_BIN(b))
+							burned = 1;
+					}
+					if (burned) break;
 					int used = 0;
 					for (int n = 0; n < argc; n++) {
 						if (X_REG_BIN(args[n])==X_REG_BIN(b)) {
@@ -807,6 +892,8 @@ void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_fu
 			}
 		}
 	}
+	free(burn);
+
 	func->argc = argc;
 	func->args = malloc(argc * sizeof(char*));
 	for (int i = 0; i < argc; i++) {
