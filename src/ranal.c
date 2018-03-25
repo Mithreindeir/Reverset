@@ -123,11 +123,9 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 		func.locals = NULL;
 		func.bbs = NULL;
 		func.nbbs = 0;
+		static char test ='A';
 		func.bbs = rbb_anal(disassembler, anal->branches, anal->num_branches, i, func.start, end, &func.nbbs);
-		//if (func.nbbs)
-		//	dump_rbb(func.bbs[0]);
 		for (int k = 0; k < func.nbbs; k++) {
-			//writef("BBS %#x-%#x %d\r\n", func.bbs[k]->start, func.bbs[k]->end, func.bbs[k]->size);
 			if ((func.bbs[k]->end-func.start) > func.size)
 				func.size = func.bbs[k]->end-func.start;
 		}

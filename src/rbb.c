@@ -71,20 +71,34 @@ rbb** rbb_anal(r_disassembler *disblr, r_branch*branches, int num_branches, int 
 				include=!jumpe, bb_end = 1;
 			//Add edge
 			if (jump) {
-				int more = !b.conditional&&((i+1)<disblr->num_instructions);
-				num_edges+=1+more;
-				if (!pedge&&!nedge) {
+				num_edges++;
+				if (num_edges==1) {
 					pedge = malloc(sizeof(uint64_t)*num_edges);
 					nedge = malloc(sizeof(uint64_t)*num_edges);
 				} else {
 					pedge=realloc(pedge,sizeof(uint64_t)*num_edges);
 					nedge=realloc(nedge,sizeof(uint64_t)*num_edges);
 				}
-				pedge[num_edges-1]=b.dir?b.end:b.start;
-				nedge[num_edges-1]=b.dir?b.start:b.end;
-				if (more) {
-					pedge[num_edges-2]=b.dir?b.end:b.start;
-					nedge[num_edges-2]=disblr->instructions[i+1]->address+disblr->instructions[i+1]->used_bytes;
+				pedge[num_edges-1]=s;
+				nedge[num_edges-1]=e;
+			}
+			int uncjmp = b.conditional&&jump;
+			if (!uncjmp&&bb_end&&(i+1)<disblr->num_instructions) {
+				num_edges++;
+				if (num_edges==1) {
+					pedge = malloc(sizeof(uint64_t)*num_edges);
+					nedge = malloc(sizeof(uint64_t)*num_edges);
+				} else {
+					pedge=realloc(pedge,sizeof(uint64_t)*num_edges);
+					nedge=realloc(nedge,sizeof(uint64_t)*num_edges);
+				}
+				if (include || (i<=0)) {
+					pedge[num_edges-1]=disas->address;
+					nedge[num_edges-1]=disblr->instructions[i+1]->address;
+					//nedge[num_edges-1]=disblr->instructions[i+1]->address+disblr->instructions[i+1]->used_bytes;
+				} else {
+					pedge[num_edges-1]=disblr->instructions[i-1]->address;
+					nedge[num_edges-1]=disas->address;
 				}
 			}
 		}
@@ -135,12 +149,15 @@ rbb** rbb_anal(r_disassembler *disblr, r_branch*branches, int num_branches, int 
 	return bbs;
 }
 
-void dump_rbb(rbb *bb)
+void rbb_graph(rbb **bbs, int nbbs)
 {
-
-	writef("(BB %#x %#x %d %d)<", bb->start, bb->end, bb->num_next, bb->num_prev);
-	for (int i = 0; i < bb->num_next; i++) {
-		dump_rbb(bb->next[i]);
+	if (nbbs) {
+		writef("digraph F {\r\n");
 	}
-	writef(">\r\n");
+	for (int k = 0; k < nbbs; k++) {
+		for (int l = 0; l < bbs[k]->num_next; l++)
+			writef("\t\"(%#lx-%#lx)\" -> \"(%#lx-%#lx)\"\r\n", bbs[k]->start, bbs[k]->end, bbs[k]->next[l]->start, bbs[k]->next[l]->end);
+	}
+	if (nbbs)
+		writef("}\r\n");
 }

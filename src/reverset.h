@@ -61,6 +61,7 @@ void reverset_sh(reverset * rev);
 /*Wrapper functions*/
 uint64_t reverset_resolve_arg(reverset * rev, char * arg);
 int reverset_analyze(struct text_buffer*buf,int argc, char**argv, void*data);
+int reverset_graph(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_print(struct text_buffer*buf, int argc, char**argv, void*data);
 int reverset_disas(struct text_buffer*buf, int argc, char**argv, void*data);
 int reverset_write(reverset * rev, char ** args, int num_args);

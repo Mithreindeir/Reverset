@@ -20,6 +20,7 @@ reverset * reverset_init()
 	dshell_addfunc(rev->shell, "list", &reverset_list, rev);
 	dshell_addfunc(rev->shell, "asm", &reverset_asm, rev);
 	dshell_addfunc(rev->shell, "disas", &reverset_disas, rev);
+	dshell_addfunc(rev->shell, "graph", &reverset_graph, rev);
 	//rev->shell->buffer->cur_color = 37;
 
 	return rev;
@@ -213,6 +214,26 @@ int reverset_print(struct text_buffer*buf, int argc,char ** args,void*data)
 	r_formatted_printall(buf, rev->disassembler, rev->anal, addr, max);
 
 	return 1;
+}
+
+int reverset_graph(struct text_buffer*buf, int argc, char **argv, void*data)
+{
+	reverset *rev = data;
+	if (argc < 2) return 0;
+	char * arg = argv[1];
+	uint64_t addr = rev->address;
+	addr = reverset_resolve_arg(rev, arg);
+	if (addr==-1) {
+		text_buffer_print(buf, "No address found for \"%s\"\r\n", arg);
+		return 1;
+	}
+	for (int i = 0; i < rev->anal->num_functions; i++) {
+		r_function func = rev->anal->functions[i];
+		if (func.start==addr) {
+			rbb_graph(func.bbs, func.nbbs);
+			break;
+		}
+	}
 }
 
 int reverset_disas(struct text_buffer *buf, int argc, char **argv, void*data)
