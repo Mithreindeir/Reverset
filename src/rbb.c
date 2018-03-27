@@ -7,6 +7,7 @@ rbb *rbb_init(uint64_t start, uint64_t end)
 	bb->size = end-start;
 	bb->start = start;
 	bb->end = end;
+	bb->drawn = 0;
 
 	bb->prev = NULL;
 	bb->next = NULL;
@@ -108,7 +109,7 @@ rbb** rbb_anal(r_disassembler *disblr, r_branch*branches, int num_branches, int 
 			rbb_add(&bbs, &nbb, bb);
 			lasts = i+include;
 		}
-		lbbend = bb_end;
+		lbbend = (bb_end && include);
 		if (ret) break;
 	}
 	/*After calculating all basic blocks, attempt to connect edges using jumps*/
@@ -161,3 +162,4 @@ void rbb_graph(rbb **bbs, int nbbs)
 	if (nbbs)
 		writef("}\r\n");
 }
+

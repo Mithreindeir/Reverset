@@ -55,7 +55,7 @@ void reverset_openfile(reverset * rev, char * file, char * perm)
 	r_file_find_strings(rev->file);
 	if (disassemblers[rev->file->arch] != NULL) {
 		rev->disassembler->disassemble =  disassemblers[rev->file->arch];
-		rev->address = rev->file->entry_point; 
+		rev->address = rev->file->entry_point;
 	} else {
 		printf("Architecture not supported\n");
 		return;
@@ -72,6 +72,7 @@ void reverset_sh(reverset * rev)
 	char *str = NULL;
 	do {
 		snprintf(prompt, 32, "[%#lx]->", rev->address);
+		get_cursor(&rev->shell->tmpx, &rev->shell->tmpy);
 		str = dshell_update(rev->shell);
 		dshell_render(rev->shell);
 	} while(rev->status == rs_shell);
@@ -227,13 +228,22 @@ int reverset_graph(struct text_buffer*buf, int argc, char **argv, void*data)
 		text_buffer_print(buf, "No address found for \"%s\"\r\n", arg);
 		return 1;
 	}
+	clear_scrn();
+	set_cursor(1, 1);
 	for (int i = 0; i < rev->anal->num_functions; i++) {
 		r_function func = rev->anal->functions[i];
-		if (func.start==addr) {
+		if (func.start==addr && func.nbbs) {
 			rbb_graph(func.bbs, func.nbbs);
+			for (int i = 0; i < func.nbbs; i++) {
+				func.bbs[i]->drawn = 0;
+				//r_formatted_rect(buf,rev->disassembler,rev->anal,func.bbs[i]);
+			}
+			r_formatted_rect(buf,rev->disassembler,rev->anal,func.bbs[0]);
+			r_formatted_graph(buf,rev->disassembler,rev->anal,func.bbs[0]);
 			break;
 		}
 	}
+	return 1;
 }
 
 int reverset_disas(struct text_buffer *buf, int argc, char **argv, void*data)
@@ -287,7 +297,6 @@ int reverset_disas(struct text_buffer *buf, int argc, char **argv, void*data)
 	rev->disassembler->recursive = r;
 
 	return 1;
-
 }
 
 int reverset_asm(struct text_buffer*tbuf,int argc, char**argv, void*data)

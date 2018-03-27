@@ -14,6 +14,7 @@ void print_help(char * name)
 	printf("Reverset: Reverse Engineering and Binary Analysis Tool\n");
 	printf("Usage: %s file options\n", name);
 	printf("Option: -h for help\n");
+	printf("Option: -a for analysis on startup\n");
 	printf("Option: -w to open the file with write permissions\n");
 }
 
@@ -32,7 +33,7 @@ void print_banner()
 int main(int argc, char ** argv)
 {
 	char * file = NULL;
-	int write = 0;
+	int write = 0, anal = 0;
 
 	for (int i = 1; i < argc; i++) {
 		if (argv[i][0] == '-') {
@@ -44,6 +45,9 @@ int main(int argc, char ** argv)
 						break;
 					case 'h':
 						print_help(argv[0]);
+						break;
+					case 'a':
+						anal=1;
 						break;
 				}
 			}
@@ -65,8 +69,9 @@ int main(int argc, char ** argv)
 	if (file) {
 		reverset * rev = reverset_init();
 		reverset_openfile(rev, file, perm);
+		if (anal)
+			reverset_analyze(rev->shell->buffer, 0, NULL, rev);
 		reverset_sh(rev);
-
 		reverset_destroy(rev);
 	}
 	return 0;

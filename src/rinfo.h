@@ -7,6 +7,7 @@
 typedef struct rbb {
 	long size;
 	uint64_t start, end;
+	int drawn;
 
 	struct rbb **prev, **next;
 	int num_prev, num_next;
