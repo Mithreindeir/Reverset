@@ -21,6 +21,8 @@ reverset * reverset_init()
 	dshell_addfunc(rev->shell, "asm", &reverset_asm, rev);
 	dshell_addfunc(rev->shell, "disas", &reverset_disas, rev);
 	dshell_addfunc(rev->shell, "graph", &reverset_graph, rev);
+	dshell_addfunc(rev->shell, "xref", &reverset_xref, rev);
+	dshell_addfunc(rev->shell, "help", &reverset_help, rev);
 	//rev->shell->buffer->cur_color = 37;
 
 	return rev;
@@ -216,6 +218,62 @@ int reverset_print(struct text_buffer*buf, int argc,char ** args,void*data)
 
 	return 1;
 }
+
+int reverset_help(struct text_buffer*buf, int argc, char **argv, void*data)
+{
+	int oc = buf->cur_color;
+	buf->cur_color = 37;
+	text_buffer_print(buf, "anal -> Generic auto analysis of a binary\r\n");
+	text_buffer_print(buf, "print here/func/address/symbol -> Print the disassembly at a location\r\n");
+	text_buffer_print(buf, "goto func/address/symbol -> Moves current location\r\n");
+	text_buffer_print(buf, "list functions/strings/symbols -> List information about a binary\r\n");
+	text_buffer_print(buf, "graph here/func/address/symbol -> Prints basic blocks and graphviz edge data\r\n");
+	text_buffer_print(buf, "asm \"assembly\" -> Assembles a string using current ISA\r\n");
+	text_buffer_print(buf, "xref to/from here/func/address/symbol -> List xrefs to or from an address\r\n");
+	text_buffer_print(buf, "disas location -> Manual disassembly at a location (currently depreciated)\r\n");
+	text_buffer_print(buf, "help -> Prints this help\r\n");
+	text_buffer_print(buf, "quit -> Exits reverset\r\n");
+	buf->cur_color = oc;
+
+	return 1;
+}
+
+int reverset_xref(struct text_buffer*buf, int argc, char **argv, void*data)
+{
+	reverset *rev = data;
+	if (argc < 3) return 0;
+	int to = !strcmp(argv[1], "to");
+	if (!to) {
+		to=!!strcmp(argv[1], "from");
+		if (to) {
+			text_buffer_print(buf, "Usage: xref to/from address\r\n");
+			return 1;
+		}
+	}
+	char * arg = argv[2];
+	uint64_t addr = rev->address;
+	addr = reverset_resolve_arg(rev, arg);
+	if (addr == -1) {
+		text_buffer_print(buf, "No address found for \"%s\"\r\n", arg);
+		return 1;
+	}
+	r_disasm *disas = r_meta_find_disas(rev->disassembler, addr);
+	if (disas) {
+		if (to) {
+			for (int i = 0; i < disas->metadata->num_xrefto; i++) {
+				text_buffer_print(buf, "xref: %#lx\r\n", disas->metadata->xref_to[i].addr);
+			}
+		} else {
+			for (int i = 0; i < disas->metadata->num_xreffrom; i++) {
+				text_buffer_print(buf, "xref: %#lx\r\n", disas->metadata->xref_from[i].addr);
+			}
+		}
+	} else {
+		text_buffer_print(buf, "No disassembly found at %#lx (data xref not supported yet\r\n", addr);
+	}
+	return 1;
+}
+
 
 int reverset_graph(struct text_buffer*buf, int argc, char **argv, void*data)
 {

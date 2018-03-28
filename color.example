@@ -68,6 +68,7 @@
 ^func.[A-Za-z0-9_.]$^ 				= green
 ^sym.[A-Za-z0-0_]$^ 				= green
 symbol: ^[A-z]$^ 				= green
+^xref:^						= green
 function: sym.^[A-z0-9.]$^ 			= green
 section: ^[.A-z]$^ 				= green
 ^address:^{ \t}${0}{x}[0-9a-f]$ 		= blue
