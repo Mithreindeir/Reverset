@@ -13,6 +13,7 @@ No external dependencies, written completely in C.
 * x86 assembler
 * x64 assembler
 * Analysis of 32 and 64 bit elf files
+* Basic Block analysis and graphviz control flow output
 * Patching
 
 # How To
