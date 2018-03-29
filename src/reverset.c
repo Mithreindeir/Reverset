@@ -22,6 +22,7 @@ reverset * reverset_init()
 	dshell_addfunc(rev->shell, "disas", &reverset_disas, rev);
 	dshell_addfunc(rev->shell, "graph", &reverset_graph, rev);
 	dshell_addfunc(rev->shell, "xref", &reverset_xref, rev);
+	dshell_addfunc(rev->shell, "write", &reverset_write, rev);
 	dshell_addfunc(rev->shell, "help", &reverset_help, rev);
 	//rev->shell->buffer->cur_color = 37;
 
@@ -389,12 +390,13 @@ int reverset_asm(struct text_buffer*tbuf,int argc, char**argv, void*data)
 	return 1;
 }
 
-int reverset_write(reverset * rev, char ** args, int num_args)
+int reverset_write(struct text_buffer*buf, int argc, char**argv, void*data)
 {
-	if (num_args == 0) return 0;
+	if (argc < 2) return 1;
 
-	char * arg = args[0];
-	if (!arg) return 0;
+	char * arg = argv[1];
+	if (!arg) return 1;
+	reverset *rev = data;
 
 	int size = strlen(arg);
 	unsigned char byte_buf[256];
@@ -414,7 +416,7 @@ int reverset_write(reverset * rev, char ** args, int num_args)
 			b = arg[i+1];
 		} else {
 			write = 0;
-			r_pipe_write(rev->pipe, "invalid bytes\n");
+			text_buffer_print(buf, "invalid bytes\n");
 			return 1;
 		}
 		b = (b >= 0x30 && b < 0x40) ? b - 0x30 : ((b <= 'f' && b >= 'a') ? (b -'a'+10) : ((b <= 'F' && b >= 'A' ? (b -'A'+10) : 0)));

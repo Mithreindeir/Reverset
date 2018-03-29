@@ -32,7 +32,7 @@ Commands:
 * xref to/from here/func/address/symbol -> List xrefs to or from an address
 * disas location -> Manual disassembly at a location (currently depreciated)
 * help -> Prints this help
-* write "bytes" -> Temporarily removed 
+* write "bytes" -> Writes the bytes at the current location
 * quit -> Exits reverset
 
 # Building
@@ -43,7 +43,7 @@ git clone --recurse-submodules https://github.com/mithreindeir/reverset.git
 cd reverset
 make
 ```
-Not tested on Windows yet. 
+Not tested on Windows yet.
 
 # Example
 An example function to analyze:
@@ -131,7 +131,7 @@ print func.main
 0x64f:   83 7d fc 09             	   `->cmp    dword [local_4h], 0x9
 0x653:   7e d7                   	    `<jle    0x62c
 0x655:   b8 00 00 00 00          	      mov    eax, 0
-0x65a:   c9                      	      leave  
-0x65b:   c3                      	      ret    
+0x65a:   c9                      	      leave
+0x65b:   c3                      	      ret
 
 ```

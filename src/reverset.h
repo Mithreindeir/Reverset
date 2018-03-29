@@ -66,7 +66,7 @@ int reverset_help(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_print(struct text_buffer*buf, int argc, char**argv, void*data);
 int reverset_xref(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_disas(struct text_buffer*buf, int argc, char**argv, void*data);
-int reverset_write(reverset * rev, char ** args, int num_args);
+int reverset_write(struct text_buffer*buf, int argc, char**argv, void*data);
 int reverset_goto(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_asm(struct text_buffer*buf, int argc, char**argv, void*data);
 int reverset_quit(struct text_buffer*buf,int argc, char**argv, void*data);
