@@ -23,6 +23,7 @@ reverset * reverset_init()
 	dshell_addfunc(rev->shell, "graph", &reverset_graph, rev);
 	dshell_addfunc(rev->shell, "xref", &reverset_xref, rev);
 	dshell_addfunc(rev->shell, "write", &reverset_write, rev);
+	dshell_addfunc(rev->shell, "dump", &reverset_hexdump, rev);
 	dshell_addfunc(rev->shell, "help", &reverset_help, rev);
 	//rev->shell->buffer->cur_color = 37;
 
@@ -117,45 +118,6 @@ uint64_t reverset_resolve_arg(reverset * rev, char * arg)
 	}
 	else if (!found) return -1;
 	return addr;
-}
-
-int reverset_hex(reverset * rev, char ** args, int num_arg)
-{
-	if (num_arg == 0) return 0;
-	if (!args) return 0;
-
-	int num_args = 0;
-	char * tok = NULL;
-
-	for (int i = 0; i < num_arg; i++) {
-		if (!args[i]) continue;
-
-		if (args[i][0] == '-') {
-			num_args++;
-			int n = strlen(args[i]);
-			for (int j = 1; j < n; j++) {
-				switch (args[i][j]) {
-					case 'n':
-						break;
-					case 'f':
-						break;
-				}
-			}
-		} else if (!tok) tok = args[i];
-		else break;
-	}
-	if (!tok) return num_args;
-	num_args++;
-
-	int num = strtol(tok, NULL, 0);
-	uint64_t paddr = r_file_get_paddr(rev->file, rev->address);
-
-	for (int i = paddr; i < (paddr+num) && i < rev->file->size; i++) {
-		r_pipe_write(rev->pipe, "%02x ", rev->file->raw_file[i]);
-		if ((i % 32)==0 && i > 1)r_pipe_write(rev->pipe, "\n");
-	}
-
-	return num_args;
 }
 
 int reverset_analyze(struct text_buffer*buf,int argc, char**argv, void*data)
@@ -301,6 +263,80 @@ int reverset_graph(struct text_buffer*buf, int argc, char **argv, void*data)
 			r_formatted_graph(buf,rev->disassembler,rev->anal,func.bbs[0]);
 			break;
 		}
+	}
+	return 1;
+}
+
+int reverset_hexdump(struct text_buffer*buf, int argc, char **argv, void*data)
+{
+	reverset *rev = data;
+	int max_lines = 16;
+	int max_bytes = 16;
+	if (argc < 2) return 0;
+	char * arg = NULL;
+	char * row = NULL;
+	char * col = NULL;
+	for (int i = 1; i < argc; i++) {
+		if (argv[i][0]=='-') {
+			int len = strlen(argv[i]);
+			for (int j=1; j < len; j++) {
+				if (argv[i][j]=='c') {
+					if ((i+1) < argc) {
+						col = argv[++i];
+						continue;
+					}
+				} else if (argv[i][j]=='r') {
+					if ((i+1) < argc) {
+						row = argv[++i];
+						continue;
+					}
+				}
+			}
+		} else if (!arg) {
+			arg = argv[i];
+		} else {
+			text_buffer_print(buf, "Incorrect usage of hexdump\r\n");
+			return i;
+		}
+	}
+	if (row)
+		max_lines = strtol(row, NULL,10);
+	if (col)
+		max_bytes = strtol(col, NULL,10);
+	uint64_t addr = rev->address;
+	addr = reverset_resolve_arg(rev, arg);
+	if (addr==-1) {
+		text_buffer_print(buf, "No address found for \"%s\"\r\n", arg);
+		return 1;
+	}
+	int cur_addr = addr;
+	char * name = NULL;
+	uint64_t off = r_file_get_paddr(rev->file, cur_addr);
+
+	for (int i = 0; i < max_lines; i++) {
+		rsection *section = r_file_section_addr(rev->file, addr);
+		if (section&&section->name!=name) {
+			text_buffer_print(buf, "section: %s\r\n", section->name);
+			name = section->name;
+		}
+		text_buffer_print(buf, "%#8lx: ", addr);
+		long idx = 0;
+		while (idx < max_bytes) {
+			if ((off+idx)<rev->file->size)
+				text_buffer_print(buf, "%02x ", rev->file->raw_file[off+idx]);
+			else
+				text_buffer_print(buf, "%02x ", 0xff);
+			idx++;
+		}
+		idx = 0;
+		while (idx < max_bytes) {
+			char c = (off+idx)<rev->file->size?rev->file->raw_file[off+idx]:0xff;
+			text_buffer_print(buf, "%c", c>0x20&&c<0x7f?c:'.');
+			idx++;
+		}
+		addr += idx;
+		off += idx;
+		text_buffer_print(buf, "\r\n");
 	}
 	return 1;
 }

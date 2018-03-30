@@ -62,6 +62,8 @@ void reverset_sh(reverset * rev);
 uint64_t reverset_resolve_arg(reverset * rev, char * arg);
 int reverset_analyze(struct text_buffer*buf,int argc, char**argv, void*data);
 int reverset_graph(struct text_buffer*buf, int argc, char **argv, void*data);
+int reverset_hexdump(struct text_buffer*buf, int argc, char **argv, void*data);
+int reverset_info(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_help(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_print(struct text_buffer*buf, int argc, char**argv, void*data);
 int reverset_xref(struct text_buffer*buf, int argc, char **argv, void*data);
@@ -72,6 +74,5 @@ int reverset_asm(struct text_buffer*buf, int argc, char**argv, void*data);
 int reverset_quit(struct text_buffer*buf,int argc, char**argv, void*data);
 int reverset_list(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_strmod(reverset * rev, char ** args, int num_args);
-int reverset_hex(reverset * rev, char ** args, int num_args);
 
 #endif

@@ -294,8 +294,8 @@ void r_meta_analyze(r_analyzer * anal, r_disassembler * disassembler, r_file * f
 	r_meta_reloc_resolve(disassembler, file);
 	r_meta_find_xrefs(disassembler, file);
 
-	r_meta_func_replace(disassembler,file, anal);
 	r_meta_symbol_replace(disassembler, file);
+	r_meta_func_replace(disassembler,file, anal);
 	r_meta_string_replace(disassembler, file);
 }
 

@@ -31,9 +31,9 @@ x86_instr_prefix x86_instruction_prefix(unsigned char * stream, int * len)
 			}
 		}
 		if (prefix_found) {
-			prefix.instr_prefix =  x86_instr_prefix_str[type]; 
+			prefix.instr_prefix =  x86_instr_prefix_str[type];
 			if (type == X86_ADDR_SIZE_OVERRIDE) prefix.addr_override = 1;
-			if (type == X86_OPERAND_SIZE_OVERRIDE) prefix.size_override = 1;		
+			if (type == X86_OPERAND_SIZE_OVERRIDE) prefix.size_override = 1;
 		}
 		//Check segment override
 		for (int i = 0; i < (sizeof(x86_segment_register_byte)); i++ ) {
@@ -56,7 +56,7 @@ r_disasm * x86_decode_instruction(unsigned char * stream, int address)
 	x86_instr_prefix prefix = x86_instruction_prefix(stream, &len);
 	unsigned char instrb = stream[len];
 	len++;
-	
+
 	x86_disas_state state;
 	state.addr_override = prefix.addr_override;
 	state.size_override = prefix.size_override;
@@ -93,9 +93,9 @@ r_disasm * x86_decode_instruction(unsigned char * stream, int address)
 	op3 = x86_decode_operand(instr.op3, &state);
 	int ub = len;
 	/*Intermediate functions: Resolve relative addresses and sign extend*/
-	if (op1 && op1->type == X86O_REL) op1->relative = x86_resolve_address(op1->relative,address,ub); 
-	if (op2 && op2->type == X86O_REL) op2->relative = x86_resolve_address(op2->relative,address,ub); 
-	if (op3 && op3->type == X86O_REL) op3->relative = x86_resolve_address(op3->relative,address,ub); 
+	if (op1 && op1->type == X86O_REL) op1->relative = x86_resolve_address(op1->relative,address,ub);
+	if (op2 && op2->type == X86O_REL) op2->relative = x86_resolve_address(op2->relative,address,ub);
+	if (op3 && op3->type == X86O_REL) op3->relative = x86_resolve_address(op3->relative,address,ub);
 
 	x86_sign_extend(op1, op2, op3);
 
@@ -165,7 +165,7 @@ x86_instr_operand *x86_decode_operand(char * operand, x86_disas_state *state)
 				break;
 			case X86_BYTE:
 				operand_size = 1;
-				//address_size = 1; 
+				//address_size = 1;
 				break;
 			case X86_BWORD:
 				operand_size = 1 + state->size_override;
@@ -193,7 +193,7 @@ x86_instr_operand *x86_decode_operand(char * operand, x86_disas_state *state)
 		state->opr_size = operand_size;
 		state->addr_size = address_size;
 		//Decode the addressing modes
-		char reg; //May be needed 
+		char reg; //May be needed
 		switch(operand[0]) {
 			case X86_DIRECT_ADDRESSING:
 				opr->type = X86O_REL;
@@ -258,7 +258,7 @@ x86_instr_operand *x86_decode_operand(char * operand, x86_disas_state *state)
 					*state->iter += 2;
 				} else {
 					opr->moffset = state->stream[(*state->iter)++];
-				}	
+				}
 				break;
 			case X86_MOD_REG://As far as I can tell only affects encoding (mod field of modrm byte only can refer to a general register)
 				//Forced mod of 11 (register)
@@ -326,8 +326,8 @@ void x86_decode_sib(x86_instr_operand * opr, x86_disas_state *state)
 	char index = MASK_SIB_INDEX(sib_byte);
 	char base = MASK_SIB_BASE(sib_byte);
 
-	if (index != SIB_NO_INDEX) opr->index = x86_get_register(index, state->opr_size);
-	if (!SIB_NO_BASE(mod, base)) opr->base = x86_get_register(base, state->opr_size);
+	if (index != SIB_NO_INDEX) opr->index = x86_get_register(index, state->addr_size);
+	if (!SIB_NO_BASE(mod, base)) opr->base = x86_get_register(base, state->addr_size);
 
 	opr->type = X86O_INDIR;
 	opr->indirect = 1;
@@ -447,7 +447,7 @@ char *x86_sprint_operand(x86_instr_operand * opr)
 			if (opr->base) iter += snprintf(buf+iter, 256-iter, "%s", opr->base);
 			if (opr->base && opr->index) iter += snprintf(buf+iter, 256-iter, "+");
 			if (opr->index) iter += snprintf(buf+iter, 256-iter, "%s*%d", opr->index, opr->scale);
-			if (opr->index || opr->base && opr->disp != 0) iter += snprintf(buf+iter, 256-iter, "%c", opr->sign ? '+' : '-');
+			if ((opr->index || opr->base) && opr->disp != 0) iter += snprintf(buf+iter, 256-iter, "%c", opr->sign ? '+' : '-');
 			if (opr->disp != 0) iter += snprintf(buf+iter, 256-iter, "%#x", opr->disp);
 			break;
 		case X86O_REL:
@@ -510,5 +510,5 @@ void x86_disas_meta_operand(r_disasm * disas, x86_instr_operand * op)
 		r_meta_add_addr(disas->metadata, op->immediate, META_ADDR_DATA);
 	} else if (op->type == X86O_INDIR && op->size == 3 && (op->disp >>8 != 0)) { //4 byte disp offset
 		r_meta_add_addr(disas->metadata, op->disp, META_ADDR_DATA);
-	} 
+	}
 }

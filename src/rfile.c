@@ -3,7 +3,7 @@
 r_file * r_file_init()
 {
 	r_file * file = malloc(sizeof(r_file));
-	
+
 	file->symbols = NULL;
 	file->num_symbols = 0;
 
@@ -29,7 +29,7 @@ void r_file_find_strings(r_file * file)
 	//Finds all printable strings that are at least 3 valid chars long with an unprintable character after.
 	//Only look in PROGBITS section
 	for (int i = 0; i < file->num_sections; i++) {
-		//Program defined usually contains text and data sections 
+		//Program defined usually contains text and data sections
 		int print_start = -1;
 		for (int j = 0; j < file->sections[i].size; j++) {
 			char c = file->sections[i].raw[j];

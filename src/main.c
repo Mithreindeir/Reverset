@@ -68,6 +68,7 @@ int main(int argc, char ** argv)
 	print_banner();
 	if (file) {
 		reverset * rev = reverset_init();
+
 		reverset_openfile(rev, file, perm);
 		if (anal)
 			reverset_analyze(rev->shell->buffer, 0, NULL, rev);

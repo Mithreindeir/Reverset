@@ -8,6 +8,7 @@
 {!A-Za-z}^pop^{!A-Za-z} 				= yellow
 {!A-Za-z}^add^{!A-Za-z} 				= green
 {!A-Za-z}^inc^{!A-Za-z} 				= green
+{!A-Za-z}^dec^{!A-Za-z} 				= green
 {!A-Za-z}^sbb^{!A-Za-z} 				= green
 {!A-Za-z}^sar^{!A-Za-z} 				= green
 {!A-Za-z}^shl^{!A-Za-z} 				= green
@@ -28,6 +29,7 @@
 {!A-Za-z}^xor^{!A-Za-z} 				= yellow
 {!A-Za-z}^or^{!A-Za-z} 	 				= yellow
 {!A-Za-z}^hlt^{!A-Za-z} 				= yellow
+{!A-Za-z}^int^{!A-Za-z} 				= yellow
 {!A-Za-z}^nop^{!A-Za-z} 				= yellow
 {!A-Za-z}^jmp^{!A-Za-z} 				= yellow
 {!A-Za-z}^jle^{!A-Za-z} 				= yellow
