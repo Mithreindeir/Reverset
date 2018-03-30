@@ -299,6 +299,11 @@ int reverset_hexdump(struct text_buffer*buf, int argc, char **argv, void*data)
 			return i;
 		}
 	}
+	if (!arg) {
+		text_buffer_print(buf, "No location specified\r\n");
+		return 1;
+	}
+
 	if (row)
 		max_lines = strtol(row, NULL,10);
 	if (col)
