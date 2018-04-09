@@ -1,8 +1,10 @@
 ^"*"^ 							= magenta
-{!A-Za-z}^mov{s}{z}{x}{d}^{!A-Za-z}			= green
+{!A-Za-z}^invalid^{!A-Za-z}				= red
+{!A-Za-z}^mov{z}{x}{d}^{!A-Za-z}			= green
 {!A-Za-z}^set{n}{l}{e}{z}^{A-Za-z} 			= green
 {!A-Za-z}^leave^{!A-Za-z} 				= yellow
 {!A-Za-z}^imul^{!A-Za-z} 				= green
+{!A-Za-z}^mul^{!A-Za-z} 				= green
 {!A-Za-z}^ret^{!A-Za-z} 				= yellow
 {!A-Za-z}^push^{!A-Za-z} 				= green
 {!A-Za-z}^pop^{!A-Za-z} 				= yellow
@@ -42,8 +44,12 @@
 {!A-Za-z}^jnz^{!A-Za-z} 				= yellow
 {!A-Za-z}^jb^{!A-Za-z} 				= yellow
 {!A-Za-z}^jnb^{!A-Za-z} 				= yellow
+{!A-Za-z}^cvt*2{a-z}{a-z}^{!A-Za-z} 				= yellow
+^up{s}{d}^{!A-Za-z} 					= green
+^s{s}{d}^{!A-Za-z} 					= green
 {!A-Za-z}^{qd}word^{!A-Za-z} 				= magenta
 {!A-Za-z}^byte^{!A-Za-z} 				= magenta
+{!A-Za-z}^{x}mm{0-7}^{!A-Za-z} 				= red
 {!A-Za-z}^[re]ax^{!A-Za-z} 				= red
 {!A-Za-z}^{re}bp^{!A-Za-z} 				= red
 {!A-Za-z}^{re}sp^{!A-Za-z} 				= red

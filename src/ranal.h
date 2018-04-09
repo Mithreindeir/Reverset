@@ -54,6 +54,7 @@ r_disasm *r_meta_find_disas(r_disassembler *disassembler, uint64_t address);
 r_disasm *r_meta_find_recursive(r_disassembler *disassembler, uint64_t a, int s, int e);
 void r_add_xref(r_disasm * to, r_disasm * from, int type);
 
+void r_meta_func_analyze(r_disassembler *disassembler,r_file *file,r_analyzer *anal,int sidx);
 /*Very Rudimentary Argument Recognition by using the current ABI's calling convention*/
 void r_function_arguments(r_disassembler * disassembler, r_analyzer * anal, r_function * func, r_abi abi);
 void r_function_arg_replacer(r_disassembler * disassembler, int idx, r_function * func, r_abi abi);

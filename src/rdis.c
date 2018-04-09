@@ -121,10 +121,6 @@ uint64_t r_disassemble_raw(r_disassembler * disassembler, unsigned char * raw_da
 		if (!disassembler->linear && disas->metadata->type == r_tret) {
 			break;
 		}
-		//Also return if current instruction is a unconditional jump and cannot be skipped
-		if (!disassembler->linear && disas->metadata->type == r_tujump) {
-			//for (int i = 0; i < )
-		}
 	}
 	//Merge arrays if existing, otherwise just set it
 	if (disassembler->num_instructions == 0) {

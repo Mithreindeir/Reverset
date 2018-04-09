@@ -1,6 +1,8 @@
 #ifndef _X64_INSTRUCTIONS_H
 #define _X64_INSTRUCTIONS_H
 
+#define X64_FPU_SUFF_MAP(map) (map==0x66?1:(map==0xf3?2:(map==0xf2?3:0)))
+
 typedef struct x64_instruction {
 	char * mnemonic;
 	union {
@@ -27,9 +29,13 @@ enum x64_Addressing_Mode {
 	X64_REL = 'J',			//RelatIde offset
 	X64_MEM = 'M',			//Modrm forced to refer to memory
 	X64_MOFFSET = 'O',		//No modrm byte. Offset is coded in the instruction
+	X64_MMX_REG = 'P',		//Register field of modrm selects mmx register
 	X64_MOD_REG = 'R',		//Mod firled of modrm refers to general register
 	X64_SEG_REG = 'S',		//The register field of the modrm byte codes for a seg reg
 	X64_TEST_REG = 'T',		//Reg field of modrm byte codes for a test register
+	X64_MMX_MODRM = 'Q', 		//Modrm byte specifies mmx register or modrm mem addr
+	X64_XMM_MODRM = 'W', 		//Modrm byte specifies xmm register or modrm mem addr
+	X64_XMM_REG = 'V', 		//Registerfield of modrm selects xmm register
 	X64_DSSI_MEM = 'X',		//Memory addressed by DS:SI
 	X64_ESDI_MEM = 'Y'		//Memory addressed by ES:DI
 };
@@ -346,8 +352,8 @@ static const x64_instruction x64_instruction_extended_table[] = {
 	{"", "", "", ""},
 	{"", "", "", ""},
 	//1
-	{"", "", "", ""},
-	{"", "", "", ""},
+	{"1dmov", "Vd", "Wd", ""},
+	{"1dmov", "Wd", "Vd", ""},
 	{"", "", "", ""},
 	{"", "", "", ""},
 	{"", "", "", ""},
@@ -373,9 +379,9 @@ static const x64_instruction x64_instruction_extended_table[] = {
 	{"", "", "", ""},
 	{"", "", "", ""},
 	{"", "", "", ""},
+	{"3ncvt", "", "", ""},
 	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
+	{"2ncvtt", "", "", ""},
 	{"", "", "", ""},
 	{"", "", "", ""},
 	{"", "", "", ""},
@@ -422,9 +428,9 @@ static const x64_instruction x64_instruction_extended_table[] = {
 	{"", "", "", ""},
 	{"", "", "", ""},
 	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
-	{"", "", "", ""},
+	{"1dadd", "Vd", "Wd", ""},
+	{"1dmul", "Vd", "Wd", ""},
+	{"4dcvt", "Vd", "Wd", ""},
 	{"", "", "", ""},
 	{"", "", "", ""},
 	{"", "", "", ""},
@@ -601,6 +607,42 @@ static const x64_instruction x64_instruction_extended_table[] = {
 	{"", "", "", ""},
 	{"", "", "", ""},
 
+};
+
+//FPU/SSE/AVX Suffix table
+//A few instruction have prefix bytes that change their suffix and operand type
+//To keep the majority of the disassembly in a 1-1 table, I am just making an additional
+//suffix table for those instruction
+//0 66 f3 f2
+static const x64_instruction x64_fpu_suffix_t1[] = {
+	{"ups", "", "", ""},
+	{"upd", "", "", ""},
+	{"ss", "", "", ""},
+	{"sd", "", "", ""},
+};
+static const x64_instruction x64_fpu_suffix_t2[] = {
+	{"ps2pi", "Pd", "Wd", ""},
+	{"pd2pi", "Pd", "Wd", ""},
+	{"ss2si", "Gd", "Wd", ""},
+	{"sd2si", "Gd", "Wd", ""},
+};
+
+static const x64_instruction x64_fpu_suffix_t3[] = {
+	{"pi2ps", "Vd", "Qd", ""},
+	{"pi2pd", "Vd", "Qd", ""},
+	{"si2ss", "Vd", "Ed", ""},
+	{"si2sd", "Vd", "Ed", ""},
+};
+
+static const x64_instruction x64_fpu_suffix_t4[] = {
+	{"ps2pd", "", "", ""},
+	{"pd2ps", "", "", ""},
+	{"ss2sd", "", "", ""},
+	{"sd2ss", "", "", ""},
+};
+
+static const x64_instruction* x64_fpu_suffix_table[] = {
+	x64_fpu_suffix_t1, x64_fpu_suffix_t2, x64_fpu_suffix_t3, x64_fpu_suffix_t4
 };
 
 //Opcode extension groups

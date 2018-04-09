@@ -28,7 +28,7 @@ enum x64_instr_prefix_t
 #define X64_MASK_REX_R(v) ((v & 0x4) != 0)	//Extension of modr/m reg field
 #define X64_MASK_REX_W(v) ((v & 0x8) !=0)	//64 bit operand size
 
-enum x64_rex_prefix 
+enum x64_rex_prefix
 {
 	X64_REX,	//0000
 	X64_REX_B,		//0001
@@ -52,6 +52,7 @@ enum x64_rex_prefix
 typedef struct x64_instr_prefix {
 	int size_override;
 	int addr_override;
+	int fp_size;
 	char * segment_register;
 	char * instr_prefix;
 	int extended;

@@ -1,4 +1,5 @@
 #include "read_elf.h"
+/*TODO Refactor this whole file*/
 
 void elf_read_file(FILE * f, r_file * file)
 {
@@ -233,7 +234,7 @@ void elf_read32(FILE * f, r_file * file)
 				} else {
 					file->symbols = realloc(file->symbols, sizeof(rsymbol) * file->num_symbols);
 				}
-				file->symbols[file->num_symbols-1] = rsym;			
+				file->symbols[file->num_symbols-1] = rsym;
 			}
 		} else if (sections[i].sh_type == SHT_RELA) {
 			int num_symbols = sections[i].sh_size/sizeof(Elf32_Rela);
@@ -254,7 +255,7 @@ void elf_read32(FILE * f, r_file * file)
 				} else {
 					file->symbols = realloc(file->symbols, sizeof(rsymbol) * file->num_symbols);
 				}
-				file->symbols[file->num_symbols-1] = rsym;			
+				file->symbols[file->num_symbols-1] = rsym;
 			}
 		}
 	}
@@ -321,7 +322,7 @@ void elf_read64(FILE * f, r_file * file)
 		r.type = r_notype;
 		r.perm = 0;
 		if (sections[i].sh_type == SHT_PROGBITS) {
-			
+
 			r.type = r_programdefined;
 		} else if (sections[i].sh_type == SHT_SYMTAB) {
 			r.type = r_symboltab;
@@ -408,7 +409,7 @@ void elf_read64(FILE * f, r_file * file)
 
 		}
 	}
-	
+
 	//Find DYNSTR
 	for (int i = 0; i < header.e_shnum; i++) {
 		if (!strcmp(file->sections[i].name, ".dynstr")) {
@@ -479,7 +480,7 @@ void elf_read64(FILE * f, r_file * file)
 				} else {
 					file->symbols = realloc(file->symbols, sizeof(rsymbol) * file->num_symbols);
 				}
-				file->symbols[file->num_symbols-1] = rsym;			
+				file->symbols[file->num_symbols-1] = rsym;
 			}
 		} else if (sections[i].sh_type == SHT_RELA) {
 			int num_symbols = sections[i].sh_size/sizeof(Elf64_Rela);
@@ -500,7 +501,7 @@ void elf_read64(FILE * f, r_file * file)
 				} else {
 					file->symbols = realloc(file->symbols, sizeof(rsymbol) * file->num_symbols);
 				}
-				file->symbols[file->num_symbols-1] = rsym;			
+				file->symbols[file->num_symbols-1] = rsym;
 			}
 		}
 

@@ -9,26 +9,26 @@ x64_instr_prefix x64_instruction_prefix(unsigned char * stream, int * len)
 	prefix.instr_prefix = NULL;
 	prefix.extended = 0;
 	prefix.rex_prefix = 0;
+	prefix.fp_size = 0;
 
 	int prefix_found = 0;
 	do {
 		prefix_found = 0;
-		char c = stream[*len];
+		unsigned char c = stream[*len];
 		//Check for opcode extension prefix (0F)
 		if (c==0x0F) {
 			prefix_found = 1;
 			prefix.extended = 1;
 			(*len)++;
-			break;
+			goto SUFF_CHECK;
 		}
 		//Check for rex
 		if (X64_REX_PREFIX(c)) {
 			prefix_found = 1;
 			prefix.rex_prefix = c-0x40;
 			(*len)++;
-			continue;
+			goto SUFF_CHECK;
 		}
-
 		//Check for rep, repne, lock or size override bytes
 		int type = 0;
 		for (int i = 0; i < (sizeof(x86_instr_prefix_byte)); i++) {
@@ -36,7 +36,7 @@ x64_instr_prefix x64_instruction_prefix(unsigned char * stream, int * len)
 				prefix_found = 1;
 				type = i;
 				(*len)++;
-				continue;
+				goto SUFF_CHECK;
 			}
 		}
 		if (prefix_found) {
@@ -50,7 +50,15 @@ x64_instr_prefix x64_instruction_prefix(unsigned char * stream, int * len)
 				prefix_found = 1;
 				prefix.segment_register = x86_segment_registers[i];
 				(*len)++;
-				continue;
+				goto SUFF_CHECK;
+			}
+		}
+SUFF_CHECK:
+		if (c==0x66||c==0xf2||c==0xf3) {
+			prefix.fp_size=c;
+			if (!prefix_found) {
+				(*len)++;
+				prefix_found=1;
 			}
 		}
 	} while (prefix_found);
@@ -97,6 +105,16 @@ r_disasm * x64_decode_instruction(unsigned char * stream, int address)
 		}
 		//Some groups all share the same operands, other differ. 'd' means use the default given by the group operand. a means use the operands in group table a and b means group table b and etc
 	}
+	if (instr.mnemonic && (instr.mnemonic[0]>=0x30 && instr.mnemonic[0]<=0x39)) {
+		int def = instr.mnemonic[1];
+		if (def!='d') {
+			int stab = instr.mnemonic[0]-0x30;
+			unsigned char mt = prefix.fp_size;
+			char * sm = instr.mnemonic;
+			instr = x64_fpu_suffix_table[stab-1][X64_FPU_SUFF_MAP(mt)];
+			instr.mnemonic = sm;
+		}
+	}
 	x64_instr_operand* op1, *op2,* op3;
 	//Decode operands
 	op1 = x64_decode_operand(instr.op1, &state);
@@ -113,8 +131,16 @@ r_disasm * x64_decode_instruction(unsigned char * stream, int address)
 	//Convert instructions to strings
 	int iter = 0;
 	char buf[32];
-	if (prefix.instr_prefix) iter += snprintf(buf+iter, 32-iter, "%s ", prefix.instr_prefix);
-	snprintf(buf+iter, 32-iter, "%s", instr.mnemonic);
+	//A number as the first char in the mnemonic indicates a suffix and a table number
+	if (instr.mnemonic && (instr.mnemonic[0]>=0x30 && instr.mnemonic[0]<=0x39)) {
+		int stab = instr.mnemonic[0]-0x30;
+		unsigned char mt = prefix.fp_size;
+		const char* suff = x64_fpu_suffix_table[stab-1][X64_FPU_SUFF_MAP(mt)].mnemonic;
+		snprintf(buf+iter, 32-iter, "%s%s", instr.mnemonic+2, suff);
+	} else {
+		if (prefix.instr_prefix) iter += snprintf(buf+iter, 32-iter, "%s ", prefix.instr_prefix);
+		snprintf(buf+iter, 32-iter, "%s", instr.mnemonic);
+	}
 	r_disasm * disas = r_disasm_init();
 	disas->mnemonic = strdup(buf);
 	x64_disas_meta_type(disas);
@@ -318,6 +344,34 @@ x64_instr_operand *x64_decode_operand(char * operand, x64_disas_state *state)
 				opr->seg_offset = x86_segment_registers[0];//es == 1
 				opr->indirect = 1;
 				opr->base = x64_get_register(7, state->addr_size, X64_MASK_REX_B(state->rex));
+				break;
+			case X64_XMM_MODRM:
+				//Only decode modrm if the byte refers to memory
+				if ((MASK_MODRM_MOD(state->stream[*state->iter]))!=3){
+					x64_decode_modrm(opr, state);
+				} else {
+					opr->operand = x86_xmm_registers[MASK_MODRM_RM(state->stream[*state->iter])];
+					(*state->iter)++;
+					opr->type = X64O_STR;
+				}
+				break;
+			case X64_MMX_MODRM:
+				//Only decode modrm if the byte refers to memory
+				if ((MASK_MODRM_MOD(state->stream[*state->iter]))!=3){
+					x64_decode_modrm(opr, state);
+				} else {
+					opr->operand = x86_xmm_registers[MASK_MODRM_RM(state->stream[*state->iter])];
+					(*state->iter)++;
+					opr->type = X64O_STR;
+				}
+				break;
+			case X64_MMX_REG:
+				opr->operand = x86_mm_registers[MASK_MODRM_REG(state->stream[state->operand_start])];
+				opr->type = X64O_STR;
+				break;
+			case X64_XMM_REG:
+				opr->operand = x86_xmm_registers[MASK_MODRM_REG(state->stream[state->operand_start])];
+				opr->type = X64O_STR;
 				break;
 			default:
 				printf("Invalid addressing mode\n");

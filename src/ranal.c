@@ -3,26 +3,45 @@
 void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file)
 {
 	/*Automatic analysis:
-	Start at entry point and all function symbols. Recursively every address found in the disassembly is jumped to and disassembled, and stops at rets. A bound is created between the call and ret.
-	Name these as function
-	*/
-	disassembler->recursive = 1;
-	disassembler->overwrite = 0;
-	disassembler->linear = 0;
+	-Linear disassemble text sections.
+	-Push calls and symbols to start.
+	-Recursively disassemble stack adding all addresses while disassembling.
 
+	-Function analysis:
+		-Mark all addresses with call xrefs to them as function starts and run a basic block analysis
+		to find the size.
+		-Use ABI convention to recreate call arguments.
+		-Iterate through function assembly and mark local variables
+
+	-Replace all instances of symbol addresses with symbols names
+	-Replace all instances of function addresses with function names
+	-Replace all instances of string addresses with string names
+
+	*/
+	disassembler->recursive = 0;
+	disassembler->overwrite = 0;
+	disassembler->linear = 1;
+
+	/*The entry point must be the top of the stack so force it*/
+	r_disassembler_pushaddr(disassembler, file->entry_point);
+	r_disassemble(disassembler, file);
+
+	disassembler->recursive = 1;
+	disassembler->linear = 0;
 	for (int i = 0; i < file->num_symbols; i++) {
 		if (file->symbols[i].type != R_FUNC) continue;
 
 		r_disassembler_pushaddr(disassembler, file->symbols[i].addr64);
 	}
-	writef("Disassembling recursively from entry point %lx\r\n", file->entry_point);
-	/*The entry point must be the top of the stack so force it*/
-	int old_size = disassembler->num_addresses;
-	int cnt = 0;
-	while (old_size == disassembler->num_addresses) {
-		r_disassembler_pushaddr(disassembler, cnt++);
+	for (int i = 0; i < disassembler->num_instructions; i++) {
+		r_disasm *disas = disassembler->instructions[i];
+		if (disas->metadata->type == r_tcall) {
+			for (int j = 0; j < disas->metadata->num_addr; j++) {
+				r_disassembler_pushaddr(disassembler, disas->metadata->addresses[j]);
+			}
+		}
 	}
-	disassembler->addrstack[old_size] = file->entry_point;
+
 	r_disassemble(disassembler, file);
 	printf("\r\n");
 	/*Recursively disassemble all calls*/
@@ -47,7 +66,7 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 	r_disasm * adj_lc = NULL;
 	for (int i = 0; i < file->num_symbols; i++) {
 		if (!file->symbols[i].name) continue;
-		if (!strcmp(file->symbols[i].name, "__libc_start_main")) {
+		if (!strcmp(file->symbols[i].name, "rel.__libc_start_main")) {
 			call_to_libc = file->symbols[i].addr64;
 		}
 	}
@@ -63,16 +82,6 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 			}
 		}
 	}
-	if (adjacent_libc&&0) {
-		for (int i = 0; i < disassembler->num_instructions; i++) {
-			r_disasm * disas = disassembler->instructions[i];
-			if (disas->address == adjacent_libc && i > 0) {
-				adjacent_libc = disassembler->instructions[i-1]->address;
-				break;
-			}
-		}
-	}
-	writef("%#lx %#lx\r\n", adjacent_libc, call_to_libc);
 	/*Experimental function detection*/
 	for (int i = 0; i < disassembler->num_instructions; i++) {
 		r_disasm * disas = disassembler->instructions[i];
@@ -83,138 +92,7 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 			main = disas->metadata->xref_to[j].addr == adjacent_libc;
 		}
 		if (!called&&!main) continue;
-		/*Check if there is a symbol with same start address*/
-		char *name = NULL;
-		for (int j = 0; j < file->num_symbols; j++) {
-			if (!file->symbols[j].name) continue;
-			rsymbol sym = file->symbols[j];
-			if (sym.addr64 == disas->address) {
-				int len = snprintf(NULL, 0, "func.%s", sym.name)+1;
-				name = malloc(len);
-				snprintf(name, len, "func.%s", sym.name);
-				break;
-			}
-		}
-		if (!name&& main) {
-			name = strdup("func.main");
-		}
-		if (!name) {
-			int len = snprintf(NULL, 0, "func.%x", disas->address);
-			name = malloc(len+1);
-			snprintf(name, len+1, "func.%x", disas->address);
-		}
-		anal->num_functions++;
-		if (anal->num_functions == 1) {
-			anal->functions = malloc(sizeof(r_function));
-		} else {
-			anal->functions = realloc(anal->functions, sizeof(r_function) * anal->num_functions);
-		}
-		rsection *section = r_file_section_addr(file, disas->address);
-		uint64_t end = 0;
-		if (section)
-			end = section->start + section->size;
-		r_function func;
-		func.name = name;
-		func.start = disas->address;
-		func.size = 0;
-		func.argc = 0;
-		func.args = NULL;
-		func.num_locals = 0;
-		func.locals = NULL;
-		func.bbs = NULL;
-		func.nbbs = 0;
-		static char test ='A';
-		func.bbs = rbb_anal(disassembler, anal->branches, anal->num_branches, i, func.start, end, &func.nbbs);
-		for (int k = 0; k < func.nbbs; k++) {
-			if ((func.bbs[k]->end-func.start) > func.size)
-				func.size = func.bbs[k]->end-func.start;
-		}
-		anal->functions[anal->num_functions-1] = func;
-		r_function_arguments(disassembler, anal, &anal->functions[anal->num_functions-1], file->abi);
-		r_function_locals(disassembler, &anal->functions[anal->num_functions-1], file->abi);
-	}
-
-
-	/*Mark as function if they have xrefs to the start */
-	for (int i = 0; 0 && i < disassembler->num_bounds; i++) {
-		block_bounds b = disassembler->bounds[i];
-		if ((b.end-b.start)<1) continue;
-
-		/*Find disassembly with address*/
-		int found = 0;
-		int sidx = 0;
-		r_disasm * disas = NULL;
-		for (int j = 0; j < disassembler->num_instructions; j++) {
-			disas = disassembler->instructions[j];
-			if (disas->address == b.start) {
-				sidx = j;
-				found = 1;
-				break;
-			}
-		}
-		if (!found) continue;
-
-		/*Check if there are xrefs to it*/
-		int call = 0;
-		int main = 0;
-		for (int i = 0; i < disas->metadata->num_xrefto; i++) {
-			if (disas->metadata->xref_to[i].addr == adjacent_libc) {
-				main = 1;
-				break;
-			}
-
-			if (disas->metadata->xref_to[i].type == r_tcall) {
-				call = 1;
-				break;
-			}
-		}
-		if (!call && !main) continue;
-
-		/*Check if there is a symbol with the bound start address*/
-		char * name = NULL;
-
-		for (int j = 0; j < file->num_symbols; j++) {
-			if (!file->symbols[j].name) continue;
-			rsymbol sym = file->symbols[j];
-			if (sym.addr64 == b.start) {
-				int len = snprintf(NULL, 0, "func.%s", sym.name);
-				name = malloc(len+1);
-				snprintf(name, len+1, "func.%s", sym.name);
-				break;
-			}
-		}
-		if (!name && main) {
-			name = strdup("func.main");
-		} else if (!name) {
-			int len = snprintf(NULL, 0, "func.%x", b.start);
-			name = malloc(len+1);
-			snprintf(name, len+1, "func.%x", b.start);
-		}
-
-
-		anal->num_functions++;
-		if (anal->num_functions == 1) {
-			anal->functions = malloc(sizeof(r_function));
-		} else {
-			anal->functions = realloc(anal->functions, sizeof(r_function) * anal->num_functions);
-		}
-		r_function func;
-		func.name = name;
-		func.start = b.start;
-		func.size = b.end - b.start;
-		func.argc = 0;
-		func.args = NULL;
-		func.num_locals = 0;
-		func.locals = NULL;
-		func.bbs = NULL;
-		func.nbbs = 0;
-		func.bbs = rbb_anal(disassembler, anal->branches, anal->num_branches, sidx, func.start, b.end, &func.nbbs);
-		for (int k = 0; k < func.nbbs; k++) {
-			//writef("BBS %#x-%#x %d\r\n", func.bbs[k]->start, func.bbs[k]->end, func.bbs[k]->size);
-		}
-		anal->functions[anal->num_functions-1] = func;
-		r_function_arguments(disassembler, anal, &anal->functions[anal->num_functions-1], file->abi);
-		r_function_locals(disassembler, &anal->functions[anal->num_functions-1], file->abi);
+		r_meta_func_analyze(disassembler, file, anal, i);
 	}
 
 	/*Lastly call replace functions with func first*/
@@ -222,6 +100,57 @@ void r_meta_auto(r_analyzer * anal, r_disassembler * disassembler, r_file * file
 	r_meta_func_replace(disassembler, file, anal);
 
 	r_meta_string_replace(disassembler, file);
+}
+
+void r_meta_func_analyze(r_disassembler *disassembler, r_file *file, r_analyzer *anal, int sidx)
+{
+	r_disasm *disas = disassembler->instructions[sidx];
+	uint64_t max = disassembler->instructions[disassembler->num_instructions-1]->address;
+	/*Check if there is a symbol with same start address*/
+	char *name = NULL;
+	for (int j = 0; j < file->num_symbols; j++) {
+		if (!file->symbols[j].name) continue;
+		rsymbol sym = file->symbols[j];
+		if (sym.addr64 == disas->address) {
+			int len = snprintf(NULL, 0, "func.%s", sym.name)+1;
+			name = malloc(len);
+			snprintf(name, len, "func.%s", sym.name);
+			break;
+		}
+	}
+	if (!name) {
+		int len = snprintf(NULL, 0, "func.%x", disas->address);
+		name = malloc(len+1);
+		snprintf(name, len+1, "func.%x", disas->address);
+	}
+	anal->num_functions++;
+	if (anal->num_functions == 1) {
+		anal->functions = malloc(sizeof(r_function));
+	} else {
+		anal->functions = realloc(anal->functions, sizeof(r_function) * anal->num_functions);
+	}
+	rsection *section = r_file_section_addr(file, disas->address);
+	uint64_t end = 0;
+	if (section)
+		end = section->start + section->size;
+	r_function func;
+	func.name = name;
+	func.start = disas->address;
+	func.size = 0;
+	func.argc = 0;
+	func.args = NULL;
+	func.num_locals = 0;
+	func.locals = NULL;
+	func.bbs = NULL;
+	func.nbbs = 0;
+	func.bbs = rbb_anal(disassembler, anal->branches, anal->num_branches, sidx, func.start, end, &func.nbbs);
+	for (int k = 0; k < func.nbbs; k++) {
+		if ((func.bbs[k]->end-func.start) > func.size)
+			func.size = func.bbs[k]->end-func.start;
+	}
+	anal->functions[anal->num_functions-1] = func;
+	r_function_arguments(disassembler, anal, &anal->functions[anal->num_functions-1], file->abi);
+	r_function_locals(disassembler, &anal->functions[anal->num_functions-1], file->abi);
 }
 
 void r_meta_func_replace(r_disassembler * disassembler, r_file * file, r_analyzer * anal)
@@ -406,6 +335,7 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file)
 	int all = 1;
 	r_disasm *disas = NULL;
 	rsymbol sym;
+	char buf[256];
 	for (int j = 0; j < disassembler->num_instructions; j++) {
 		disas = disassembler->instructions[j];
 		all = 0;
@@ -421,17 +351,21 @@ void r_meta_reloc_resolve(r_disassembler * disassembler, r_file * file)
 			if (r_meta_find_addr(disas->metadata, sym.addr64, META_ADDR_DATA)) {
 				sym.addr64 = disas->address;
 				sym.type = -1;
-				file->symbols[i] = sym;
-				break;
+				file->symbols[i].type = -1;
 			} else if (comment_addr) {
 				uint64_t num = strtol(disas->metadata->comment, NULL, 0);
 				if (num==sym.addr64) {
 					sym.addr64 = disas->address;
 					sym.type = -1;
-					file->symbols[i] = sym;
+					file->symbols[i].type = -1;
 				}
-				break;
 			}
+			if (file->symbols[i].type != -1) continue;
+			file->num_symbols++;
+			snprintf(buf, 255, "rel.%s", sym.name);
+			sym.name = strdup(buf);
+			file->symbols = realloc(file->symbols, sizeof(rsymbol) * file->num_symbols);
+			file->symbols[file->num_symbols-1] = sym;
 		}
 		if (!all) break;
 	}
