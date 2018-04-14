@@ -45,8 +45,6 @@
 {!A-Za-z}^jb^{!A-Za-z} 				= yellow
 {!A-Za-z}^jnb^{!A-Za-z} 				= yellow
 {!A-Za-z}^cvt*2{a-z}{a-z}^{!A-Za-z} 				= yellow
-^up{s}{d}^{!A-Za-z} 					= green
-^s{s}{d}^{!A-Za-z} 					= green
 {!A-Za-z}^{qd}word^{!A-Za-z} 				= magenta
 {!A-Za-z}^byte^{!A-Za-z} 				= magenta
 {!A-Za-z}^{x}mm{0-7}^{!A-Za-z} 				= red
@@ -80,4 +78,6 @@ symbol: ^[A-z]$^ 				= green
 function: sym.^[A-z0-9.]$^ 			= green
 section: ^[.A-z]$^ 				= green
 ^address:^{ \t}${0}{x}[0-9a-f]$ 		= blue
+^up{s}{d}^{!A-Za-z} 					= green
+^s{s}{d}^{!A-Za-z} 					= green
 ^{0-9a-f}$^ 					= blue
