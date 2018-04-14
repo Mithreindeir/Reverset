@@ -9,5 +9,4 @@
 ril_location *x64_operand_lift(char *operand);
 ril_instruction *x64_instr_lift(r_disasm *dis);
 
-
 #endif

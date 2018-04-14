@@ -3,8 +3,10 @@
 [![Build Status](https://upload.wikimedia.org/wikipedia/commons/f/f8/License_icon-mit-88x31-2.svg)]()
 [![Build Status](https://travis-ci.org/Mithreindeir/Reverset.svg?branch=master)](https://travis-ci.org/Mithreindeir/Reverset)
 
-Reverset is a lightweight portable reverse engineering and binary analysis tool. Currently supports the entire standard x86 instruction set, with coming support for x87 fpu, avx, and sse instructions. Supports almost the entire x64 instruction set.
-No external dependencies, written completely in C.
+Reverset is a lightweight portable reverset engineering and binary analysis tool. No external dependencies, written completely in C.
+
+## Why?
+I wanted to make a user friendly simple reverse engineering tool that was focused specifically on x86 / x86 64 instead of sacrificing quality analysis by being over general to support many different architectures. Currently still very in development.
 
 # Features
 
@@ -17,6 +19,16 @@ No external dependencies, written completely in C.
 * Patching
 * xref searching
 * More
+
+# In-dev/undocumented/upcoming features
+* Reverset Intermediate Language
+* Internal graphing engine
+* SSE/AVX/FPU Instruction
+* PE File Analysis
+* More advanced function analysis/detection
+* Signatures
+
+Note: Supports majority of used instructions and but not 100% yet. Still working on support for all x87 fpu/avx/sse/sse2 and misc instructions.
 
 # How To
 
@@ -33,6 +45,7 @@ Commands:
 * disas location -> Manual disassembly at a location (currently depreciated)
 * help -> Prints this help
 * write "bytes" -> Writes the bytes at the current location
+* dump (optional -c columns -r rows) address/func/symbol/location -/ "Hexdump"
 * quit -> Exits reverset
 
 # Building
