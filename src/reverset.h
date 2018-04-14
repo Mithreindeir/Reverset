@@ -10,6 +10,7 @@
 #include "ranal.h"
 #include "rformat.h"
 #include "rpipe.h"
+#include "arch/x86_64/x64lift.h"
 #include "arch/x86/x86disassembler.h"
 #include "arch/x86_64/x64assembler.h"
 #include "arch/x86/x86assembler.h"

@@ -4,6 +4,7 @@
 #include "rfile.h"
 #include "rdis.h"
 #include "ranal.h"
+#include "arch/x86_64/x64lift.h"
 #include "arch/x86/x86disassembler.h"
 #include "arch/x86_64/x64assembler.h"
 #include "arch/x86_64/x64disassembler.h"
