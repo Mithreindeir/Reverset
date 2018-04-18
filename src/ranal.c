@@ -143,11 +143,33 @@ void r_meta_func_analyze(r_disassembler *disassembler, r_file *file, r_analyzer 
 	func.locals = NULL;
 	func.bbs = NULL;
 	func.nbbs = 0;
+	func.instr = NULL;
 	func.bbs = rbb_anal(disassembler, anal->branches, anal->num_branches, sidx, func.start, end, &func.nbbs);
+
 	for (int k = 0; k < func.nbbs; k++) {
 		if ((func.bbs[k]->end-func.start) > func.size)
 			func.size = func.bbs[k]->end-func.start;
 	}
+
+	//Create IL representation
+	r_disasm *dis = NULL;
+	ril_instruction *cur = NULL;
+	ril_instruction *start = NULL;
+	for (int i = sidx; i < disassembler->num_instructions; i++) {
+		dis = disassembler->instructions[i];
+		if ((dis->address) >= (func.start + func.size))
+			break;
+		if (!start) {
+			cur = ril_instr_lift(anal->table, dis);
+			start = cur;
+		} else {
+			cur->next = ril_instr_lift(anal->table, dis);
+			cur = cur->next;
+		}
+		cur->next = NULL;
+	}
+	func.instr = start;
+
 	anal->functions[anal->num_functions-1] = func;
 	r_function_arguments(disassembler, anal, &anal->functions[anal->num_functions-1], file->abi);
 	r_function_locals(disassembler, &anal->functions[anal->num_functions-1], file->abi);
@@ -674,6 +696,58 @@ r_analyzer * r_analyzer_init()
 	anal->num_branches = 0;
 	anal->branches = NULL;
 	anal->function = 1;
+	anal->table = ril_table_init(100, &x64_operand_lift);
+
+	ril_table_insert(anal->table,
+			ril_oper_init("add", "$w=$0,$r=$1", "$w = $w + $r"));
+	ril_table_insert(anal->table,
+			ril_oper_init("sub", "$w=$0,$r=$1", "$w = $w - $r"));
+	ril_table_insert(anal->table,
+			ril_oper_init("xor", "$w=$0,$r=$1", "$w = $w ^ $r"));
+	ril_table_insert(anal->table,
+			ril_oper_init("mov", "$w=$0,$r=$1", "$w = $r"));
+	ril_table_insert(anal->table,
+			ril_oper_init("movzx", "$w=$0,$r=$1", "$w = (unsigned int)$r"));
+	ril_table_insert(anal->table,
+			ril_oper_init("movsx", "$w=$0,$r=$1", "$w = (signed int)$r"));
+	ril_table_insert(anal->table,
+			ril_oper_init("lea", "$w=$0,$r=$1", "$w = &($r)"));
+	ril_table_insert(anal->table,
+			ril_oper_init("push", "$r=$0", "push( $r )"));
+	ril_table_insert(anal->table,
+			ril_oper_init("pop", "$w=$0", "pop( $w )"));
+	ril_table_insert(anal->table,
+			ril_oper_init("cmp", "$r=$0,$r=$1", "$r0 ? $r1"));
+	ril_table_insert(anal->table,
+			ril_oper_init("imul", "$w=$0,$r=$1", "$w *= $r"));
+	ril_table_insert(anal->table,
+			ril_oper_init("jz", "$r=$0", "if ($r1==$r2) goto $r0"));
+	ril_table_insert(anal->table,
+			ril_oper_init("jle", "$r=$0", "if ($r1<=$r2) goto $r0"));
+	ril_table_insert(anal->table,
+			ril_oper_init("jns", "$r=$0", "if ($r1>=0) goto $r0"));
+	ril_table_insert(anal->table,
+			ril_oper_init("call", "$r=$0", "$r()"));
+	ril_table_insert(anal->table,
+			ril_oper_init("jmp", "$r=$0", "goto $r"));
+	ril_table_insert(anal->table,
+			ril_oper_init("test", "$r=$0,$r=1", "$r0 & $r1"));
+	/*
+	ril_table_insert(anal->table, ril_oper_init("add", "+="));
+	ril_table_insert(anal->table, ril_oper_init("add", "+="));
+	ril_table_insert(anal->table, ril_oper_init("sub", "-="));
+	ril_table_insert(anal->table, ril_oper_init("xor", "^="));
+	ril_table_insert(anal->table, ril_oper_init("mov", "="));
+	ril_table_insert(anal->table, ril_oper_init("movzx", "= (int)"));
+	ril_table_insert(anal->table, ril_oper_init("lea", "= &"));
+	ril_table_insert(anal->table, ril_oper_init("cmp", "==="));
+	ril_table_insert(anal->table, ril_oper_init("jmp", "goto:"));
+	ril_table_insert(anal->table, ril_oper_init("jle", "if (x <= y) goto:"));
+	ril_table_insert(anal->table, ril_oper_init("jge", "if (x >= y) goto:"));
+	ril_table_insert(anal->table, ril_oper_init("jz", "if (x) goto:"));
+	ril_table_insert(anal->table, ril_oper_init("jnz", "if (!x) goto:"));
+	ril_table_insert(anal->table, ril_oper_init("imul", "*="));
+*/
 
 	return anal;
 }
@@ -704,6 +778,7 @@ void r_analyzer_destroy(r_analyzer * anal)
 
 	}
 
+	ril_table_destroy(anal->table);
 	free(anal->functions);
 	free(anal->branches);
 	free(anal);

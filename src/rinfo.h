@@ -1,8 +1,9 @@
 #ifndef RINFO_H
 #define RINFO_H
 
-/*Data structures holding analyzed info about the disassembly*/
+#include "dec/ril.h"
 
+/*Data structures holding analyzed info about the disassembly*/
 /*Basic Block*/
 typedef struct rbb {
 	long size;
@@ -27,6 +28,8 @@ typedef struct r_function {
 
 	rbb **bbs;
 	int nbbs;
+
+	ril_instruction *instr;
 } r_function;
 
 /*Branches*/

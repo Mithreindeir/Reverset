@@ -10,7 +10,6 @@ reverset * reverset_init()
 	rev->anal = r_analyzer_init();
 	rev->status = rs_none;
 	rev->pipe = r_pipe_init(1024);
-
 	rev->shell = dshell_init();
 	dshell_loadconf(rev->shell, "color.example");
 	dshell_addfunc(rev->shell, "anal", &reverset_analyze, rev);
@@ -26,7 +25,6 @@ reverset * reverset_init()
 	dshell_addfunc(rev->shell, "dump", &reverset_hexdump, rev);
 	dshell_addfunc(rev->shell, "help", &reverset_help, rev);
 	//rev->shell->buffer->cur_color = 37;
-
 	return rev;
 }
 
@@ -194,6 +192,7 @@ int reverset_help(struct text_buffer*buf, int argc, char **argv, void*data)
 	text_buffer_print(buf, "asm \"assembly\" -> Assembles a string using current ISA\r\n");
 	text_buffer_print(buf, "xref to/from here/func/address/symbol -> List xrefs to or from an address\r\n");
 	text_buffer_print(buf, "disas location -> Manual disassembly at a location (currently depreciated)\r\n");
+	text_buffer_print(buf, "dump here/func/address/symbol -> Hexdump at location\r\n");
 	text_buffer_print(buf, "help -> Prints this help\r\n");
 	text_buffer_print(buf, "quit -> Exits reverset\r\n");
 	buf->cur_color = oc;
@@ -353,7 +352,7 @@ int reverset_disas(struct text_buffer *buf, int argc, char **argv, void*data)
 
 	int oc = buf->cur_color;
 	buf->cur_color = 37;
-	text_buffer_print(buf, "For most files you will want to use anal\r\n");
+	//text_buffer_print(buf, "For most files you will want to use anal\r\n");
 	buf->cur_color = oc;
 
 	if (!argv) return 0;
@@ -388,6 +387,19 @@ int reverset_disas(struct text_buffer *buf, int argc, char **argv, void*data)
 		text_buffer_print(buf, "No address found for \"%s\"\r\n", tok);
 		return 1;
 	}
+	r_function func;
+	int found = 0;
+	for (int i = 0; i < rev->anal->num_functions; i++) {
+		func = rev->anal->functions[i];
+		if (func.start == addr) {
+			found = 1;
+			break;
+		}
+	}
+	if (!found) return 1;
+	if (func.instr)
+		ril_instr_print(buf, func.instr);
+	return 1;
 	int r = rev->disassembler->recursive;
 	rev->disassembler->recursive = all;
 	rev->disassembler->overwrite = 0;

@@ -7,6 +7,6 @@
 /*The Assembler shares a lot of functionality to lifting*/
 
 ril_location *x64_operand_lift(char *operand);
-ril_instruction *x64_instr_lift(r_disasm *dis);
+ril_instruction *x64_instr_lift(r_disasm *dis, ril_operation_table *table);
 
 #endif

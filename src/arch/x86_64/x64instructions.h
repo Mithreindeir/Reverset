@@ -169,7 +169,7 @@ static const x64_instruction x64_instruction_table[] = {
 	{"push", "Id", "", ""},
 	{"imul", "Gv", "Ev", "Id"},
 	{"push", "Ib", "", ""},
-	{"imul", "Gv", "Ev", "Id"},
+	{"imul", "Gv", "Ev", "Ib"},
 	{"insb", "Yb", "dx", ""},
 	{"insw", "Yb", "dx", ""},
 	{"outsb", "Dx", "Xb", ""},

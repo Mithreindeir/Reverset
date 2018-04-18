@@ -4,6 +4,12 @@ ril_location *x64_operand_lift(char *operand)
 {
 	ril_location *loc = ril_loc_init();
 	struct x64_assemble_op op = x64_assembler_type(operand);
+	loc->size = op.opr_size;
+	if (loc->size==4)
+		loc->size = 8;
+	else if (loc->size==3)
+		loc->size = 4;
+
 	if (op.mode == X64_IMM || !strcmp(operand, "0")) {
 		loc->addr = strtol(operand, NULL, 0);
 		loc->type = RIL_ADDR;
@@ -14,6 +20,10 @@ ril_location *x64_operand_lift(char *operand)
 		x64_retrieve_indirect(operand, &indir);
 		ril_location *cur = NULL;
 		ril_location *start = NULL;
+		int sign = 1;
+		if (indir.disp_size == 1 && indir.disp >= 0x80)
+			sign = 0;
+
 		if (indir.base != -1) {
 			if (!cur) {
 				cur =
@@ -24,7 +34,10 @@ ril_location *x64_operand_lift(char *operand)
 				x64_operand_lift(x64_get_register(indir.base, indir.addr_size,indir.rexb));
 				cur = cur->next;
 			}
-			cur->join_op = "+";
+			if (sign)
+				cur->join_op = "+";
+			else
+				cur->join_op = "-";
 		}
 		if (indir.index != -1) {
 			if (!cur) {
@@ -56,7 +69,7 @@ ril_location *x64_operand_lift(char *operand)
 		}
 		if (indir.disp_size>=1) {
 			char buf[16];
-			if (indir.disp_size==1)
+			if (!sign)
 				indir.disp = 0x100-indir.disp;
 			snprintf(buf,15,"%#lx", indir.disp);
 			if (!cur) {
@@ -78,30 +91,7 @@ ril_location *x64_operand_lift(char *operand)
 	return loc;
 }
 
-ril_instruction *x64_instr_lift(r_disasm *dis)
+ril_instruction *x64_instr_lift(r_disasm *dis, ril_operation_table *table)
 {
-	ril_instruction *instr = ril_instr_init();
-
-	for (int i = 0; i < dis->num_operands; i++) {
-		//Src is first operand
-		if (i==0) {
-			instr->nwrite++;
-			if (!instr->write) {
-				instr->write = malloc(sizeof(ril_location*));
-			} else {
-				instr->write = realloc(instr->write, sizeof(ril_location*)*instr->nwrite);
-			}
-			instr->write[instr->nwrite-1] = x64_operand_lift(dis->op[i]);
-		} else {
-			instr->nread++;
-			if (!instr->read) {
-				instr->read = malloc(sizeof(ril_location*));
-			} else {
-				instr->read = realloc(instr->read, sizeof(ril_location*)*instr->nread);
-			}
-			instr->read[instr->nread-1] = x64_operand_lift(dis->op[i]);
-		}
-	}
-	instr->operation = strdup(dis->mnemonic);
-	return instr;
+	return NULL;
 }

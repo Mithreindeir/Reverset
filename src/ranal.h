@@ -3,6 +3,7 @@
 
 #include "rdis.h"
 #include "rfile.h"
+#include "arch/x86_64/x64lift.h"
 #include "rmeta.h"
 #include "arch/x86common.h"
 #include "rinfo.h"
@@ -20,6 +21,7 @@ static char * unix64_cc[] = {
 
 typedef struct r_analyzer
 {
+	ril_operation_table *table;
 	int function;
 
 	r_function * functions;
