@@ -89,7 +89,7 @@ static char * x64_general_registers[] = {
 	"r12b", "r12w", "r12d", "r12",
 	"r13b", "r13w", "r13d", "r13",
 	"r14b", "r14w", "r14d", "r14",
-	"r15b", "r15w", "r15d", "r15",
+	"r15b", "r15w", "r15d", "r15"
 };
 
 char * x64_get_register(int r, int size, int rexb);

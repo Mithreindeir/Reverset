@@ -8,6 +8,7 @@
 #include "arch/x86common.h"
 #include "rinfo.h"
 #include "rbb.h"
+#include "dec/ssa.h"
 
 static char * unix64_cc[] = {
 	"rdi",

@@ -675,8 +675,8 @@ static const x64_instruction x64_grp3[] = {
 	{"neg", "Eb", "", ""},
 	{"mul", "al", "Eb", ""},
 	{"imul", "al", "Eb", ""},
-	{"dId", "al", "Eb", ""},
-	{"idId", "al", "Eb", ""},
+	{"div", "al", "Eb", ""},
+	{"idiv", "al", "Eb", ""},
 	//
 	{"test", "Ev", "Id", ""},
 	{"test", "Ev", "Id", ""},

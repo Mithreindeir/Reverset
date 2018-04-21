@@ -7,7 +7,9 @@
 #include <string.h>
 #include "../dish/ascii/draw.h"
 #include "../rdis.h"
+#include "../arch/x86_64/x64assembler.h"
 
+#define RIL_RW 3
 #define RIL_READ 2
 #define RIL_WRITE 1
 
@@ -83,6 +85,29 @@
  * if (eax <= 10) goto 0x123;
  * */
 
+#define RIL_INSTR 	2
+#define RIL_OPER 	1
+
+enum ril_operation_type {
+	RIL_ASSIGN,
+	RIL_MEM_ASSIGN,
+	RIL_ADD_ASSIGN,
+	RIL_SUB_ASSIGN,
+	RIL_MUL_ASSIGN,
+	RIL_DIV_ASSIGN,
+	RIL_XOR_ASSIGN,
+	RIL_AND_ASSIGN,
+	RIL_PUSH,
+	RIL_POP_ASSIGN,
+	RIL_NOP,
+	RIL_RETURN,
+	RIL_COMPARE,
+	RIL_CALL,
+	RIL_AND,
+	RIL_JUMP,
+	RIL_CJUMP
+};
+
 enum ril_loc_type {
 	RIL_NONE,
 	RIL_MOFF,
@@ -110,13 +135,22 @@ struct ril_location {
 	};
 	struct ril_location *next;
 	char *join_op;
+	int iter;
 };
 
 struct ril_instruction {
-	ril_location **write, **read;
-	int nwrite, nread;
-	char *format;
-	char *mnem;
+	int type;
+	union {
+		ril_location *operand;
+		struct {
+			int op_type;
+			int action;
+			ril_instruction **write, **read;
+			int nwrite, nread;
+			char *format;
+			char *mnem;
+		};
+	};
 	ril_instruction *next;
 };
 
@@ -128,6 +162,13 @@ void ril_instr_destroy(ril_instruction *instr);
 
 void ril_loc_print(struct text_buffer *text, ril_location *loc);
 void ril_instr_print(struct text_buffer *text, ril_instruction *instr);
+
+int ril_loc_sn(char *buf, int max, ril_location *loc);
+int ril_instr_sn(char *buf, int max, ril_instruction *instr);
+
+//Experimental analysis functions using IL
+void ril_used_registers(struct text_buffer *text, ril_instruction *instr);
+void ril_reduce(ril_instruction *instr);
 
 /*Mnemonic -> ril operation hash table*/
 struct ril_operation_table {
@@ -157,6 +198,7 @@ struct ril_operation {
 	char *name;
 	char * dformat;
 	char * ilformat;
+	int action;
 	//sideaffects, etc
 };
 
@@ -175,7 +217,7 @@ unsigned long hash_mnem(const char *mnem);
 void ril_oper_add(ril_operation **head, ril_operation *e);
 ril_operation *ril_oper_find(ril_operation *head, long hash, const char *name);
 
-ril_operation *ril_oper_init(char *name, char *dformat, char *ilformat);
+ril_operation *ril_oper_init(char *name, int action, char *dformat, char *ilformat);
 void ril_oper_destroy(ril_operation *operation;);
 
 #endif

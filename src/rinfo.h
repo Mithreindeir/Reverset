@@ -12,6 +12,7 @@ typedef struct rbb {
 
 	struct rbb **prev, **next;
 	int num_prev, num_next;
+	ril_instruction * instr;
 } rbb;
 
 /*Function struct. Holds start address, end address, name, and xrefs*/
@@ -28,8 +29,6 @@ typedef struct r_function {
 
 	rbb **bbs;
 	int nbbs;
-
-	ril_instruction *instr;
 } r_function;
 
 /*Branches*/

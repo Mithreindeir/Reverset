@@ -4,6 +4,7 @@ rbb *rbb_init(uint64_t start, uint64_t end)
 {
 	rbb * bb = malloc(sizeof(rbb));
 
+	bb->instr = NULL;
 	bb->size = end-start;
 	bb->start = start;
 	bb->end = end;

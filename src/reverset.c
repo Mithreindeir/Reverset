@@ -387,19 +387,6 @@ int reverset_disas(struct text_buffer *buf, int argc, char **argv, void*data)
 		text_buffer_print(buf, "No address found for \"%s\"\r\n", tok);
 		return 1;
 	}
-	r_function func;
-	int found = 0;
-	for (int i = 0; i < rev->anal->num_functions; i++) {
-		func = rev->anal->functions[i];
-		if (func.start == addr) {
-			found = 1;
-			break;
-		}
-	}
-	if (!found) return 1;
-	if (func.instr)
-		ril_instr_print(buf, func.instr);
-	return 1;
 	int r = rev->disassembler->recursive;
 	rev->disassembler->recursive = all;
 	rev->disassembler->overwrite = 0;

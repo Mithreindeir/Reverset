@@ -1,5 +1,8 @@
 ^"*"^ 							= magenta
 {!A-Za-z}^invalid^{!A-Za-z}				= red
+{!A-Za-z}^goto^{!A-Za-z} 				= yellow
+{!A-Za-z}^if^{!A-Za-z} 				= yellow
+{!A-Za-z}^return^{!A-Za-z} 				= yellow
 {!A-Za-z}^mov{z}{x}{d}^{!A-Za-z}			= green
 {!A-Za-z}^set{n}{l}{e}{z}^{A-Za-z} 			= green
 {!A-Za-z}^leave^{!A-Za-z} 				= yellow
@@ -44,6 +47,7 @@
 {!A-Za-z}^js^{!A-Za-z} 					= yellow
 {!A-Za-z}^jz^{!A-Za-z} 					= yellow
 {!A-Za-z}^jnz^{!A-Za-z} 				= yellow
+{!A-Za-z}^jbe^{!A-Za-z} 				= yellow
 {!A-Za-z}^jb^{!A-Za-z} 				= yellow
 {!A-Za-z}^jnb^{!A-Za-z} 				= yellow
 {!A-Za-z}^cvt*2{a-z}{a-z}^{!A-Za-z} 				= yellow
@@ -65,8 +69,6 @@
 {!A-Za-z}^[bd]h^{!A-Za-z} 				= red
 {!A-Za-z}^[sd]i^{!A-Za-z} 				= red
 {!A-Za-z}^d[lx]^{!A-Za-z} 				= red
-{!A-Za-z}^goto^{!A-Za-z} 				= yellow
-{!A-Za-z}^if^{!A-Za-z} 				= yellow
 {!A-Za-z}^local_{0-9a-f}$h^{!A-Za-z}			= green
 {!A-Za-z}^arg_{0-9a-f}$h^{!A-Za-z}			= green
 {!A-Za-z}^r{1}{0-9}{dwb}^{!A-Za-z} 			= red

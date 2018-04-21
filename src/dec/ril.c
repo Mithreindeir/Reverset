@@ -9,6 +9,7 @@ ril_location *ril_loc_init()
 	loc->nest = 0;
 	loc->next = NULL;
 	loc->join_op = NULL;
+	loc->iter = -1;
 
 	return loc;
 }
@@ -20,13 +21,18 @@ void ril_loc_destroy(ril_location *loc)
 	free(loc);
 }
 
-ril_instruction *ril_instr_init()
+ril_instruction *ril_instr_init(int type)
 {
 	ril_instruction *instr = malloc(sizeof(ril_instruction));
 
-	instr->mnem=NULL, instr->format = NULL;
-	instr->write=NULL, instr->read=NULL;
-	instr->nwrite=0, instr->nread=0;
+	instr->type = type;
+	if (type == RIL_INSTR) {
+		instr->mnem=NULL, instr->format = NULL;
+		instr->write=NULL, instr->read=NULL;
+		instr->nwrite=0, instr->nread=0;
+	} else if (type == RIL_OPER) {
+		instr->operand = NULL;
+	}
 	instr->next = NULL;
 
 	return instr;
@@ -46,6 +52,111 @@ void ril_instr_destroy(ril_instruction *instr)
 	free(instr->write);
 	free(instr->read);
 	free(instr);
+}
+
+void ril_reduce(ril_instruction *instr)
+{
+	return;
+	ril_instruction *cmp = NULL;
+	int dist = 0;
+	ril_instruction *cur = instr;
+	while (cur) {
+		//Check if cmp
+		if (cmp) dist++;
+		if (cur->action == RIL_COMPARE) {
+			cmp = cur;
+		}
+		if (cmp && cur->action == RIL_CJUMP) {
+			cur->nread += 2;
+			cur->read = realloc(cur->read,sizeof(ril_instruction*)*cur->nread);
+			cur->read[1] = cmp->read[0];
+			cur->read[2] = cmp->read[1];
+			dist = 0;
+			cmp = NULL;
+		}
+		cur = cur->next;
+	}
+}
+
+void ril_used_registers(struct text_buffer *text, ril_instruction *instr)
+{
+	char ** used = NULL;
+	int num_used = 0;
+
+	char ** args = NULL;
+	int num_args = 0;
+	while (instr) {
+		for (int i = 0; i < instr->nwrite; i++) {
+			if (instr->write[i]->type == RIL_REG) {
+				int new = 1;
+				char *reg = instr->write[i]->operand->reg;
+				int r2 = x_register_index(reg);
+				for (int j = 0; j < num_used; j++) {
+					int r1=x_register_index(used[j]);
+					if (X64_REG_BIN(r1) == X64_REG_BIN(r2)) {
+						if (X64_REG_SIZE(r2) > X64_REG_BIN(r2))
+							used[j] = reg;
+						new = 0;
+						break;
+					}
+				}
+				if (new) {
+					num_used++;
+					if (!used)
+						used=malloc(sizeof(char*));
+					else
+						used=realloc(used,sizeof(char*)*num_used);
+					used[num_used-1] = reg;
+				}
+			}
+		}
+
+		for (int i = 0; i < instr->nread; i++) {
+			if (instr->read[i]->type == RIL_REG) {
+				int new = 1;
+				char *reg = instr->read[i]->operand->reg;
+				int r2 = x_register_index(reg);
+				for (int j = 0; j < num_used; j++) {
+					int r1 = x_register_index(used[j]);
+					if (X64_REG_BIN(r1) == X64_REG_BIN(r2)) {
+						new = 0;
+						break;
+					}
+				}
+				int new2 = 1;
+				for (int j = 0; j < num_args; j++) {
+					int r1 = x_register_index(args[j]);
+					if (X64_REG_BIN(r1) == X64_REG_BIN(r2)) {
+						new2 = 0;
+						break;
+					}
+				}
+				if (new2 && new) {
+					num_args++;
+					if (!args)
+						args=malloc(sizeof(char*));
+					else
+						args=realloc(args,sizeof(char*)*num_args);
+					args[num_args-1] = reg;
+				}
+			}
+		}
+		instr = instr->next;
+	}
+	int sc = text->cur_color;
+	text->cur_color = 0;
+	text_buffer_print(text, "%d Changed Regs:\r\n", num_used);
+	for (int i = 0; i < num_used; i++)
+		text_buffer_print(text, "%c%s", i==0?'\r':',', used[i]);
+	text_buffer_print(text, "\r\n");
+	text_buffer_print(text, "%d Registers read before write\r\n", num_args);
+	for (int i = 0; i < num_args; i++)
+		text_buffer_print(text, "%c%s", i==0?'\r':',', args[i]);
+	text_buffer_print(text, "\r\n");
+	text->cur_color = sc;
+
+	free(used);
+	free(args);
 }
 
 void ril_loc_print(struct text_buffer *text, ril_location *loc)
@@ -108,18 +219,59 @@ void ril_loc_print(struct text_buffer *text, ril_location *loc)
 	}
 }
 
+int ril_loc_sn(char *buf, int max, ril_location *loc)
+{
+	if (!loc) return 0;
+	int iter = 0;
+	if (loc->type == RIL_MOFF) {
+		ril_location *ln = loc->next, *ln2 = NULL;
+		char *nsym = NULL;
+		if (ln && ln->next) {
+			if (ln->join_op)
+				nsym = ln->join_op;
+			ln2 = ln->next;
+			ln->next = NULL;
+			iter += ril_loc_sn(buf+iter, max-iter, ln);
+			ln->next = ln2;
+		} else ln2 = ln;
+
+		iter += snprintf(buf+iter, max-iter, "[%s", nsym ? nsym : "");
+		iter += ril_loc_sn(buf+iter, max-iter, ln2);
+		char size = 'b';
+		if (loc->size == 2)
+			size = 'w';
+		else if (loc->size==4)
+			size = 'd';
+		else if (loc->size ==8)
+			size = 'q';
+		iter += snprintf(buf+iter, max-iter, "]");
+	} else if (loc->type == RIL_REG) {
+		iter += snprintf(buf+iter, max-iter, "%s", loc->reg);
+	} else if (loc->type == RIL_ADDR) {
+		if (loc->addr > 0x128)
+			iter += snprintf(buf+iter, max-iter, "%#lx", loc->addr);
+		else
+			iter += snprintf(buf+iter, max-iter, "%d", loc->addr);
+	}
+	if (!loc->nest && loc->next) {
+		if (loc->join_op)
+			iter += snprintf(buf+iter, max-iter, "%s", loc->join_op);
+		iter += ril_loc_sn(buf+iter, max-iter, loc->next);
+	}
+	if (loc->iter >= 0) {
+		iter += snprintf(buf+iter, max-iter, "_%d", loc->iter);
+	}
+	return iter;
+}
+
 void ril_instr_print(struct text_buffer *text, ril_instruction *instr)
 {
 	if (!instr) return;
-	/*writef("OPERATION: %s\r\n", instr->mnem);
-	writef("WRITE:\r\n");
-	for (int i = 0; i < instr->nwrite; i++) {
-		ril_loc_print(instr->write[i]);
+	if (instr->type == RIL_OPER) {
+		ril_loc_print(text, instr->operand);
+		ril_instr_print(text, instr->next);
+		return;
 	}
-	writef("\r\nREAD:\r\n");
-	for (int i = 0; i < instr->nread; i++) {
-		ril_loc_print(instr->read[i]);
-	}*/
 	if (!instr->format) {
 		ril_instr_print(text, instr->next);
 		return;
@@ -136,17 +288,17 @@ void ril_instr_print(struct text_buffer *text, ril_instruction *instr)
 			if (num >=0 && num < 10) {
 				i++;
 				if (type == RIL_READ && num < instr->nread)
-					ril_loc_print(text, instr->read[num]);
+					ril_instr_print(text, instr->read[num]);
 				if (type == RIL_WRITE && num < instr->nwrite)
-					ril_loc_print(text, instr->write[num]);
+					ril_instr_print(text, instr->write[num]);
 			} else {
 				if (instr->format[i+1]=='r') {
 					for (int i = 0; i < instr->nread; i++) {
-						ril_loc_print(text, instr->read[i]);
+						ril_instr_print(text, instr->read[i]);
 					}
 				} else if (instr->format[i+1]=='w') {
 					for (int i = 0; i < instr->nwrite; i++) {
-						ril_loc_print(text, instr->write[i]);
+						ril_instr_print(text, instr->write[i]);
 					}
 				}
 			}
@@ -164,9 +316,57 @@ void ril_instr_print(struct text_buffer *text, ril_instruction *instr)
 
 }
 
+int ril_instr_sn(char *buf, int max, ril_instruction *instr)
+{
+	if (!instr) return 0;
+	int iter = 0;
+	if (instr->type == RIL_OPER) {
+		iter += ril_loc_sn(buf, max, instr->operand);
+		return iter;
+	}
+	if (!instr->format) {
+		return iter;
+	}
+	int flen = strlen(instr->format);
+	int flast = 0;
+	for (int i = 0; i < flen; i++) {
+		if (instr->format[i]=='$') {
+			if (i-flast) {
+				iter += snprintf(buf+iter, max-iter, "%*.*s", i-flast, i-flast, instr->format+flast);
+			}
+			int type = instr->format[i+1]=='r'?RIL_READ:RIL_WRITE;
+			int num = (i+2)<flen ? (signed int)instr->format[i+2]-0x30 : -1;
+			if (num >=0 && num < 10) {
+				i++;
+				if (type == RIL_READ && num < instr->nread)
+					iter += ril_instr_sn(buf+iter,max-iter, instr->read[num]);
+				if (type == RIL_WRITE && num < instr->nwrite)
+					iter += ril_instr_sn(buf+iter, max-iter, instr->write[num]);
+			} else {
+				if (instr->format[i+1]=='r') {
+					for (int i = 0; i < instr->nread; i++) {
+						iter += ril_instr_sn(buf+iter, max-iter, instr->read[i]);
+					}
+				} else if (instr->format[i+1]=='w') {
+					for (int i = 0; i < instr->nwrite; i++) {
+						iter += ril_instr_sn(buf+iter, max-iter, instr->write[i]);
+					}
+				}
+			}
+			i++;
+			flast = i+1;
+			continue;
+		}
+
+		if ((i+1)==flen)
+			iter += snprintf(buf+iter, max-iter, "%s", instr->format+flast);
+	}
+	return iter;
+}
+
 ril_instruction *ril_instr_lift(ril_operation_table *table, r_disasm *dis)
 {
-	ril_instruction *instr = ril_instr_init();
+	ril_instruction *instr = ril_instr_init(RIL_INSTR);
 	ril_operation *op = ril_table_lookup(table, dis->mnemonic);
 	if (!op) {
 		writef("Err: no operation format for %s\r\n", dis->mnemonic);
@@ -175,23 +375,27 @@ ril_instruction *ril_instr_lift(ril_operation_table *table, r_disasm *dis)
 
 	for (int i = 0; i < dis->num_operands; i++) {
 		int type = ril_dformat_parse(op->dformat, i);
-		if (type == RIL_READ) {
+		if (type == RIL_READ || type == RIL_RW) {
 			instr->nread++;
 			if (!instr->read)
-				instr->read = malloc(sizeof(ril_location));
+				instr->read = malloc(sizeof(ril_instruction));
 			else
-				instr->read=realloc(instr->read, sizeof(ril_location)*instr->nread);
-			instr->read[instr->nread-1] = table->opr_decode(dis->op[i]);
-		} else if (type == RIL_WRITE) {
+				instr->read=realloc(instr->read, sizeof(ril_instruction)*instr->nread);
+			instr->read[instr->nread-1] = ril_instr_init(RIL_OPER);
+			instr->read[instr->nread-1]->operand = table->opr_decode(dis->op[i]);
+		}
+		if (type == RIL_WRITE || type == RIL_RW) {
 			instr->nwrite++;
 			if (!instr->write)
-				instr->write = malloc(sizeof(ril_location));
+				instr->write = malloc(sizeof(ril_instruction));
 			else
-				instr->write=realloc(instr->write, sizeof(ril_location)*instr->nwrite);
-			instr->write[instr->nwrite-1] = table->opr_decode(dis->op[i]);
+				instr->write=realloc(instr->write, sizeof(ril_instruction)*instr->nwrite);
+			instr->write[instr->nwrite-1] = ril_instr_init(RIL_OPER);
+			instr->write[instr->nwrite-1]->operand = table->opr_decode(dis->op[i]);
 		}
 	}
 	instr->format = op->ilformat;
+	instr->action = op->action;
 
 	return instr;
 }
@@ -204,12 +408,15 @@ int ril_dformat_parse(const char * dformat, int num_op)
 		char c = dformat[i];
 		if (c == '$') {
 			char nc = dformat[i+1];
+			char nc2 = (i+2)<len?dformat[i+2]:0;
 			if (nc == 'w') {
 				last_type = RIL_WRITE;
+				if (nc2=='r') last_type = RIL_RW, i++;
 				i++;
 				continue;
 			} else if (nc == 'r') {
 				last_type = RIL_READ;
+				if (nc2=='w') last_type = RIL_RW, i++;
 				i++;
 				continue;
 			} else if (nc >= 0x30 && nc <= 0x39) {
@@ -315,7 +522,7 @@ ril_operation *ril_oper_find(ril_operation *head, long hash, const char *name)
 	return head;
 }
 
-ril_operation *ril_oper_init(char *name, char * dformat, char *ilformat)
+ril_operation *ril_oper_init(char *name, int action, char * dformat, char *ilformat)
 {
 	ril_operation *op = malloc(sizeof(ril_operation));
 
@@ -325,6 +532,7 @@ ril_operation *ril_oper_init(char *name, char * dformat, char *ilformat)
 	op->name = name;
 	op->ilformat = ilformat;
 	op->dformat = dformat;
+	op->action = action;
 
 	return op;
 }
