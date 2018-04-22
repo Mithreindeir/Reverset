@@ -9,6 +9,8 @@
 rbb * rbb_init(uint64_t start, uint64_t end);
 void rbb_destroy(rbb * bb);
 
+void rbb_set_var(rbb *bb, char *var, int iter);
+
 void rbb_add(rbb *** basic_blocks, int *num_bb,  rbb * bb);
 
 /*BB Analysis starts on a index to the disassembly and continues until a ret or end*/

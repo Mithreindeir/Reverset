@@ -13,6 +13,11 @@ typedef struct rbb {
 	struct rbb **prev, **next;
 	int num_prev, num_next;
 	ril_instruction * instr;
+	/*Used Variables and their unique id (for SSA) at end of BB
+	 * Propogated from previous block*/
+	char **vars;
+	int *var_iters;
+	int num_var;
 } rbb;
 
 /*Function struct. Holds start address, end address, name, and xrefs*/

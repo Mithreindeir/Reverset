@@ -5,6 +5,10 @@ rbb *rbb_init(uint64_t start, uint64_t end)
 	rbb * bb = malloc(sizeof(rbb));
 
 	bb->instr = NULL;
+	bb->vars = NULL;
+	bb->var_iters = NULL;
+	bb->num_var = 0;
+
 	bb->size = end-start;
 	bb->start = start;
 	bb->end = end;
@@ -26,6 +30,32 @@ void rbb_destroy(rbb *bb)
 	free(bb->prev);
 	free(bb->next);
 	free(bb);
+}
+
+void rbb_set_var(rbb *bb, char *var, int iter)
+{
+	int found = 0;
+	for (int i = 0; i < bb->num_var; i++) {
+		if (!strcmp(bb->vars[i], var)) {
+			found = 1;
+			bb->var_iters[i] = iter>bb->var_iters[i]?iter:bb->var_iters[i];
+		}
+	}
+	if (found) return;
+	bb->num_var++;
+	if (!bb->vars)
+		bb->vars = malloc(sizeof(char*));
+	else
+		bb->vars = realloc(bb->vars, sizeof(char*)*bb->num_var);
+
+	if (!bb->var_iters)
+		bb->var_iters = malloc(sizeof(int));
+	else
+		bb->var_iters = realloc(bb->var_iters, sizeof(int)*bb->num_var);
+
+	bb->vars[bb->num_var-1] = strdup(var);
+	bb->var_iters[bb->num_var-1] = iter;
+
 }
 
 void rbb_add(rbb *** basic_blocks, int *num_bb, rbb *bb)

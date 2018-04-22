@@ -105,7 +105,8 @@ enum ril_operation_type {
 	RIL_CALL,
 	RIL_AND,
 	RIL_JUMP,
-	RIL_CJUMP
+	RIL_CJUMP,
+	RIL_PHI
 };
 
 enum ril_loc_type {

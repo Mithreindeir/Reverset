@@ -23,29 +23,38 @@ void r_formatted_rect(struct text_buffer *textb, r_disassembler *disassembler, r
 	char ** lines = malloc(sizeof(char*));
 	lines[0] = strdup(buf);
 	int num_lines = 1, iter = 0;
-	ril_instruction *cur = bb->instr;
-	for (int i = 0; i < disassembler->num_instructions; i++) {
+	/*for (int i = 0; 0 && i < disassembler->num_instructions; i++) {
 		disas = disassembler->instructions[i];
 		if (disas->address < bb->start || (disas->address+disas->used_bytes) > bb->end)
 			continue;
 		memset(buf, 0, 255);
 		iter = 0;
-		if (!cur) continue;
-		iter += ril_instr_sn(buf, 255, cur);
-		cur = cur->next;
-		/*
 		int space = 6-strlen(disas->mnemonic);
 		iter+=snprintf(buf+iter,255-iter, "%s ", disas->mnemonic);
 		for (int i = 0; i < space; i++) iter+=snprintf(buf+iter,255-iter, " ");
 		for (int i = 0; i < disas->num_operands; i++) {
 			if (i!=0) iter+=snprintf(buf+iter,255-iter, ", ");
 			iter+=snprintf(buf+iter, 255-iter, "%s", disas->op[i]);
-		}*/
+		}
 		max_x = iter > max_x ? iter : max_x;
 		num_lines++;
 		lines=realloc(lines,sizeof(char*)*num_lines);
 		lines[num_lines-1] = strdup(buf);
+	}*/
+
+	ril_instruction *cur = bb->instr;
+	while (cur) {
+		memset(buf, 0, 255);
+		iter = 0;
+		iter += ril_instr_sn(buf, 255, cur);
+		max_x = iter > max_x ? iter : max_x;
+		num_lines++;
+		lines=realloc(lines,sizeof(char*)*num_lines);
+		lines[num_lines-1] = strdup(buf);
+		cur = cur->next;
 	}
+
+
 	max_x++;
 	int sx=0, sy=0;
 	get_cursor(&sx, &sy);

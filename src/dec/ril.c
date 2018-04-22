@@ -346,10 +346,14 @@ int ril_instr_sn(char *buf, int max, ril_instruction *instr)
 				if (instr->format[i+1]=='r') {
 					for (int i = 0; i < instr->nread; i++) {
 						iter += ril_instr_sn(buf+iter, max-iter, instr->read[i]);
+						if ((i+1) < instr->nread)
+							iter+=snprintf(buf+iter,max-iter,", ");
 					}
 				} else if (instr->format[i+1]=='w') {
 					for (int i = 0; i < instr->nwrite; i++) {
 						iter += ril_instr_sn(buf+iter, max-iter, instr->write[i]);
+						if ((i+1) < instr->nwrite)
+							iter+=snprintf(buf+iter,max-iter,", ");
 					}
 				}
 			}

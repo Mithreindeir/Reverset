@@ -172,8 +172,15 @@ void r_meta_func_analyze(r_disassembler *disassembler, r_file *file, r_analyzer 
 	}
 	if (func.nbbs > 0) {
 		ssa_vdb *db = ssa_vdb_init();
-		cfg_to_ssa(func.bbs[0], db);
+		cfg_to_ssa(func.bbs[0], db, func.bbs, func.nbbs);
 		ssa_vdb_destroy(db);
+		/*for (int i = 0; i < func.nbbs; i++) {
+			writef("%#lx\r\n", func.bbs[i]->start);
+			for (int j = 0; j < func.bbs[i]->num_var; j++) {
+				writef("%s_%d\r\n", func.bbs[i]->vars[j], func.bbs[i]->var_iters[j]);
+			}
+			writef("\r\n");
+		}*/
 	}
 
 	anal->functions[anal->num_functions-1] = func;
@@ -732,6 +739,8 @@ r_analyzer * r_analyzer_init()
 			ril_oper_init("jnz", RIL_CJUMP, "$r=$0", "if ($r1 != $r2) goto $r0"));
 	ril_table_insert(anal->table,
 			ril_oper_init("jle", RIL_CJUMP, "$r=$0", "if ($r1 <= $r2) goto $r0"));
+	ril_table_insert(anal->table,
+			ril_oper_init("jl", RIL_CJUMP, "$r=$0", "if ($r1 < $r2) goto $r0"));
 	ril_table_insert(anal->table,
 			ril_oper_init("jbe", RIL_CJUMP, "$r=$0", "if ($r1 <= $r2) goto $r0"));
 	ril_table_insert(anal->table,

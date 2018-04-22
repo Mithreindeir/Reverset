@@ -2,6 +2,7 @@
 #define SSA_H
 
 #include "ril.h"
+#include "../rbb.h"
 #include "../rinfo.h"
 
 /*SSA Variable Database
@@ -39,8 +40,12 @@ unsigned int hash_var(const char *var);
 int bb_height(rbb *bb);
 void bb_clear(rbb *root);
 void bb_set(rbb *root, int num);
-void cfg_to_ssa(rbb *root, ssa_vdb *db);
+void bb_set_used(rbb *bb);
+int bb_phi_calc(rbb **pred, int num_pred, char *var);
+void bb_phi_upd(ril_instruction *phi, rbb **pred, int num_pred);
+ril_instruction *bb_phi_insert(char *var, ssa_vdb *db);
+void cfg_to_ssa(rbb *root, ssa_vdb *db, rbb **bbs, int nbbs);
 void bb_to_ssa(rbb *bb, ssa_vdb *db, int level);
-void bb_ins_phi(rbb *bb, ssa_vdb *db);
+void bb_ins_phi(rbb *bb, ssa_vdb *db, int level);
 
 #endif
