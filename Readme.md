@@ -3,7 +3,7 @@
 [![Build Status](https://upload.wikimedia.org/wikipedia/commons/f/f8/License_icon-mit-88x31-2.svg)]()
 [![Build Status](https://travis-ci.org/Mithreindeir/Reverset.svg?branch=master)](https://travis-ci.org/Mithreindeir/Reverset)
 
-Reverset is a lightweight portable reverset engineering and binary analysis tool, with eventual No external dependencies, written completely in C. 
+Reverset is a lightweight portable reverset engineering and binary analysis tool. No external dependencies, written completely in C. 
 
 ## Why?
 I wanted to make a user friendly simple reverse engineering tool that was focused specifically on x86 / x86 64 instead of sacrificing quality analysis by being over general to support many different architectures. Currently still very in development.
