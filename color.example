@@ -6,12 +6,12 @@
 {!A-Za-z}^mov{z}{x}{d}^{!A-Za-z}			= green
 {!A-Za-z}^set{n}{l}{e}{z}^{A-Za-z} 			= green
 {!A-Za-z}^leave^{!A-Za-z} 				= yellow
-{!A-Za-z}^imul^{!A-Za-z} 				= green
-{!A-Za-z}^mul^{!A-Za-z} 				= green
+{!A-Za-z}^imul^{!A-Za-z} 				= yellow
+{!A-Za-z}^mul^{!A-Za-z} 				= yellow
 {!A-Za-z}^ret^{!A-Za-z} 				= yellow
 {!A-Za-z}^push^{!A-Za-z} 				= green
 {!A-Za-z}^pop^{!A-Za-z} 				= yellow
-{!A-Za-z}^add^{!A-Za-z} 				= green
+{!A-Za-z}^add^{!A-Za-z} 				= yellow
 {!A-Za-z}^inc^{!A-Za-z} 				= green
 {!A-Za-z}^dec^{!A-Za-z} 				= green
 {!A-Za-z}^sbb^{!A-Za-z} 				= green
@@ -30,6 +30,7 @@
 {!A-Za-z}^lea^{!A-Za-z} 				= yellow
 {!A-Za-z}^call^{!A-Za-z} 				= yellow
 {!A-Za-z}^cmp^{!A-Za-z} 				= yellow
+{!A-Za-z}^neg^{!A-Za-z} 				= yellow
 {!A-Za-z}^and^{!A-Za-z} 				= yellow
 {!A-Za-z}^xor^{!A-Za-z} 				= yellow
 {!A-Za-z}^or^{!A-Za-z} 	 				= yellow
@@ -74,7 +75,7 @@
 {!A-Za-z}^arg_{0-9a-f}$h^{!A-Za-z}			= green
 {!A-Za-z}^r{1}{0-9}{dwb}^{!A-Za-z} 			= red
 ^[A-Za-z]$(*)^	 				= green
-^//*\r\n^ 					= red
+^//*\r\n^ 					= cyan
 ^;*\r\n^ 					= red
 ^#*\r\n^ 					= blue
 ^0x{0-9a-f}$^ 					= cyan

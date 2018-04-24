@@ -2,6 +2,7 @@
 #define SSA_H
 
 #include "ril.h"
+#include "dec.h"
 #include "../rbb.h"
 #include "../rinfo.h"
 

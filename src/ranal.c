@@ -716,6 +716,8 @@ r_analyzer * r_analyzer_init()
 	ril_table_insert(anal->table,
 			ril_oper_init("sub", RIL_SUB_ASSIGN, "$rw=$0,$r=$1", "$w = $r0 - $r1"));
 	ril_table_insert(anal->table,
+			ril_oper_init("neg", RIL_NEG_ASSIGN, "$rw=$0", "$w = -$r0"));
+	ril_table_insert(anal->table,
 			ril_oper_init("xor", RIL_XOR_ASSIGN, "$rw=$0,$r=$1", "$w = $r0 ^ $r1"));
 	ril_table_insert(anal->table,
 			ril_oper_init("mov", RIL_ASSIGN,  "$w=$0,$r=$1", "$w = $r"));
@@ -735,6 +737,10 @@ r_analyzer * r_analyzer_init()
 			ril_oper_init("imul", RIL_MUL_ASSIGN, "$rw=$0,$r=$1", "$w = $r0 * $r1"));
 	ril_table_insert(anal->table,
 			ril_oper_init("jz", RIL_CJUMP, "$r=$0", "if ($r1 == $r2) goto $r0"));
+	ril_table_insert(anal->table,
+			ril_oper_init("jge", RIL_CJUMP, "$r=$0", "if ($r1 >= $r2) goto $r0"));
+	ril_table_insert(anal->table,
+			ril_oper_init("jg", RIL_CJUMP, "$r=$0", "if ($r1 > $r2) goto $r0"));
 	ril_table_insert(anal->table,
 			ril_oper_init("jnz", RIL_CJUMP, "$r=$0", "if ($r1 != $r2) goto $r0"));
 	ril_table_insert(anal->table,
@@ -789,9 +795,7 @@ void r_analyzer_destroy(r_analyzer * anal)
 			free(anal->functions[i].locals[j]);
 		}
 		for (int j = 0; j < anal->functions[i].nbbs; j++) {
-			free(anal->functions[i].bbs[j]->prev);
-			free(anal->functions[i].bbs[j]->next);
-			free(anal->functions[i].bbs[j]);
+			rbb_destroy(anal->functions[i].bbs[j]);
 		}
 		free(anal->functions[i].bbs);
 		free(anal->functions[i].locals);

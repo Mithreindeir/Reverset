@@ -17,7 +17,19 @@ ril_location *ril_loc_init()
 void ril_loc_destroy(ril_location *loc)
 {
 	if (!loc) return;
-
+	if (loc->type == RIL_REG) {
+		free(loc->reg);
+	} else if (loc->type == RIL_MOFF) {
+		ril_location *next = loc->next;
+		ril_location *cur = loc->next;
+		while (cur) {
+			next = cur->next;
+			ril_loc_destroy(cur);
+			cur = next;
+		}
+	}
+	if (loc->join_op)
+		free(loc->join_op);
 	free(loc);
 }
 
@@ -25,9 +37,12 @@ ril_instruction *ril_instr_init(int type)
 {
 	ril_instruction *instr = malloc(sizeof(ril_instruction));
 
+	instr->comment = 0;
 	instr->type = type;
 	if (type == RIL_INSTR) {
-		instr->mnem=NULL, instr->format = NULL;
+		instr->action = RIL_NOP;
+		instr->op_type = 0;
+		instr->format = NULL;
 		instr->write=NULL, instr->read=NULL;
 		instr->nwrite=0, instr->nread=0;
 	} else if (type == RIL_OPER) {
@@ -41,19 +56,78 @@ ril_instruction *ril_instr_init(int type)
 void ril_instr_destroy(ril_instruction *instr)
 {
 	if (!instr) return;
+	if (instr->type == RIL_OPER) {
+		ril_loc_destroy(instr->operand);
+		free(instr);
+		return;
+	}
 
-	free(instr->mnem);
-	for (int i = 0; i < instr->nwrite; i++)
-		free(instr->write[i]);
+	for (int i = 0; i < instr->nwrite; i++) {
+		ril_instr_destroy(instr->write[i]);
+	}
 
-	for (int i = 0; i < instr->nread; i++)
-		free(instr->read[i]);
+	for (int i = 0; i < instr->nread; i++) {
+		ril_instr_destroy(instr->read[i]);
+	}
 
 	free(instr->write);
 	free(instr->read);
 	free(instr);
 }
 
+ril_location *ril_loc_dup(ril_location *loc)
+{
+	ril_location *dup = ril_loc_init();
+
+	dup->size = loc->size;
+	dup->type = loc->type;
+	dup->iter = loc->iter;
+	dup->nest = loc->nest;
+	if (loc->join_op)
+		dup->join_op = strdup(loc->join_op);
+	if (loc->type == RIL_REG) {
+		dup->reg = strdup(loc->reg);
+	} else if (loc->type == RIL_MOFF) {
+		ril_location *dupn = dup;
+		ril_location *locn = loc->next;
+		while (locn) {
+			dupn->next = ril_loc_dup(locn);
+			dupn = dupn->next;
+			locn = locn->next;
+		}
+	} else if (loc->type == RIL_ADDR) {
+		dup->addr = loc->addr;
+	}
+	return dup;
+}
+
+ril_instruction *ril_instr_dup(ril_instruction *instr)
+{
+	if (!instr) return NULL;
+	ril_instruction *dup = ril_instr_init(instr->type);
+	if (instr->type == RIL_INSTR) {
+		dup->format = strdup(instr->format);
+		dup->action = instr->action;
+		dup->op_type = instr->op_type;
+		dup->nread = instr->nread;
+		dup->nwrite = instr->nwrite;
+		if (instr->nwrite)
+			dup->write=malloc(sizeof(ril_instruction*)*dup->nwrite);
+		if (instr->nread)
+			dup->read=malloc(sizeof(ril_instruction*)*dup->nread);
+
+		for (int j = 0; j < instr->nread; j++) {
+			dup->read[j] = ril_instr_dup(instr->read[j]);
+		}
+		for (int j = 0; j < instr->nwrite; j++) {
+			dup->write[j] = ril_instr_dup(instr->write[j]);
+		}
+	} else if (instr->type == RIL_OPER) {
+		dup->operand = ril_loc_dup(instr->operand);
+	}
+	dup->next = instr->next;
+	return dup;
+}
 void ril_reduce(ril_instruction *instr)
 {
 	return;
@@ -327,6 +401,9 @@ int ril_instr_sn(char *buf, int max, ril_instruction *instr)
 	if (!instr->format) {
 		return iter;
 	}
+	if (instr->comment) {
+		iter += snprintf(buf+iter, max-iter, "//");
+	}
 	int flen = strlen(instr->format);
 	int flast = 0;
 	for (int i = 0; i < flen; i++) {
@@ -453,7 +530,13 @@ void ril_table_destroy(ril_operation_table *table)
 	if (!table) return;
 
 	for (int i = 0; i < table->num_buckets; i++) {
-		ril_oper_destroy(table->buckets[i]);
+		ril_operation *oper = table->buckets[i];
+		ril_operation *next = NULL;
+		while (oper) {
+			next = oper->next;
+			ril_oper_destroy(oper);
+			oper = next;
+		}
 	}
 
 	free(table->buckets);

@@ -157,10 +157,14 @@ void cfg_to_ssa(rbb *root, ssa_vdb *db, rbb **bbs, int nbbs)
 		if (bb->num_prev <= 1) continue;
 		ril_instruction *cur = bb->instr;
 		while (cur) {
-			if (cur->op_type != RIL_PHI) break;
+			if (cur->action != RIL_PHI) break;
 			bb_phi_upd(cur, bb->prev, bb->num_prev);
 			cur = cur->next;
 		}
+	}
+	for (int i = 0; i < nbbs; i++) {
+		rbb *bb = bbs[i];
+		ssa_expr_prop(bb);
 	}
 }
 
@@ -216,7 +220,7 @@ void bb_phi_upd(ril_instruction *phi, rbb **pred, int num_pred)
 				ril_instruction *rn = ril_instr_init(RIL_OPER);
 				rn->operand = ril_loc_init();
 				rn->operand->type = RIL_REG;
-				rn->operand->reg = var;
+				rn->operand->reg = strdup(var);
 				rn->operand->iter = p->var_iters[j];
 				phi->read[phi->nread-1] = rn;
 			}
@@ -229,14 +233,13 @@ ril_instruction *bb_phi_insert(char *var, ssa_vdb *db)
 	ril_instruction *instr = ril_instr_init(RIL_INSTR);
 
 	instr->format = "$w = phi($r)";
-	instr->mnem = "phi";
 	instr->nwrite = 1;
-	instr->op_type = RIL_PHI;
+	instr->action = RIL_PHI;
 	instr->write = malloc(sizeof(ril_instruction*));
 	instr->write[0] = ril_instr_init(RIL_OPER);
 	instr->write[0]->operand = ril_loc_init();
 	instr->write[0]->operand->type = RIL_REG;
-	instr->write[0]->operand->reg = var;
+	instr->write[0]->operand->reg = strdup(var);
 	instr->write[0]->operand->iter = ssa_vdb_inc(db, var);
 
 	return instr;

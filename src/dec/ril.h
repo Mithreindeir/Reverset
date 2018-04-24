@@ -89,17 +89,18 @@
 #define RIL_OPER 	1
 
 enum ril_operation_type {
+	RIL_NOP,
 	RIL_ASSIGN,
 	RIL_MEM_ASSIGN,
 	RIL_ADD_ASSIGN,
 	RIL_SUB_ASSIGN,
+	RIL_NEG_ASSIGN,
 	RIL_MUL_ASSIGN,
 	RIL_DIV_ASSIGN,
 	RIL_XOR_ASSIGN,
 	RIL_AND_ASSIGN,
 	RIL_PUSH,
 	RIL_POP_ASSIGN,
-	RIL_NOP,
 	RIL_RETURN,
 	RIL_COMPARE,
 	RIL_CALL,
@@ -141,6 +142,8 @@ struct ril_location {
 
 struct ril_instruction {
 	int type;
+	int comment;
+	struct ril_instruction *next;
 	union {
 		ril_location *operand;
 		struct {
@@ -149,10 +152,8 @@ struct ril_instruction {
 			ril_instruction **write, **read;
 			int nwrite, nread;
 			char *format;
-			char *mnem;
 		};
 	};
-	ril_instruction *next;
 };
 
 ril_location *ril_loc_init();
@@ -160,6 +161,9 @@ void ril_loc_destroy(ril_location *loc);
 
 ril_instruction *ril_instr_init();
 void ril_instr_destroy(ril_instruction *instr);
+
+ril_location *ril_loc_dup(ril_location *loc);
+ril_instruction *ril_instr_dup(ril_instruction *instr);
 
 void ril_loc_print(struct text_buffer *text, ril_location *loc);
 void ril_instr_print(struct text_buffer *text, ril_instruction *instr);

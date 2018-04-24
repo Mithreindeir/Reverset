@@ -35,9 +35,9 @@ ril_location *x64_operand_lift(char *operand)
 				cur = cur->next;
 			}
 			if (sign)
-				cur->join_op = "+";
+				cur->join_op = strdup("+");
 			else
-				cur->join_op = "-";
+				cur->join_op = strdup("-");
 		}
 		if (indir.index != -1) {
 			if (!cur) {
@@ -49,7 +49,7 @@ ril_location *x64_operand_lift(char *operand)
 				x64_operand_lift(x64_get_register(indir.index, indir.addr_size,indir.rexx));
 				cur = cur->next;
 			}
-			cur->join_op = "*";
+			cur->join_op = strdup("*");
 		}
 		if (indir.scale != -1) {
 			char buf[4];

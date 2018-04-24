@@ -27,6 +27,21 @@ void rbb_destroy(rbb *bb)
 {
 	if (!bb) return;
 
+	for (int i = 0; i < bb->num_var; i++) {
+		free(bb->vars[i]);
+	}
+	if (bb->vars)
+		free(bb->vars);
+	if (bb->var_iters)
+		free(bb->var_iters);
+
+	ril_instruction *cur=bb->instr,*next = NULL;
+	while (cur) {
+		next = cur->next;
+		ril_instr_destroy(cur);
+		cur = next;
+	}
+
 	free(bb->prev);
 	free(bb->next);
 	free(bb);
