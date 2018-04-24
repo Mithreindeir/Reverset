@@ -3,7 +3,7 @@
 [![Build Status](https://upload.wikimedia.org/wikipedia/commons/f/f8/License_icon-mit-88x31-2.svg)]()
 [![Build Status](https://travis-ci.org/Mithreindeir/Reverset.svg?branch=master)](https://travis-ci.org/Mithreindeir/Reverset)
 
-Reverset is a lightweight portable reverset engineering and binary analysis tool. No external dependencies, written completely in C.
+Reverset is a lightweight portable reverset engineering and binary analysis tool, with eventual No external dependencies, written completely in C. 
 
 ## Why?
 I wanted to make a user friendly simple reverse engineering tool that was focused specifically on x86 / x86 64 instead of sacrificing quality analysis by being over general to support many different architectures. Currently still very in development.
@@ -14,19 +14,15 @@ I wanted to make a user friendly simple reverse engineering tool that was focuse
 * x64 disassembler
 * x86 assembler
 * x64 assembler
+* In development Decompiler
+	* x64 Intermediate Language (x86 will be supported in after x64 is stable)
+	* Intermediate Language -> SSA
+	* Expression Propogation
 * Analysis of 32 and 64 bit elf files
 * Basic Block analysis and graphviz control flow output
 * Patching
 * xref searching
 * More
-
-# In-dev/undocumented/upcoming features
-* Reverset Intermediate Language
-* Internal graphing engine
-* SSE/AVX/FPU Instruction
-* PE File Analysis
-* More advanced function analysis/detection
-* Signatures
 
 Note: Supports majority of used instructions and but not 100% yet. Still working on support for all x87 fpu/avx/sse/sse2 and misc instructions.
 
@@ -37,6 +33,7 @@ After building it, use ./reverset program to open the binary file and enter a re
 Commands:
 * anal -> Generic auto analysis of a binary
 * print here/func/address/symbol -> Print the disassembly at a location
+* printil func -> Print the IL at a function
 * goto func/address/symbol -> Moves current location
 * list functions/strings/symbols -> List information about a binary
 * graph here/func/address/symbol -> Prints basic blocks and graphviz edge data
@@ -72,6 +69,39 @@ int main()
 ```
 
 Output of different commands
+
+printil func.main ->
+``` C
+0x614:
+	push( ebp_0 )
+	rbp_1 = rsp_0
+	rsp_1 = rsp_0 - 0x10
+	[rbp_1-0x8] = 0
+	[rbp_1-0x4] = 0
+	goto 0x64f
+0x62c:
+	eax_1 = [rbp_1-0x4]
+	eax_2 = [rbp_1-0x4] - [rbp_1-0x8]
+	edx_1 = ([rbp_1-0x4] - [rbp_1-0x8])
+	ecx_1 = [rbp_1-0x8]
+	eax_3 = [rbp_1-0x4]
+	ecx_2 = [rbp_1-0x8] + [rbp_1-0x4]
+	eax_4 = [rbp_1-0x4]
+	esi_1 = [rbp_1-0x4]
+	edi_1 = ([rbp_1-0x8] + [rbp_1-0x4])
+	0x5fa()
+	[rbp_1-0x8] = [rbp_1-0x8] + [rbp_1-0x4]
+	[rbp_1-0x4] = [rbp_1-0x4] + 0x1
+0x64f:
+	[rbp_1-0x4] ? 0x9
+	if ( <= ) goto 0x62c
+0x655:
+	eax_5 = 0
+	return 
+
+
+```
+
 graph func.main ->
 ```ASM
 digraph F {
