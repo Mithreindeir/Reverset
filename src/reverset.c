@@ -14,6 +14,7 @@ reverset * reverset_init()
 	dshell_loadconf(rev->shell, "color.example");
 	dshell_addfunc(rev->shell, "anal", &reverset_analyze, rev);
 	dshell_addfunc(rev->shell, "print", &reverset_print, rev);
+	dshell_addfunc(rev->shell, "printil", &reverset_printil, rev);
 	dshell_addfunc(rev->shell, "goto", &reverset_goto, rev);
 	dshell_addfunc(rev->shell, "quit", &reverset_quit, rev);
 	dshell_addfunc(rev->shell, "list", &reverset_list, rev);
@@ -260,6 +261,36 @@ int reverset_graph(struct text_buffer*buf, int argc, char **argv, void*data)
 			}
 			r_formatted_rect(buf,rev->disassembler,rev->anal,func.bbs[0]);
 			r_formatted_graph(buf,rev->disassembler,rev->anal,func.bbs[0]);
+			break;
+		}
+	}
+	return 1;
+}
+
+int reverset_printil(struct text_buffer *buf, int argc, char **argv, void *data)
+{
+	reverset *rev = data;
+	if (argc < 2) return 0;
+	char * arg = argv[1];
+	uint64_t addr = rev->address;
+	addr = reverset_resolve_arg(rev, arg);
+	if (addr==-1) {
+		text_buffer_print(buf, "No address found for \"%s\"\r\n", arg);
+		return 1;
+	}
+	char ibuf[256];
+	for (int i = 0; i < rev->anal->num_functions; i++) {
+		r_function func = rev->anal->functions[i];
+		if (func.start==addr && func.nbbs) {
+			for (int i = 0; i < func.nbbs; i++) {
+				text_buffer_print(buf, "%#lx:\r\n", func.bbs[i]->start);
+				ril_instruction *instr = func.bbs[i]->instr;
+				while (instr) {
+					ril_instr_sn(ibuf, 256, instr);
+					text_buffer_print(buf, "\t%s\r\n", ibuf);
+					instr = instr->next;
+				}
+			}
 			break;
 		}
 	}

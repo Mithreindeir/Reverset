@@ -3,7 +3,6 @@
 void ssa_expr_prop(rbb *bb)
 {
 	if (!bb || !bb->instr) return;
-	/*Start off just propogating MOV instructions*/
 	ril_instruction *cur = bb->instr;
 	while (cur) {
 		int good = 0;
@@ -28,27 +27,29 @@ int ssa_reduce(ril_instruction *cur, ssa_op_reduce reduce)
 {
 	if (cur->nwrite <= 0 || cur->nread <= 0)
 		return 0;
-	if (cur->write[0]->operand->type != RIL_REG)
+	if (cur->write[0]->type != RIL_OPER)
+		return 0;
+	if (cur->write[0]->operand_type != RIL_REG)
 		return 0;
 	ril_instruction *iter = cur;
-	char *reg = cur->write[0]->operand->reg;
+	char *reg = cur->write[0]->reg;
 	int idx = x_register_index(reg);
 	idx = X_REG_BIN(idx);
-	int regi = cur->write[0]->operand->iter;
+	int regi = cur->write[0]->ssa_iter;
 	while (iter) {
 		for (int i = 0; i < iter->nread; i++) {
 			if (!iter->read[i])
 				continue;
 			if (iter->read[i]->type != RIL_OPER)
 				continue;
-			if (iter->read[i]->operand->type != RIL_REG)
+			if (iter->read[i]->operand_type != RIL_REG)
 				continue;
-			int idx2 = x_register_index(iter->read[i]->operand->reg);
+			int idx2 = x_register_index(iter->read[i]->reg);
 			idx2 = X_REG_BIN(idx2);
 			if (idx2==idx) {
-				if (iter->read[i]->operand->iter == regi) {
-					reduce(cur, &iter->read[i]);
-					//iter->read[i] = cur->read[0];
+				if (iter->read[i]->ssa_iter == regi) {
+					ril_instr_destroy(iter->read[i]);
+					iter->read[i] = reduce(cur);
 				}
 			}
 		}
@@ -57,41 +58,35 @@ int ssa_reduce(ril_instruction *cur, ssa_op_reduce reduce)
 	return 1;
 }
 
-void ssa_asn_reduce(ril_instruction *cur, ril_instruction **operand)
+ril_instruction *ssa_asn_reduce(ril_instruction *cur)
 {
-	ril_instr_destroy(*operand);
-	(*operand) = ril_instr_dup(cur->read[0]);
+	return ril_instr_dup(cur->read[0]);
 }
 
-void ssa_ref_reduce(ril_instruction *cur, ril_instruction **operand)
+ril_instruction *ssa_ref_reduce(ril_instruction *cur)
 {
-	ril_instr_destroy(*operand);
 	ril_instruction *rep = ril_instr_dup(cur);
-	rep->format = "&$r0";
-	(*operand) = rep;
+	rep->format = strdup("&$r0");
+	return rep;
 }
 
-void ssa_add_reduce(ril_instruction *cur, ril_instruction **operand)
+ril_instruction *ssa_add_reduce(ril_instruction *cur)
 {
-	ril_instr_destroy(*operand);
 	ril_instruction *rep = ril_instr_dup(cur);
-	rep->format = "($r0 + $r1)";
-	(*operand) = rep;
+	rep->format = strdup("($r0 + $r1)");
+	return rep;
 }
 
-void ssa_sub_reduce(ril_instruction *cur, ril_instruction **operand)
+ril_instruction *ssa_sub_reduce(ril_instruction *cur)
 {
-	ril_instr_destroy(*operand);
 	ril_instruction *rep = ril_instr_dup(cur);
-	rep->format = "($r0 - $r1)";
-	(*operand) = rep;
+	rep->format = strdup("($r0 - $r1)");
+	return rep;
 }
 
-void ssa_mul_reduce(ril_instruction *cur, ril_instruction **operand)
+ril_instruction *ssa_mul_reduce(ril_instruction *cur)
 {
-	ril_instr_destroy(*operand);
 	ril_instruction *rep = ril_instr_dup(cur);
-	rep->next = NULL;
-	rep->format = "($r0 * $r1)";
-	(*operand) = rep;
+	rep->format = strdup("($r0 * $r1)");
+	return rep;
 }

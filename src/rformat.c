@@ -23,7 +23,7 @@ void r_formatted_rect(struct text_buffer *textb, r_disassembler *disassembler, r
 	char ** lines = malloc(sizeof(char*));
 	lines[0] = strdup(buf);
 	int num_lines = 1, iter = 0;
-	/*for (int i = 0; 0 && i < disassembler->num_instructions; i++) {
+	for (int i = 0; i < disassembler->num_instructions; i++) {
 		disas = disassembler->instructions[i];
 		if (disas->address < bb->start || (disas->address+disas->used_bytes) > bb->end)
 			continue;
@@ -40,10 +40,15 @@ void r_formatted_rect(struct text_buffer *textb, r_disassembler *disassembler, r
 		num_lines++;
 		lines=realloc(lines,sizeof(char*)*num_lines);
 		lines[num_lines-1] = strdup(buf);
-	}*/
+	}
 
+	/*
 	ril_instruction *cur = bb->instr;
 	while (cur) {
+		if (cur->comment) {
+			//cur = cur->next;
+			//continue;
+		}
 		memset(buf, 0, 255);
 		iter = 0;
 		iter += ril_instr_sn(buf, 255, cur);
@@ -52,7 +57,7 @@ void r_formatted_rect(struct text_buffer *textb, r_disassembler *disassembler, r
 		lines=realloc(lines,sizeof(char*)*num_lines);
 		lines[num_lines-1] = strdup(buf);
 		cur = cur->next;
-	}
+	}*/
 
 
 	max_x++;

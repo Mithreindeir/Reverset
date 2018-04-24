@@ -48,5 +48,7 @@ ril_instruction *bb_phi_insert(char *var, ssa_vdb *db);
 void cfg_to_ssa(rbb *root, ssa_vdb *db, rbb **bbs, int nbbs);
 void bb_to_ssa(rbb *bb, ssa_vdb *db, int level);
 void bb_ins_phi(rbb *bb, ssa_vdb *db, int level);
+void ril_set_iter(rbb *bb, ril_instruction *loc, ssa_vdb *db, int inc);
+void ril_find_iter(rbb *bb, ril_instruction *instr, ssa_vdb *db);
 
 #endif

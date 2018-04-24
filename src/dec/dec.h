@@ -16,13 +16,14 @@
  * - Print as formatted C code
  * */
 
-typedef void(*ssa_op_reduce)(ril_instruction *cur, ril_instruction **operand);
+typedef ril_instruction*(*ssa_op_reduce)(ril_instruction *cur);
 void ssa_expr_prop(rbb * bb);
 int ssa_reduce(ril_instruction *cur, ssa_op_reduce reduce);
-void ssa_asn_reduce(ril_instruction *cur, ril_instruction **operand);
-void ssa_ref_reduce(ril_instruction *cur, ril_instruction **operand);
-void ssa_add_reduce(ril_instruction *cur, ril_instruction **operand);
-void ssa_sub_reduce(ril_instruction *cur, ril_instruction **operand);
-void ssa_mul_reduce(ril_instruction *cur, ril_instruction **operand);
+ ril_instruction *ssa_instr_reduce(ril_instruction *cur, ril_instruction *iter, ssa_op_reduce reduce);
+ ril_instruction *ssa_asn_reduce(ril_instruction *cur);
+ ril_instruction *ssa_ref_reduce(ril_instruction *cur);
+ ril_instruction *ssa_add_reduce(ril_instruction *cur);
+ ril_instruction *ssa_sub_reduce(ril_instruction *cur);
+ ril_instruction *ssa_mul_reduce(ril_instruction *cur);
 
 #endif

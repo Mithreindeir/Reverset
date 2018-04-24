@@ -66,6 +66,7 @@ int reverset_hexdump(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_info(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_help(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_print(struct text_buffer*buf, int argc, char**argv, void*data);
+int reverset_printil(struct text_buffer*buf, int argc, char **argv, void *data);
 int reverset_xref(struct text_buffer*buf, int argc, char **argv, void*data);
 int reverset_disas(struct text_buffer*buf, int argc, char**argv, void*data);
 int reverset_write(struct text_buffer*buf, int argc, char**argv, void*data);

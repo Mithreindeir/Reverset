@@ -110,42 +110,33 @@ enum ril_operation_type {
 	RIL_PHI
 };
 
-enum ril_loc_type {
+enum ril_op_type {
 	RIL_NONE,
-	RIL_MOFF,
 	RIL_REG,
-	RIL_ADDR
+	RIL_VAL
 };
 
-typedef struct ril_location ril_location;
 typedef struct ril_instruction ril_instruction;
 typedef struct ril_operation ril_operation;
 typedef struct ril_operation_table ril_operation_table;
 
-typedef ril_location*(*ril_operand_lift)(char *operand);
-//typedef ril_location*(*ril_operand_lift)(char *operand);
-//typedef ril_instruction*(*ril_instr_lift)(r_disasm *dis);
+typedef ril_instruction*(*ril_operand_lift)(char *operand);
 
-struct ril_location {
-	int type;
-	int nest;
-	int size;
-	union {
-		char * reg;
-		uint64_t offset;
-		uint64_t addr;
-	};
-	struct ril_location *next;
-	char *join_op;
-	int iter;
-};
-
+/*RIL Instruction Tree. Leafs are operands branches having formatting */
 struct ril_instruction {
 	int type;
 	int comment;
+	int size;
 	struct ril_instruction *next;
 	union {
-		ril_location *operand;
+		/*Operand*/
+		struct {
+			int operand_type;
+			char *reg;
+			uint64_t value;
+			int ssa_iter;
+		};
+		/*Instruction*/
 		struct {
 			int op_type;
 			int action;
@@ -156,24 +147,13 @@ struct ril_instruction {
 	};
 };
 
-ril_location *ril_loc_init();
-void ril_loc_destroy(ril_location *loc);
 
 ril_instruction *ril_instr_init();
 void ril_instr_destroy(ril_instruction *instr);
 
-ril_location *ril_loc_dup(ril_location *loc);
 ril_instruction *ril_instr_dup(ril_instruction *instr);
-
-void ril_loc_print(struct text_buffer *text, ril_location *loc);
-void ril_instr_print(struct text_buffer *text, ril_instruction *instr);
-
-int ril_loc_sn(char *buf, int max, ril_location *loc);
+void ril_instr_add(ril_instruction *branch, ril_instruction *leaf, int type);
 int ril_instr_sn(char *buf, int max, ril_instruction *instr);
-
-//Experimental analysis functions using IL
-void ril_used_registers(struct text_buffer *text, ril_instruction *instr);
-void ril_reduce(ril_instruction *instr);
 
 /*Mnemonic -> ril operation hash table*/
 struct ril_operation_table {
