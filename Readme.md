@@ -5,9 +5,6 @@
 
 Reverset is a lightweight portable reverset engineering and binary analysis tool. No external dependencies, written completely in C. 
 
-## Why?
-I wanted to make a user friendly simple reverse engineering tool that was focused specifically on x86 / x86 64 instead of sacrificing quality analysis by being over general to support many different architectures. Currently still very in development.
-
 # Features
 
 * x86 disassembler
@@ -18,6 +15,8 @@ I wanted to make a user friendly simple reverse engineering tool that was focuse
 	* x64 Intermediate Language (x86 will be supported in after x64 is stable)
 	* Intermediate Language -> SSA
 	* Expression Propogation
+	* Loop and conditional recovery
+	* Upcoming: Disas->microcode->IL, Variable renaming, Address database
 * Analysis of 32 and 64 bit elf files
 * Basic Block analysis and graphviz control flow output
 * Patching
