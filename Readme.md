@@ -12,7 +12,7 @@ Reverset is a lightweight portable reverset engineering and binary analysis tool
 * x86 assembler
 * x64 assembler
 * In development Decompiler
-	* x64 Intermediate Language (x86 will be supported in after x64 is stable)
+	* Intermediate Language
 	* Intermediate Language -> SSA
 	* Expression Propogation
 	* Loop and conditional recovery
