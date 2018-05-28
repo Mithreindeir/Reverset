@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/Mithreindeir/Reverset.svg?branch=master)](https://travis-ci.org/Mithreindeir/Reverset)
 
 
-<p align="center" img="https://raw.githubusercontent.com/hendrykeren/Reverset/master/.assets/logo/250%20x%20250.png"></p>
+![capok](https://raw.githubusercontent.com/hendrykeren/Reverset/master/.assets/logo/250%20x%20250.png)
 
 Reverset is a lightweight portable reverset engineering and binary analysis tool. No external dependencies, written completely in C. 
 #### Currently Being Partially Rewritten to be more architecture independent. No work on new features For ~1 Month
